@@ -1,0 +1,29 @@
+{%- set is_root = basename == "dbt_contracts" -%}
+{%- set module_footer = ["base", "exception"] -%}
+{%- set module_caps = [] -%}
+
+{%- macro formatname(name) -%}
+    {%- if name.endswith(".exception") -%}
+        {%- set name = "exceptions"-%}
+    {%- else -%}
+        {%- set name = name.replace("dbt_contracts.", "").replace("_", " ").split(".") | last -%}
+    {%- endif -%}
+
+    {%- if name | lower in module_caps -%}
+        {{- name | upper -}}
+    {%- else -%}
+        {{- name | title -}}
+    {%- endif -%}
+{%- endmacro -%}
+
+{%- if show_headings -%}
+    {{- formatname(basename) | e | heading }}
+
+.. inheritance-diagram:: {{ basename }}
+   :parts: 1
+{%- endif %}
+
+.. automodule:: {{ qualname }}
+    {% for option in automodule_options -%}
+        :{{ option }}:
+    {% endfor -%}
