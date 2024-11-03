@@ -10,8 +10,9 @@ from dbt.contracts.graph.manifest import Manifest
 
 from dbt_contracts.contracts import Contract, CONTRACTS_CONFIG_MAP
 from dbt_contracts.dbt_cli import clean_paths, get_manifest, get_catalog
-from dbt_contracts.log import TERMINAL_RESULT_LOG_COLUMNS, format_results_to_table_in_groups
-from dbt_contracts.result import Result, ResultParent
+
+from dbt_contracts.formatters import ObjectFormatter
+from dbt_contracts.result import Result, DEFAULT_TERMINAL_FORMATTER
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
@@ -86,10 +87,15 @@ class ContractRunner:
 
         return CONTRACTS_CONFIG_MAP[key].from_dict(config=config)
 
-    def __init__(self, contracts: Collection[Contract]):
+    def __init__(
+            self,
+            contracts: Collection[Contract],
+            results_formatter: ObjectFormatter[Result] = DEFAULT_TERMINAL_FORMATTER
+    ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self._contracts: Collection[Contract] = contracts
+        self._results_formatter = results_formatter
 
         self._dbt: dbtRunner | None = None
         self._manifest: Manifest | None = None
@@ -116,24 +122,10 @@ class ContractRunner:
             contract.run()
             results.extend(contract.results)
 
-        tables = format_results_to_table_in_groups(
-            results,
-            sort_keys=[
-                lambda result: result.result_type,
-                lambda result: result.path,
-                lambda result: result.parent_name if isinstance(result, ResultParent) else "",
-                lambda result: result.index if isinstance(result, ResultParent) else 0,
-                lambda result: result.name,
-            ],
-            header_key=lambda result: f"{result.result_type}: {result.path}",
-            columns=TERMINAL_RESULT_LOG_COLUMNS,
-            consistent_widths=True,
-        )
-        for header, rows in tables.items():
-            self.logger.info(header)
-            for row in rows:
-                self.logger.info(row)
-            self.logger.info("")
+        output_lines = self._results_formatter.format(results)
+        output_str = self._results_formatter.combine(output_lines)
+        for line in output_str.split("\n"):
+            self.logger.info(line)
 
         return results
 
