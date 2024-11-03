@@ -75,7 +75,7 @@ class NodeContract(
                 f"{node.resource_type.title()} config does not contain all columns. "
                 f"Missing {', '.join(missing_columns)}"
             )
-            self._log_result(node, name=test_name, message=message)
+            self._add_result(node, name=test_name, message=message)
 
         return not missing_columns
 
@@ -100,7 +100,7 @@ class NodeContract(
                 f"{node.resource_type.title()} does not have all expected columns. "
                 f"Missing: {', '.join(missing_columns)}"
             )
-            self._log_result(node, name=test_name, message=message)
+            self._add_result(node, name=test_name, message=message)
 
         unexpected_types = {} if not column_types else {
             name: (node_columns[name], data_type) for name, data_type in column_types.items()
@@ -111,7 +111,7 @@ class NodeContract(
             for name, (actual, expected) in unexpected_types.items():
                 message += f"\n- {actual!r} should be {expected!r}"
 
-            self._log_result(node, name=test_name, message=message)
+            self._add_result(node, name=test_name, message=message)
 
         return not missing_columns and not unexpected_types
 
@@ -134,14 +134,14 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
 
         missing_contract = not node.contract.enforced
         if missing_contract:
-            self._log_result(node, name=test_name, message="Contract not enforced")
+            self._add_result(node, name=test_name, message="Contract not enforced")
 
         # node must have all columns defined for contract to be valid
         missing_columns = not self.has_all_columns(node)
 
         missing_data_types = any(not column.data_type for column in node.columns.values())
         if missing_data_types:
-            self._log_result(node, name=test_name, message="To enforce a contract, all data types must be declared")
+            self._add_result(node, name=test_name, message="To enforce a contract, all data types must be declared")
 
         return not any((missing_columns, missing_columns, missing_data_types))
 
@@ -152,7 +152,7 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
                 f"{node.resource_type.title()} has missing upstream {kind} dependencies declared: "
                 f"{', '.join(missing)}"
             )
-            self._log_result(node, name=f"has_valid_{kind}_dependencies", message=message)
+            self._add_result(node, name=f"has_valid_{kind}_dependencies", message=message)
 
         return not missing
 
@@ -206,7 +206,7 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
         has_final_semicolon = node.raw_code.strip().endswith(";")
         if has_final_semicolon:
             name = inspect.currentframe().f_code.co_name
-            self._log_result(node, name=name, message="Script has final semicolon")
+            self._add_result(node, name=name, message="Script has final semicolon")
 
         return not has_final_semicolon
 
@@ -255,6 +255,6 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
         if hardcoded_refs:
             name = inspect.currentframe().f_code.co_name
             message = f"Script has hardcoded refs: {', '.join(hardcoded_refs)}"
-            self._log_result(node, name=name, message=message)
+            self._add_result(node, name=name, message=message)
 
         return not hardcoded_refs

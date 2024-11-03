@@ -2,9 +2,9 @@
 Contract configuration for columns.
 """
 import inspect
+import itertools
 import re
 from collections.abc import Collection, Mapping, Iterable
-from itertools import chain
 from typing import Any, Generic, TypeVar
 
 from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
@@ -28,7 +28,7 @@ class ColumnContract(
     @property
     def items(self) -> Iterable[tuple[ColumnInfo, ParentT]]:
         arguments = map(lambda parent: [(column, parent) for column in parent.columns.values()], self.parents)
-        return self._filter_items(chain.from_iterable(arguments))
+        return self._filter_items(itertools.chain.from_iterable(arguments))
 
     def get_tests(self, column: ColumnInfo, parent: ParentT) -> Iterable[TestNode]:
         """
@@ -56,7 +56,7 @@ class ColumnContract(
         missing_column = column not in parent.columns.values()
         if missing_column:
             message = f"The column cannot be found in the {parent.resource_type.lower()}"
-            self._log_result(item=column, parent=parent, name="exists_in_node", message=message)
+            self._add_result(item=column, parent=parent, name="exists_in_node", message=message)
 
         return not missing_column
 
@@ -72,7 +72,7 @@ class ColumnContract(
         missing_column = column.name not in table.columns.keys()
         if missing_column:
             message = f"The column cannot be found in {table.key()!r}"
-            self._log_result(item=column, parent=parent, name="exists_in_table", message=message)
+            self._add_result(item=column, parent=parent, name="exists_in_table", message=message)
 
         return not missing_column
 
@@ -123,7 +123,7 @@ class ColumnContract(
                 message = f"Column name does not match expected pattern for type {data_type}: {', '.join(patterns)}"
             else:
                 message = f"Column name does not match expected patterns: {', '.join(patterns)}"
-            self._log_result(column, parent=parent, name=test_name, message=message)
+            self._add_result(column, parent=parent, name=test_name, message=message)
 
         return not unexpected_name
 
@@ -143,7 +143,7 @@ class ColumnContract(
         if missing_data_type:
             name = inspect.currentframe().f_code.co_name
             message = "Data type not configured for this column"
-            self._log_result(column, parent=parent, name=name, message=message)
+            self._add_result(column, parent=parent, name=name, message=message)
 
         return not missing_data_type
 
@@ -198,7 +198,7 @@ class ColumnContract(
 
         if unmatched_description:
             message = f"Description does not match remote entity: {column.description!r} != {table_comment!r}"
-            self._log_result(column, parent=parent, name=test_name, message=message)
+            self._add_result(column, parent=parent, name=test_name, message=message)
 
         return not unmatched_description
 
@@ -233,7 +233,7 @@ class ColumnContract(
 
         if unmatched_type:
             message = f"Data type does not match remote entity: {column.data_type} != {table_type}"
-            self._log_result(column, parent=parent, name=test_name, message=message)
+            self._add_result(column, parent=parent, name=test_name, message=message)
 
         return not unmatched_type
 
@@ -264,6 +264,6 @@ class ColumnContract(
         unmatched_index = node_index != table_index
         if unmatched_index:
             message = f"Column index does not match remote entity: {node_index} != {table_index}"
-            self._log_result(column, parent=parent, name=test_name, message=message)
+            self._add_result(column, parent=parent, name=test_name, message=message)
 
         return not unmatched_index

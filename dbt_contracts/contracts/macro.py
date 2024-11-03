@@ -2,8 +2,8 @@
 Contract configuration for macros.
 """
 import inspect
+import itertools
 from collections.abc import Iterable
-from itertools import chain
 
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import Macro
@@ -28,7 +28,7 @@ class MacroArgumentContract(DescriptionPropertyContract[MacroArgument, Macro]):
     @property
     def items(self) -> Iterable[tuple[MacroArgument, Macro]]:
         arguments = map(lambda macro: [(argument, macro) for argument in macro.arguments], self.parents)
-        return self._filter_items(chain.from_iterable(arguments))
+        return self._filter_items(itertools.chain.from_iterable(arguments))
 
     @validation_method
     def has_type(self, argument: MacroArgument, parent: Macro) -> bool:
@@ -42,6 +42,6 @@ class MacroArgumentContract(DescriptionPropertyContract[MacroArgument, Macro]):
         missing_type = not argument.type
         if missing_type:
             name = inspect.currentframe().f_code.co_name
-            self._log_result(argument, parent=parent, name=name, message="Argument does not have a type configured")
+            self._add_result(argument, parent=parent, name=name, message="Argument does not have a type configured")
 
         return not missing_type

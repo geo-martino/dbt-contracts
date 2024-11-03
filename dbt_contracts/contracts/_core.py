@@ -16,8 +16,8 @@ from dbt.artifacts.schemas.catalog import CatalogArtifact, CatalogTable
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import SourceDefinition
 
-from dbt_contracts.result import RESULT_LOG_MAP, ResultLog
-from dbt_contracts.contracts._types import T, ParentT, CombinedT
+from dbt_contracts.result import RESULT_PROCESSOR_MAP, Result
+from dbt_contracts.types import T, ParentT, CombinedT
 
 ProcessorMethodT = Callable[..., bool]
 
@@ -261,7 +261,7 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         self.logger.debug(f"Filters configured: {', '.join(f.name for f, _ in self._filters)}")
         self.logger.debug(f"Validations configured: {', '.join(f.name for f, _ in self._validations)}")
 
-        self.results: list[ResultLog] = []
+        self.results: list[Result] = []
         self._patches: MutableMapping[Path, Mapping[str, Any]] = {}
 
     def _get_methods_from_config(
@@ -340,15 +340,21 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
     ###########################################################################
     ## Logging
     ###########################################################################
-    def _log_result(self, item: T, name: str, message: str, parent: ParentT = None, **extra) -> None:
-        result_logger = RESULT_LOG_MAP.get(type(item))
-        if result_logger is None:
-            raise Exception(f"Unexpected item to log: {type(item)}")
+    def _add_result(self, item: T, name: str, message: str, parent: ParentT = None, **extra) -> None:
+        result_processor = RESULT_PROCESSOR_MAP.get(type(item))
+        if result_processor is None:
+            raise Exception(f"Unexpected item to create result for: {type(item)}")
 
-        log = result_logger.from_resource(
-            item=item, parent=parent, log_name=name, message=message, patches=self._patches, **extra
+        result = result_processor.from_resource(
+            item=item,
+            parent=parent,
+            result_name=name,
+            result_level="warning",
+            message=message,
+            patches=self._patches,
+            **extra
         )
-        self.results.append(log)
+        self.results.append(result)
 
     ###########################################################################
     ## Method helpers
@@ -374,7 +380,7 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
                 f"The {resource.resource_type.lower()} cannot be found in the database"
             )
 
-            self._log_result(item=resource, parent=resource, name=name, message=message)
+            self._add_result(item=resource, parent=resource, name=name, message=message)
 
         return table
 
@@ -395,7 +401,7 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
             else:
                 message = f"Too many {kind} found: {count}. Expected: {max_count}."
 
-            self._log_result(item, parent=parent, name=f"has_{kind.replace(" ", "_")}", message=message)
+            self._add_result(item, parent=parent, name=f"has_{kind.replace(" ", "_")}", message=message)
 
         return not too_small and not too_large
 

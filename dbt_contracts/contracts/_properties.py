@@ -26,7 +26,7 @@ class DescriptionPropertyContract(Contract[T, ParentT], Generic[T, ParentT], met
         missing_description = len(resource.description) == 0
         if missing_description:
             name = inspect.currentframe().f_code.co_name
-            self._log_result(resource, parent=parent, name=name, message="Missing description")
+            self._add_result(resource, parent=parent, name=name, message="Missing description")
 
         return not missing_description
 
@@ -54,7 +54,7 @@ class PatchContract(
         missing_properties = resource.patch_path is None and not isinstance(resource, SourceDefinition)
         if missing_properties:
             name = inspect.currentframe().f_code.co_name
-            self._log_result(resource, parent=parent, name=name, message="No properties file found")
+            self._add_result(resource, parent=parent, name=name, message="No properties file found")
 
         return not missing_properties
 
@@ -78,7 +78,7 @@ class TagContract(Contract[TagT, ParentT], Generic[TagT, ParentT], metaclass=ABC
         if missing_tags:
             name = inspect.currentframe().f_code.co_name
             message = f"Missing required tags: {', '.join(missing_tags)}"
-            self._log_result(resource, parent=parent, name=name, message=message)
+            self._add_result(resource, parent=parent, name=name, message=message)
 
         return not missing_tags
 
@@ -96,7 +96,7 @@ class TagContract(Contract[TagT, ParentT], Generic[TagT, ParentT], metaclass=ABC
         if invalid_tags:
             name = inspect.currentframe().f_code.co_name
             message = f"Contains invalid tags: {', '.join(invalid_tags)}"
-            self._log_result(resource, parent=parent, name=name, message=message)
+            self._add_result(resource, parent=parent, name=name, message=message)
 
         return len(invalid_tags) == 0
 
@@ -120,7 +120,7 @@ class MetaContract(Contract[MetaT, ParentT], Generic[MetaT, ParentT], metaclass=
         if missing_keys:
             name = inspect.currentframe().f_code.co_name
             message = f"Missing required keys: {', '.join(missing_keys)}"
-            self._log_result(resource, parent=parent, name=name, message=message)
+            self._add_result(resource, parent=parent, name=name, message=message)
 
         return not missing_keys
 
@@ -138,7 +138,7 @@ class MetaContract(Contract[MetaT, ParentT], Generic[MetaT, ParentT], metaclass=
         if invalid_keys:
             name = inspect.currentframe().f_code.co_name
             message = f"Contains invalid keys: {', '.join(invalid_keys)}"
-            self._log_result(resource, parent=parent, name=name, message=message)
+            self._add_result(resource, parent=parent, name=name, message=message)
 
         return len(invalid_keys) == 0
 
@@ -167,6 +167,6 @@ class MetaContract(Contract[MetaT, ParentT], Generic[MetaT, ParentT], metaclass=
         if invalid_meta:
             name = inspect.currentframe().f_code.co_name
             message = f"Contains invalid meta values: {invalid_meta} | Accepted values: {expected_meta}"
-            self._log_result(resource, parent=parent, name=name, message=message)
+            self._add_result(resource, parent=parent, name=name, message=message)
 
         return not invalid_meta

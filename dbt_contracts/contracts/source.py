@@ -37,7 +37,7 @@ class SourceContract(NodeContract[SourceDefinition]):
         missing_loader = len(source.loader) == 0
         if missing_loader:
             name = inspect.currentframe().f_code.co_name
-            self._log_result(source, name=name, message="Loader is not correctly configured")
+            self._add_result(source, name=name, message="Loader is not correctly configured")
 
         return not missing_loader
 
@@ -54,7 +54,7 @@ class SourceContract(NodeContract[SourceDefinition]):
         )
         if missing_freshness:
             name = inspect.currentframe().f_code.co_name
-            self._log_result(source, name=name, message="Freshness is not correctly configured")
+            self._add_result(source, name=name, message="Freshness is not correctly configured")
 
         return not missing_freshness
 
