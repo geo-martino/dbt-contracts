@@ -1,18 +1,14 @@
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Collection
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import yaml
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.cli.main import dbtRunner
 from dbt.contracts.graph.manifest import Manifest
 
-from dbt_contracts.contracts import Contract, NodeContract
-from dbt_contracts.contracts.column import ColumnContract
-from dbt_contracts.contracts.macro import MacroContract, MacroArgumentContract
-from dbt_contracts.contracts.model import ModelContract
-from dbt_contracts.contracts.source import SourceContract
+from dbt_contracts.contracts import Contract, CONTRACTS_CONFIG_MAP
 from dbt_contracts.dbt_cli import clean_paths, get_manifest, get_catalog
 from dbt_contracts.log import TERMINAL_RESULT_LOG_COLUMNS, format_results_to_table_in_groups
 from dbt_contracts.result import Result, ResultParent
@@ -24,11 +20,6 @@ class ContractRunner:
     """Handles loading config for contracts and their execution."""
 
     default_config_file_name: str = "contracts.yml"
-    _contract_key_map: Mapping[str, type[Contract]] = {
-        "models": ModelContract,
-        "sources": SourceContract,
-        "macros": MacroContract,
-    }
 
     @property
     def dbt(self) -> dbtRunner:
@@ -52,15 +43,57 @@ class ContractRunner:
             self._catalog = get_catalog(runner=self.dbt)
         return self._catalog
 
-    def __init__(self, config_path: str | Path):
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> Self:
+        """
+        Set up a new runner from the config in a yaml file at the given `path`.
+
+        :param path: The path to the yaml file.
+            May either be a path to a yaml file or a path to the directory where the file is located.
+            If a directory is given, the default file name will be appended.
+        :return: The configured runner.
+        """
+        path = Path(path)
+        if path.is_dir():
+            path = path.joinpath(cls.default_config_file_name)
+        if not path.is_file():
+            raise FileNotFoundError(f"Could not find config file at path: {path!r}")
+
+        with path.open("r") as file:
+            config = yaml.full_load(file)
+
+        return cls.from_dict(config)
+
+    @classmethod
+    def from_dict(cls, config: Mapping[str, Any]) -> Self:
+        """
+        Set up a new runner from the given `config`.
+
+        :param config: The config to configure the runner with.
+        :return: The configured runner.
+        """
+        contracts = [cls._create_contract_from_config(key, config=conf) for key, conf in config.items()]
+
+        obj = cls(contracts)
+        obj.logger.debug(f"Configured {len(contracts)} sets of contracts from config")
+        return obj
+
+    @classmethod
+    def _create_contract_from_config(cls, key: str, config: Mapping[str, Any]) -> Contract:
+        key = key.replace(" ", "_").casefold().rstrip("s") + "s"
+        if key not in CONTRACTS_CONFIG_MAP:
+            raise Exception(f"Unrecognised validator key: {key}")
+
+        return CONTRACTS_CONFIG_MAP[key].from_dict(config=config)
+
+    def __init__(self, contracts: Collection[Contract]):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
+        self._contracts: Collection[Contract] = contracts
 
         self._dbt: dbtRunner | None = None
         self._manifest: Manifest | None = None
         self._catalog: CatalogArtifact | None = None
-
-        self._contracts: list[Contract] = []
-        self._load_config(config_path)
 
     def __call__(self) -> list[Result]:
         return self.run()
@@ -104,46 +137,8 @@ class ContractRunner:
 
         return results
 
-    ###########################################################################
-    ## Setup
-    ###########################################################################
-    def _load_config(self, path: str | Path) -> None:
-        path = Path(path)
-        if path.is_dir():
-            path = path.joinpath(self.default_config_file_name)
-        if not path.is_file():
-            raise FileNotFoundError(f"Could not find config file at path: {path!r}")
-
-        with path.open("r") as file:
-            config = yaml.full_load(file)
-
-        for key, val in config.items():
-            self._set_contract(key, config=val)
-
-        self.logger.debug(f"Configured {len(self._contracts)} sets of contracts")
-
-    def _set_contract(self, key: str, config: Mapping[str, Any]) -> None:
-        key = key.replace(" ", "_").casefold().rstrip("s") + "s"
-        if key not in self._contract_key_map:
-            raise Exception(f"Unrecognised validator key: {key}")
-
-        contract = self._contract_key_map[key].from_dict(config=config)
-        self._contracts.append(contract)
-
-        if isinstance(contract, MacroContract) and (config_child := config.get("arguments")):
-            child_contract = MacroArgumentContract.from_dict(
-                config=config_child, parents=lambda: contract.items
-            )
-            self._contracts.append(child_contract)
-
-        elif isinstance(contract, NodeContract) and (config_child := config.get("columns")):
-            child_contract = ColumnContract.from_dict(
-                config=config_child, parents=lambda: contract.items
-            )
-            self._contracts.append(child_contract)
-
 
 if __name__ == "__main__":
     path = "/Users/gmarino/Desktop/Projects/dlh-datamodel/cibc"
-    runner = ContractRunner(path)
+    runner = ContractRunner.from_yaml(path)
     results = runner()

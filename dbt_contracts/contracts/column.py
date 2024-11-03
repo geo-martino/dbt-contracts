@@ -11,7 +11,7 @@ from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
 from dbt.artifacts.schemas.catalog import CatalogTable
 from dbt.contracts.graph.nodes import TestNode, SourceDefinition
 
-from dbt_contracts.contracts._core import validation_method
+from dbt_contracts.contracts._core import validation_method, ChildContract
 from dbt_contracts.contracts._properties import DescriptionPropertyContract, TagContract, MetaContract
 
 ParentT = TypeVar('ParentT', ParsedResource, SourceDefinition)
@@ -21,6 +21,7 @@ class ColumnContract(
     DescriptionPropertyContract[ColumnInfo, ParentT],
     TagContract[ColumnInfo, ParentT],
     MetaContract[ColumnInfo, ParentT],
+    ChildContract[ColumnInfo, ParentT],
     Generic[ParentT]
 ):
     """Configures a contract configuration for columns."""

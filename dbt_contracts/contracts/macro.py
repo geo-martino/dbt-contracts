@@ -8,21 +8,11 @@ from collections.abc import Iterable
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import Macro
 
-from dbt_contracts.contracts._core import validation_method
+from dbt_contracts.contracts._core import validation_method, ParentContract, ChildContract
 from dbt_contracts.contracts._properties import PatchContract, DescriptionPropertyContract
 
 
-class MacroContract(PatchContract[Macro, None]):
-    """Configures a contract for macros."""
-
-    @property
-    def items(self) -> Iterable[Macro]:
-        macros = self.manifest.macros.values()
-        package_macros = filter(lambda macro: macro.package_name == self.manifest.metadata.project_name, macros)
-        return self._filter_items(package_macros)
-
-
-class MacroArgumentContract(DescriptionPropertyContract[MacroArgument, Macro]):
+class MacroArgumentContract(DescriptionPropertyContract[MacroArgument, Macro], ChildContract[MacroArgument, Macro]):
     """Configures a contract for macro arguments."""
 
     @property
@@ -45,3 +35,29 @@ class MacroArgumentContract(DescriptionPropertyContract[MacroArgument, Macro]):
             self._add_result(argument, parent=parent, name=name, message="Argument does not have a type configured")
 
         return not missing_type
+
+
+class MacroContract(PatchContract[Macro, None], ParentContract[Macro, MacroArgumentContract]):
+    """Configures a contract for macros."""
+
+    # noinspection PyPropertyDefinition
+    @classmethod
+    @property
+    def config_key(cls) -> str:
+        return "macros"
+
+    @property
+    def _child_type(self) -> type[MacroArgumentContract]:
+        return MacroArgumentContract
+
+    # noinspection PyPropertyDefinition
+    @classmethod
+    @property
+    def _child_config_key(cls) -> str:
+        return "arguments"
+
+    @property
+    def items(self) -> Iterable[Macro]:
+        macros = self.manifest.macros.values()
+        package_macros = filter(lambda macro: macro.package_name == self.manifest.metadata.project_name, macros)
+        return self._filter_items(package_macros)

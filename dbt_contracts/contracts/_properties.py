@@ -9,7 +9,8 @@ from typing import Any, TypeVar, Generic
 from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
 from dbt.contracts.graph.nodes import Macro, SourceDefinition
 
-from dbt_contracts.contracts._core import Contract, validation_method, T, ParentT
+from dbt_contracts.contracts._core import Contract, validation_method
+from dbt_contracts.types import T, ParentT
 
 
 class DescriptionPropertyContract(Contract[T, ParentT], Generic[T, ParentT], metaclass=ABCMeta):

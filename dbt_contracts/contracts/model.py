@@ -12,6 +12,12 @@ from dbt_contracts.contracts._node import CompiledNodeContract
 class ModelContract(CompiledNodeContract[ModelNode]):
     """Configures a contract for models."""
 
+    # noinspection PyPropertyDefinition
+    @classmethod
+    @property
+    def config_key(cls) -> str:
+        return "models"
+
     @property
     def items(self) -> Iterable[ModelNode]:
         nodes = self.manifest.nodes.values()

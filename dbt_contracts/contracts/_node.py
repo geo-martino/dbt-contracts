@@ -10,8 +10,9 @@ from typing import TypeVar, Generic, Any
 
 from dbt.contracts.graph.nodes import TestNode, SourceDefinition, CompiledNode, BaseNode
 
-from dbt_contracts.contracts._core import validation_method
+from dbt_contracts.contracts._core import validation_method, ParentContract
 from dbt_contracts.contracts._properties import PatchContract, TagContract, MetaContract
+from dbt_contracts.contracts.column import ColumnContract
 
 NodeT = TypeVar('NodeT', BaseNode, SourceDefinition)
 
@@ -20,10 +21,21 @@ class NodeContract(
     PatchContract[NodeT, None],
     TagContract[NodeT, None],
     MetaContract[NodeT, None],
+    ParentContract[NodeT, ColumnContract[NodeT]],
     Generic[NodeT],
     metaclass=ABCMeta
 ):
     """Configures a contract for nodes."""
+
+    @property
+    def _child_type(self) -> type[ColumnContract[NodeT]]:
+        return ColumnContract
+
+    # noinspection PyPropertyDefinition
+    @classmethod
+    @property
+    def _child_config_key(cls) -> str:
+        return "columns"
 
     def get_tests(self, node: NodeT) -> Iterable[TestNode]:
         """

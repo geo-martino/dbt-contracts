@@ -8,7 +8,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Collection, Mapping, MutableMapping, Iterable, Generator
 from itertools import filterfalse
 from pathlib import Path
-from typing import Generic, Any, Self
+from typing import Generic, Any, Self, TypeVar
 
 from dbt.artifacts.resources.base import BaseResource
 from dbt.artifacts.resources.v1.components import ParsedResource
@@ -17,7 +17,7 @@ from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import SourceDefinition
 
 from dbt_contracts.result import RESULT_PROCESSOR_MAP, Result
-from dbt_contracts.types import T, ParentT, CombinedT
+from dbt_contracts.types import T, ChildT, ParentT, CombinedT
 
 ProcessorMethodT = Callable[..., bool]
 
@@ -177,33 +177,14 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         """Gets the items that should be processed by this contract from the manifest."""
         raise NotImplementedError
 
-    @property
-    def parents(self) -> Iterable[ParentT]:
-        """Gets the parents of the items that should be processed by this contract from the manifest."""
-        parents = self._parents
-        if callable(parents):  # deferred execution of getting parents
-            parents = parents()
-        elif isinstance(parents, Iterable) and not isinstance(parents, Collection):
-            parents = list(parents)
-            self._parents = parents
-
-        return parents
-
     @classmethod
-    def from_dict(
-            cls,
-            config: Mapping[str, Any],
-            manifest: Manifest = None,
-            catalog: CatalogArtifact = None,
-            parents: Iterable[ParentT] | Callable[[], Iterable[ParentT]] = (),
-    ) -> Self:
+    def from_dict(cls, config: Mapping[str, Any], manifest: Manifest = None, catalog: CatalogArtifact = None) -> Self:
         """
         Configure a new contract from configuration map.
 
         :param config: The config map.
         :param manifest: The dbt manifest.
         :param catalog: The dbt catalog.
-        :param parents: If this contract is a child contract, give the parents of the items to process.
         :return: The configured contract.
         """
         filters = config.get("filters", ())
@@ -214,7 +195,6 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
             catalog=catalog,
             filters=filters,
             validations=validations,
-            parents=parents,
         )
 
     def __new__(cls, *_, **__):
@@ -242,14 +222,11 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
             catalog: CatalogArtifact = None,
             filters: Iterable[str | Mapping[str, Any]] = (),
             validations: Iterable[str | Mapping[str, Any]] = (),
-            # defer execution of getting parents to allow for dynamic dbt artifact assignment
-            parents: Iterable[ParentT] | Callable[[], Iterable[ParentT]] = (),
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self._manifest: Manifest = manifest
         self._catalog: CatalogArtifact = catalog
-        self._parents = parents
 
         self._filters = self._get_methods_from_config(
             filters, expected=self.__filtermethods__, kind="filters"
@@ -333,7 +310,7 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
 
         self.logger.debug(f"Validations applied. Found {len(self.results)} errors.")
 
-    def run(self):
+    def run(self) -> list[CombinedT]:
         """Run all configured contract methods for this contract."""
         return list(self._validate_items())
 
@@ -452,3 +429,176 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         :return: True if the node has a valid path, False otherwise.
         """
         return self._matches_patterns(item.original_file_path, *patterns, include=include, exclude=exclude)
+
+
+class ChildContract(Contract[ChildT, ParentT], Generic[ChildT, ParentT], metaclass=ABCMeta):
+    """Base class for contracts which have associated parent contracts relating to specific dbt resource types."""
+
+    @property
+    def parents(self) -> Iterable[ParentT]:
+        """Gets the parents of the items that should be processed by this contract from the manifest."""
+        parents = self._parents
+        if isinstance(parents, Contract):  # deferred execution of getting parents
+            parents = parents.items
+        elif isinstance(parents, Iterable) and not isinstance(parents, Collection):
+            parents = list(parents)
+            self._parents = parents
+
+        return parents
+
+    @parents.setter
+    def parents(self, value: Iterable[ParentT] | Contract[ParentT, None]):
+        self._parents = value
+
+    @classmethod
+    def from_dict(
+            cls,
+            config: Mapping[str, Any],
+            manifest: Manifest = None,
+            catalog: CatalogArtifact = None,
+            parents: Iterable[ParentT] | Contract[ParentT, None] = (),
+    ) -> Self:
+        """
+        Configure a new contract from configuration map.
+
+        :param config: The config map.
+        :param manifest: The dbt manifest.
+        :param catalog: The dbt catalog.
+        :param parents: If this contract is a child contract, give the parents of the items to process.
+            If a :py:class:`Contract` is given, the manifest and catalog will be extracted from it
+            and the given `manifest` and `catalog` will be ignored if it contains valid values for these objects.
+        :return: The configured contract.
+        """
+        if isinstance(parents, Contract):
+            if parents.manifest_is_set:
+                manifest = parents.manifest
+            if parents.catalog_is_set:
+                catalog = parents.catalog
+
+        obj = super().from_dict(config=config, manifest=manifest, catalog=catalog)
+        obj.parents = parents
+        return obj
+
+    def __init__(
+            self,
+            manifest: Manifest = None,
+            catalog: CatalogArtifact = None,
+            filters: Iterable[str | Mapping[str, Any]] = (),
+            validations: Iterable[str | Mapping[str, Any]] = (),
+            # defer execution of getting parents to allow for dynamic dbt artifact assignment
+            parents: Iterable[ParentT] | Contract[ParentT, None] = (),
+    ):
+        super().__init__(manifest=manifest, catalog=catalog, filters=filters, validations=validations)
+        self._parents = parents
+
+
+ChildContractT = TypeVar('ChildContractT', bound=ChildContract)
+
+
+class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], metaclass=ABCMeta):
+    """Base class for contracts which have associated child contracts relating to specific dbt resource types."""
+
+    # noinspection PyPropertyDefinition,PyNestedDecorators
+    @property
+    @classmethod
+    @abstractmethod
+    def config_key(cls) -> str:
+        """The key in a given config relating to the config which configures this contract."""
+        raise NotImplementedError
+
+    @property
+    def child(self) -> ChildContractT | None:
+        """The child contract object"""
+        return self._child
+
+    @property
+    @abstractmethod
+    def _child_type(self) -> type[ChildContractT]:
+        raise NotImplementedError
+
+    # noinspection PyPropertyDefinition
+    @classmethod
+    @property
+    @abstractmethod
+    def _child_config_key(cls) -> str:
+        raise NotImplementedError
+
+    @property
+    def manifest(self) -> Manifest:
+        return super().manifest
+
+    @manifest.setter
+    def manifest(self, value: Manifest):
+        self._manifest = value
+        if self.child is not None:
+            self.child.manifest = value
+
+    @property
+    def manifest_is_set(self) -> bool:
+        return super().manifest_is_set and (self.child is None or self.child.manifest_is_set)
+
+    @property
+    def needs_manifest(self) -> bool:
+        return super().needs_manifest or (self.child is not None and self.child.needs_manifest)
+
+    @property
+    def catalog(self) -> CatalogArtifact:
+        return super().catalog
+
+    @catalog.setter
+    def catalog(self, value: CatalogArtifact):
+        self._catalog = value
+        if self.child is not None:
+            self.child.catalog = value
+
+    @property
+    def catalog_is_set(self) -> bool:
+        return super().catalog_is_set and (self.child is None or self.child.catalog_is_set)
+
+    @property
+    def needs_catalog(self) -> bool:
+        return super().needs_catalog or (self.child is not None and self.child.needs_catalog)
+
+    @classmethod
+    def from_dict(cls, config: Mapping[str, Any], manifest: Manifest = None, catalog: CatalogArtifact = None) -> Self:
+        obj = super().from_dict(config=config, manifest=manifest, catalog=catalog)
+        # noinspection PyProtectedMember
+        obj._set_child_from_parent_dict(config=config)
+        return obj
+
+    def __init__(
+            self,
+            manifest: Manifest = None,
+            catalog: CatalogArtifact = None,
+            filters: Iterable[str | Mapping[str, Any]] = (),
+            validations: Iterable[str | Mapping[str, Any]] = (),
+    ):
+        super().__init__(manifest=manifest, catalog=catalog, filters=filters, validations=validations)
+        self._child: ChildContractT | None = None
+
+    def set_child(
+            self,
+            filters: Iterable[str | Mapping[str, Any]] = (),
+            validations: Iterable[str | Mapping[str, Any]] = ()
+    ) -> None:
+        """
+        Set the child contract object for this parent contract with the given methods configured
+
+        :param filters: The filters to configure.
+        :param validations: The validations to configure.
+        """
+        self._child = self._child_type(
+            manifest=self.manifest, catalog=self.catalog, filters=filters, validations=validations
+        )
+
+    def _set_child_from_parent_dict(self, config: Mapping[str, Any]) -> None:
+        child_config = config.get(self._child_config_key)
+        self._child = self._child_type.from_dict(child_config, parents=self)
+
+    def run(self):
+        """Run all configured contract methods for this contract."""
+        results = list(self._validate_items())
+        if self.child is not None:
+            results.extend(self.child())
+
+        return results
