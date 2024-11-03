@@ -9,7 +9,7 @@ from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import Macro
 
 from dbt_contracts.contracts._core import validation_method
-from dbt_contracts.contracts.properties import PatchContract, DescriptionPropertyContract
+from dbt_contracts.contracts._properties import PatchContract, DescriptionPropertyContract
 
 
 class MacroContract(PatchContract[Macro, None]):

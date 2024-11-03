@@ -11,7 +11,7 @@ from typing import TypeVar, Generic, Any
 from dbt.contracts.graph.nodes import TestNode, SourceDefinition, CompiledNode, BaseNode
 
 from dbt_contracts.contracts._core import validation_method
-from dbt_contracts.contracts.properties import PatchContract, TagContract, MetaContract
+from dbt_contracts.contracts._properties import PatchContract, TagContract, MetaContract
 
 NodeT = TypeVar('NodeT', BaseNode, SourceDefinition)
 
@@ -119,7 +119,7 @@ class NodeContract(
 CompiledNodeT = TypeVar('CompiledNodeT', bound=CompiledNode)
 
 
-class CompiledNodeValidator(NodeContract[CompiledNodeT], metaclass=ABCMeta):
+class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
     """Configures a contract for compiled nodes."""
 
     @validation_method(needs_catalog=True)

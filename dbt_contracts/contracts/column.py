@@ -12,7 +12,7 @@ from dbt.artifacts.schemas.catalog import CatalogTable
 from dbt.contracts.graph.nodes import TestNode, SourceDefinition
 
 from dbt_contracts.contracts._core import validation_method
-from dbt_contracts.contracts.properties import DescriptionPropertyContract, TagContract, MetaContract
+from dbt_contracts.contracts._properties import DescriptionPropertyContract, TagContract, MetaContract
 
 ParentT = TypeVar('ParentT', ParsedResource, SourceDefinition)
 

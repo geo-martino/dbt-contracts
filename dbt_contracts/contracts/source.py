@@ -6,7 +6,7 @@ import inspect
 from dbt.contracts.graph.nodes import SourceDefinition
 
 from dbt_contracts.contracts._core import filter_method, validation_method
-from dbt_contracts.contracts.node import NodeContract
+from dbt_contracts.contracts._node import NodeContract
 
 
 class SourceContract(NodeContract[SourceDefinition]):

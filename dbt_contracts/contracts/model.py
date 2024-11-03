@@ -6,10 +6,10 @@ from collections.abc import Iterable
 from dbt.contracts.graph.nodes import ModelNode
 
 from dbt_contracts.contracts._core import filter_method, validation_method
-from dbt_contracts.contracts.node import CompiledNodeValidator
+from dbt_contracts.contracts._node import CompiledNodeContract
 
 
-class ModelContract(CompiledNodeValidator[ModelNode]):
+class ModelContract(CompiledNodeContract[ModelNode]):
     """Configures a contract for models."""
 
     @property

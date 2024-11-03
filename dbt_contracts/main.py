@@ -11,12 +11,11 @@ from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.cli.main import dbtRunner
 from dbt.contracts.graph.manifest import Manifest
 
-from dbt_contracts.cli import clean_paths, get_manifest, get_catalog
-from dbt_contracts.contracts import Contract
+from dbt_contracts.dbt import clean_paths, get_manifest, get_catalog
+from dbt_contracts.contracts import Contract, NodeContract
 from dbt_contracts.contracts.column import ColumnContract
 from dbt_contracts.contracts.macro import MacroContract, MacroArgumentContract
 from dbt_contracts.contracts.model import ModelContract
-from dbt_contracts.contracts.node import NodeContract
 from dbt_contracts.contracts.source import SourceContract
 from dbt_contracts.result import ResultLog
 
@@ -25,6 +24,13 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 class ContractRunner:
     """Handles loading config for contracts and their execution."""
+
+    default_config_file_name: str = "contracts.yml"
+    _contract_key_map: Mapping[str, type[Contract]] = {
+        "models": ModelContract,
+        "sources": SourceContract,
+        "macros": MacroContract,
+    }
 
     @property
     def dbt(self) -> dbtRunner:
@@ -86,11 +92,9 @@ class ContractRunner:
     ## Setup
     ###########################################################################
     def _load_config(self, path: str | Path) -> None:
-        default_file_name = "contracts.yml"
-
         path = Path(path)
         if path.is_dir():
-            path = path.joinpath(default_file_name)
+            path = path.joinpath(self.default_config_file_name)
         if not path.is_file():
             raise FileNotFoundError(f"Could not find config file at path: {path!r}")
 
@@ -102,21 +106,12 @@ class ContractRunner:
 
         self.logger.debug(f"Configured {len(self._contracts)} sets of contracts")
 
-    @staticmethod
-    def _format_key(key: str) -> str:
-        return key.replace(" ", "_").casefold().rstrip("s") + "s"
-
     def _set_contract(self, key: str, config: Mapping[str, Any]) -> None:
-        contract_key_map: Mapping[str, type[Contract]] = {
-            "models": ModelContract,
-            "sources": SourceContract,
-            "macros": MacroContract,
-        }
-        key = self._format_key(key)
-        if key not in contract_key_map:
+        key = key.replace(" ", "_").casefold().rstrip("s") + "s"
+        if key not in self._contract_key_map:
             raise Exception(f"Unrecognised validator key: {key}")
 
-        contract = contract_key_map[key].from_dict(config=config)
+        contract = self._contract_key_map[key].from_dict(config=config)
         self._contracts.append(contract)
 
         if isinstance(contract, MacroContract) and (config_child := config.get("arguments")):

@@ -1,3 +1,6 @@
+"""
+Generic types to use for all contracts.
+"""
 from typing import TypeVar
 
 from dbt.artifacts.resources.base import BaseResource
