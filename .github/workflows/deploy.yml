@@ -1,0 +1,34 @@
+name: "🚀 Deploy package to PyPI   "
+run-name: "🚀 Deploy package to PyPI: ${{ github.ref_name }}"
+
+on:
+  release:
+    types: [ published ]
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: ✅ Validate
+    uses: ./.github/workflows/validate.yml
+
+  deploy:
+    name: 🚀 Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: validate
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dbt-contracts
+    permissions:
+      id-token: write
+    steps:
+      - name: 📦 Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.validate.outputs.artifact-name }}
+          path: dist/
+
+      - name: 🚀 Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
