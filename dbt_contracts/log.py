@@ -217,6 +217,7 @@ def format_results_to_table(
         cols = [
             values + ([" " * width] * (row_count - len(values)))
             for values, column, width in zip(cols, columns, widths)
+            if not calculate_widths or any(val.strip() for val in values)
         ]
 
         rows = list(map(list, zip(*cols)))
@@ -246,6 +247,7 @@ def format_results_to_table_in_groups(
         May either be a collection strings of the attribute name,
         or a collection of lambda functions for more complex logic.
     :param consistent_widths: Whether to keep the widths of all tables equal.
+        When disabled, also drops empty columns in individual tables.
     :param column_sep_value: The value of the separator char to use between columns.
     :param column_sep_colour: The colour of the separator char to use between columns.
     :return: The rows of the table.
