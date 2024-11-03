@@ -1,3 +1,5 @@
+import dataclasses
+import json
 from abc import ABCMeta, abstractmethod
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
@@ -122,6 +124,14 @@ class ResultLog(Generic[T], metaclass=ABCMeta):
     @abstractmethod
     def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: T, **__) -> Mapping[str, Any] | None:
         raise NotImplementedError
+
+    def as_dict(self) -> Mapping[str, str]:
+        """Format this log as a dictionary."""
+        return dataclasses.asdict(self)
+
+    def as_json(self) -> str:
+        """Format this log as a JSON string."""
+        return json.dumps(self.as_dict())
 
     @property
     def _github_annotation(self) -> Mapping[str, str]:
