@@ -167,7 +167,7 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
     @validation_method
     def has_valid_ref_dependencies(self, node: CompiledNodeT) -> bool:
         """
-        Check whether the given `node` has valid upstream ref dependencies
+        Check whether the given `node` has valid upstream ref dependencies.
         i.e. do the declared upstream dependencies exist within the project.
 
         :param node: The node to check.
@@ -180,7 +180,7 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
     @validation_method
     def has_valid_source_dependencies(self, node: CompiledNodeT) -> bool:
         """
-        Check whether the given `node` has valid upstream source dependencies
+        Check whether the given `node` has valid upstream source dependencies.
         i.e. do the declared upstream dependencies exist within the project's configuration.
 
         :param node: The node to check.
@@ -193,7 +193,7 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
     @validation_method
     def has_valid_macro_dependencies(self, node: CompiledNodeT) -> bool:
         """
-        Check whether the given `node` has valid upstream macro dependencies
+        Check whether the given `node` has valid upstream macro dependencies.
         i.e. do the declared upstream dependencies exist within the project's configuration.
 
         :param node: The node to check.
@@ -221,8 +221,8 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
     @validation_method
     def has_no_hardcoded_refs(self, node: CompiledNodeT) -> bool:
         """
-        Check whether the given `node` has a no hardcoded upstream references
-         i.e. does not hardcode table/view name references.
+        Check whether the given `node` has a no hardcoded upstream references.
+        i.e. does not hardcode table/view name references.
 
         :param node: The node to check.
         :return: True if the node's properties are valid, False otherwise.

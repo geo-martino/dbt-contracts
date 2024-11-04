@@ -3,6 +3,8 @@ Fills in the variable fields of the README template and generates README.md file
 """
 import re
 
+import docstring_parser
+
 from dbt_contracts import PROGRAM_OWNER_USER, PROGRAM_NAME, DOCUMENTATION_URL
 from dbt_contracts.contracts import CONTRACTS, Contract, ParentContract
 
@@ -35,7 +37,8 @@ def format_contract_reference(contract: type[Contract], parent_key: str = "") ->
 
         for method_name in methods:
             url = f"{DOCUMENTATION_URL}/reference/{key}.html#{method_name.replace('_', '-')}"
-            doc = getattr(contract, method_name).func.__doc__.split('.', 1)[0].strip()
+            method = getattr(contract, method_name).func
+            doc = docstring_parser.parse(method.__doc__).short_description.strip()
             doc = re.sub(r"\s*\n\s+", " ", doc)
 
             method_line = f"- [`{method_name}`]({url}): {doc}"
