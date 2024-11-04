@@ -117,17 +117,17 @@ class TableFormatter(ObjectFormatter):
         self.column_sep_value = column_sep_value
         self.column_sep_colour = column_sep_colour
 
+    def _join_if_populated(self, left: str, right: str) -> str:
+        sep = " "
+        if left.strip() or right.strip():
+            sep = f"{self.column_sep_colour}{self.column_sep_value}{Fore.RESET}"
+        return f"{left} {sep} {right}"
+
+    def _join_row(self, row: list[str]) -> str:
+        return functools.reduce(self._join_if_populated, row)
+
     def format(self, objects: Collection[ObjT], widths: Collection[int] = (), **__) -> list[str]:
         logs = []
-
-        def _join_if_populated(left: str, right: str) -> str:
-            sep = " "
-            if left.strip() or right.strip():
-                sep = f"{self.column_sep_colour}{self.column_sep_value}{Fore.RESET}"
-            return f"{left} {sep} {right}"
-
-        def _join_row(row: list[str]) -> str:
-            return functools.reduce(_join_if_populated, row)
 
         calculate_widths = len(widths) != len(self.columns)
 
@@ -144,7 +144,7 @@ class TableFormatter(ObjectFormatter):
             ]
 
             rows = list(map(list, zip(*cols)))
-            log = f"\n".join(map(_join_row, rows))
+            log = "\n".join(map(self._join_row, rows))
             logs.append(log)
 
         return logs
@@ -153,7 +153,7 @@ class TableFormatter(ObjectFormatter):
         return "\n".join(values)
 
 
-class TableGroupFormatter(ObjectFormatter[ObjT], Generic[ObjT]):
+class GroupedTableFormatter(ObjectFormatter[ObjT], Generic[ObjT]):
     """
 
     :param group_key: The key to group by.

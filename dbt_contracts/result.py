@@ -7,15 +7,11 @@ from pathlib import Path
 from typing import Self, Generic, Any
 
 import yaml
-from colorama import Fore
 from dbt.artifacts.resources.v1.components import ParsedResource, ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import Macro, ModelNode, SourceDefinition
 from dbt.flags import get_flags
 
-from dbt_contracts.formatters.table import TableColumnFormatter
-
-from dbt_contracts.formatters.table import TableGroupFormatter, TableFormatter
 from dbt_contracts.types import T, ParentT
 
 
@@ -35,6 +31,7 @@ class SafeLineLoader(yaml.SafeLoader):
 
 @dataclass(kw_only=True)
 class Result(Generic[T], metaclass=ABCMeta):
+    """Store a result from contract execution."""
     name: str
     path: Path
     result_type: str
@@ -47,6 +44,14 @@ class Result(Generic[T], metaclass=ABCMeta):
     patch_end_line: int | None
     patch_end_col: int | None
     extra: Mapping
+
+    # noinspection PyPropertyDefinition,PyNestedDecorators
+    @property
+    @classmethod
+    @abstractmethod
+    def resource_type(cls) -> type[T]:
+        """The resource type that this :py:class:`Result` can process."""
+        raise NotImplementedError
 
     @classmethod
     def from_resource(
@@ -174,12 +179,20 @@ class Result(Generic[T], metaclass=ABCMeta):
 
 class ResultModel(Result[ModelNode]):
     @classmethod
+    def resource_type(cls) -> type[T]:
+        return ModelNode
+
+    @classmethod
     def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: ModelNode, **__):
         models = (model for model in patch.get("models", ()) if model.get("name", "") == item.name)
         return next(models, None)
 
 
 class ResultSource(Result[SourceDefinition]):
+    @classmethod
+    def resource_type(cls) -> type[T]:
+        return SourceDefinition
+
     @classmethod
     def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: SourceDefinition, **__):
         sources = (
@@ -191,6 +204,10 @@ class ResultSource(Result[SourceDefinition]):
 
 
 class ResultMacro(Result[Macro]):
+    @classmethod
+    def resource_type(cls) -> type[T]:
+        return Macro
+
     @classmethod
     def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: Macro, **__):
         macros = (macro for macro in patch.get("macros", ()) if macro.get("name", "") == item.name)
@@ -209,7 +226,7 @@ class ResultParent(Result[T], Generic[T, ParentT], metaclass=ABCMeta):
         return super().from_resource(
             item=item, parent=parent, parent_id=parent.unique_id, parent_name=parent.name, **kwargs
         )
-    
+
     @staticmethod
     def _get_result_type(item: T, parent: ParentT = None, **__) -> str:
         return f"{parent.resource_type.name.title()} {item.resource_type.name.title()}"
@@ -233,23 +250,27 @@ class ResultParent(Result[T], Generic[T, ParentT], metaclass=ABCMeta):
 
 class ResultColumn(ResultParent[ColumnInfo, ParentT]):
     @classmethod
+    def resource_type(cls) -> type[T]:
+        return ColumnInfo
+
+    @classmethod
     def from_resource(cls, item: ColumnInfo, parent: ParentT, **kwargs) -> Self:
         index = list(parent.columns.keys()).index(item.name)
         return super().from_resource(
             item=item, parent=parent, index=index, **kwargs
         )
-    
+
     @staticmethod
     def _get_result_type(item: T, parent: ParentT = None, **__) -> str:
         return f"{parent.resource_type.name.title()} Column"
-    
+
     @classmethod
     def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: ColumnInfo, parent: ParentT, **__):
         # noinspection PyProtectedMember
         result_processor = RESULT_PROCESSOR_MAP.get(type(parent))
         if result_processor is None:
             return
-        
+
         # noinspection PyProtectedMember
         parent_patch = result_processor._extract_nested_patch_object(patch=patch, item=parent)
         if parent_patch is None:
@@ -261,12 +282,16 @@ class ResultColumn(ResultParent[ColumnInfo, ParentT]):
 
 class ResultMacroArgument(ResultParent[MacroArgument, Macro]):
     @classmethod
+    def resource_type(cls) -> type[T]:
+        return MacroArgument
+
+    @classmethod
     def from_resource(cls, item: MacroArgument, parent: Macro, **kwargs) -> Self:
         index = parent.arguments.index(item)
         return super().from_resource(
             item=item, parent=parent, index=index, **kwargs
         )
-    
+
     @staticmethod
     def _get_result_type(*_, **__) -> str:
         return "Macro Argument"
@@ -282,74 +307,6 @@ class ResultMacroArgument(ResultParent[MacroArgument, Macro]):
         return next(arguments, None)
 
 
-RESULT_PROCESSOR_MAP: Mapping[type[T], type[Result]] = {
-    ModelNode: ResultModel,
-    SourceDefinition: ResultSource,
-    Macro: ResultMacro,
-    ColumnInfo: ResultColumn,
-    MacroArgument: ResultMacro,
-}
-
-
-def get_default_table_header(result: Result) -> str:
-    """
-    Formats a grouping value for the given `result`.
-
-    :param result: The result to format a group value for.
-    :return: The group value.
-    """
-    path = result.path
-    header_path = (
-        f"{Fore.LIGHTWHITE_EX.replace("m", ";1m")}->{Fore.RESET} "
-        f"{Fore.LIGHTBLUE_EX}{path}{Fore.RESET}"
-    )
-
-    patch_path = result.patch_path
-    if patch_path and patch_path != path:
-        header_path += f" @ {Fore.LIGHTCYAN_EX}{patch_path}{Fore.RESET}"
-
-    return f"{result.result_type}: {header_path}"
-
-
-DEFAULT_TERMINAL_RESULT_LOG_COLUMNS = [
-    TableColumnFormatter(
-        keys=lambda result: result.result_name,
-        colours=Fore.RED, max_width=50,
-    ),
-    TableColumnFormatter(
-        keys=[
-            lambda result: result.patch_start_line,
-            lambda result: result.patch_start_col,
-        ],
-        prefixes=["L: ", "P: "], alignment=">", colours=Fore.LIGHTBLUE_EX, min_width=6, max_width=9
-    ),
-    TableColumnFormatter(
-        keys=[
-            lambda result: result.parent_name if isinstance(result, ResultParent) else result.name,
-            lambda result: result.name if isinstance(result, ResultParent) else "",
-        ],
-        colours=Fore.CYAN, prefixes=["", "> "], max_width=40
-    ),
-    TableColumnFormatter(
-        keys=lambda result: result.message,
-        colours=Fore.YELLOW, max_width=60, wrap=True
-    ),
-]
-
-DEFAULT_TERMINAL_TABLE_FORMATTER = TableFormatter(
-    columns=DEFAULT_TERMINAL_RESULT_LOG_COLUMNS,
-)
-
-DEFAULT_TERMINAL_FORMATTER = TableGroupFormatter(
-    table_formatter=DEFAULT_TERMINAL_TABLE_FORMATTER,
-    group_key=lambda result: f"{result.result_type}: {result.path}",
-    header_key=get_default_table_header,
-    sort_key=[
-        lambda result: result.result_type,
-        lambda result: result.path,
-        lambda result: result.parent_name if isinstance(result, ResultParent) else "",
-        lambda result: result.index if isinstance(result, ResultParent) else 0,
-        lambda result: result.name,
-    ],
-    consistent_widths=True,
-)
+RESULT_PROCESSORS: list[type[Result]] = [ResultModel, ResultSource, ResultMacro, ResultColumn, ResultMacro]
+# noinspection PyTypeChecker
+RESULT_PROCESSOR_MAP: Mapping[type[T], type[Result]] = {cls.resource_type: cls for cls in RESULT_PROCESSORS}

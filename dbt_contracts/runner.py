@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Self
 
 import yaml
+from colorama import Fore
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.cli.main import dbtRunner
 from dbt.contracts.graph.manifest import Manifest
@@ -12,9 +13,74 @@ from dbt_contracts.contracts import Contract, CONTRACTS_CONFIG_MAP
 from dbt_contracts.dbt_cli import clean_paths, get_manifest, get_catalog
 
 from dbt_contracts.formatters import ObjectFormatter
-from dbt_contracts.result import Result, DEFAULT_TERMINAL_FORMATTER
+from dbt_contracts.formatters.table import TableFormatter, TableColumnFormatter, GroupedTableFormatter
+from dbt_contracts.result import Result, ResultParent
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+
+def get_default_table_header(result: Result) -> str:
+    """
+    Formats a grouping value for the given `result`.
+
+    :param result: The result to format a group value for.
+    :return: The group value.
+    """
+    path = result.path
+    header_path = (
+        f"{Fore.LIGHTWHITE_EX.replace("m", ";1m")}->{Fore.RESET} "
+        f"{Fore.LIGHTBLUE_EX}{path}{Fore.RESET}"
+    )
+
+    patch_path = result.patch_path
+    if patch_path and patch_path != path:
+        header_path += f" @ {Fore.LIGHTCYAN_EX}{patch_path}{Fore.RESET}"
+
+    return f"{result.result_type}: {header_path}"
+
+
+DEFAULT_TERMINAL_RESULT_LOG_COLUMNS = [
+    TableColumnFormatter(
+        keys=lambda result: result.result_name,
+        colours=Fore.RED, max_width=50,
+    ),
+    TableColumnFormatter(
+        keys=[
+            lambda result: result.patch_start_line,
+            lambda result: result.patch_start_col,
+        ],
+        prefixes=["L: ", "P: "], alignment=">", colours=Fore.LIGHTBLUE_EX, min_width=6, max_width=9
+    ),
+    TableColumnFormatter(
+        keys=[
+            lambda result: result.parent_name if isinstance(result, ResultParent) else result.name,
+            lambda result: result.name if isinstance(result, ResultParent) else "",
+        ],
+        colours=Fore.CYAN, prefixes=["", "> "], max_width=40
+    ),
+    TableColumnFormatter(
+        keys=lambda result: result.message,
+        colours=Fore.YELLOW, max_width=60, wrap=True
+    ),
+]
+
+DEFAULT_TERMINAL_TABLE_FORMATTER = TableFormatter(
+    columns=DEFAULT_TERMINAL_RESULT_LOG_COLUMNS,
+)
+
+DEFAULT_TERMINAL_FORMATTER = GroupedTableFormatter(
+    table_formatter=DEFAULT_TERMINAL_TABLE_FORMATTER,
+    group_key=lambda result: f"{result.result_type}: {result.path}",
+    header_key=get_default_table_header,
+    sort_key=[
+        lambda result: result.result_type,
+        lambda result: result.path,
+        lambda result: result.parent_name if isinstance(result, ResultParent) else "",
+        lambda result: result.index if isinstance(result, ResultParent) else 0,
+        lambda result: result.name,
+    ],
+    consistent_widths=True,
+)
 
 
 class ContractRunner:
