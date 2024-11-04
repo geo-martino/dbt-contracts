@@ -11,16 +11,16 @@ Filters
 Filters for reducing the scope of the contract.
 You may limit the number of sources processed by the rules of this contract by defining one or more of the following filters
 
-``is_enabled``
-^^^^^^^^^^^^^^
+is_enabled
+^^^^^^^^^^
 
 Check whether the given `source` is enabled.
 
 .. note::
    This method does not need further configuration.    Simply define the method name in your configuration.
 
-``name``
-^^^^^^^^
+name
+^^^^
 
 Check whether a given `item` has a valid name.
 
@@ -40,8 +40,8 @@ Check whether a given `item` has a valid name.
            - ...
 
 
-``paths``
-^^^^^^^^^
+paths
+^^^^^
 
 Check whether a given `item` has a valid path.
 Paths must match patterns which are relative to directory of the dbt project.
@@ -68,24 +68,24 @@ Validations
 Validations to apply to the resources of this contract.
 These enforce certain standards that must be followed in order for the contract to be fulfilled.
 
-``has_all_columns``
-^^^^^^^^^^^^^^^^^^^
+has_all_columns
+^^^^^^^^^^^^^^^
 
 Check whether the node properties contain all available columns of the node.
 
 .. note::
    This method does not need further configuration.    Simply define the method name in your configuration.
 
-``has_description``
-^^^^^^^^^^^^^^^^^^^
+has_description
+^^^^^^^^^^^^^^^
 
 Check whether the given `resource` has a description set.
 
 .. note::
    This method does not need further configuration.    Simply define the method name in your configuration.
 
-``has_downstream_dependencies``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+has_downstream_dependencies
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the given `source` has freshness configured.
 
@@ -98,8 +98,8 @@ Check whether the given `source` has freshness configured.
      - `max_count` (``int``) - The maximum number of downstream dependencies allowed. When None, no upper limit
 
 
-``has_expected_columns``
-^^^^^^^^^^^^^^^^^^^^^^^^
+has_expected_columns
+^^^^^^^^^^^^^^^^^^^^
 
 Check whether the node properties contain the expected set of `columns`.
 
@@ -130,32 +130,32 @@ Check whether the node properties contain the expected set of `columns`.
            ...
 
 
-``has_freshness``
-^^^^^^^^^^^^^^^^^
+has_freshness
+^^^^^^^^^^^^^
 
 Check whether the given `source` has freshness configured.
 
 .. note::
    This method does not need further configuration.    Simply define the method name in your configuration.
 
-``has_loader``
-^^^^^^^^^^^^^^
+has_loader
+^^^^^^^^^^
 
 Check whether the given `source` has a loader configured.
 
 .. note::
    This method does not need further configuration.    Simply define the method name in your configuration.
 
-``has_properties``
-^^^^^^^^^^^^^^^^^^
+has_properties
+^^^^^^^^^^^^^^
 
 Check whether the given `resource` has properties set in an appropriate properties file.
 
 .. note::
    This method does not need further configuration.    Simply define the method name in your configuration.
 
-``has_tests``
-^^^^^^^^^^^^^
+has_tests
+^^^^^^^^^
 
 Check whether the given `node` has an appropriate number of tests.
 
@@ -168,8 +168,8 @@ Check whether the given `node` has an appropriate number of tests.
      - `max_count` (``int``) - The maximum number of tests allowed
 
 
-``meta_has_accepted_values``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+meta_has_accepted_values
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the resource's `meta` config is configured as expected.
 
@@ -189,8 +189,8 @@ Check whether the resource's `meta` config is configured as expected.
            ...
 
 
-``meta_has_allowed_keys``
-^^^^^^^^^^^^^^^^^^^^^^^^^
+meta_has_allowed_keys
+^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the resource's `meta` config contains only allowed keys.
 
@@ -210,8 +210,8 @@ Check whether the resource's `meta` config contains only allowed keys.
            - ...
 
 
-``meta_has_required_keys``
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+meta_has_required_keys
+^^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the resource's `meta` config contains all required keys.
 
@@ -231,8 +231,8 @@ Check whether the resource's `meta` config contains all required keys.
            - ...
 
 
-``tags_have_allowed_values``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tags_have_allowed_values
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the given `resource` has properties set in an appropriate properties file.
 
@@ -252,8 +252,8 @@ Check whether the given `resource` has properties set in an appropriate properti
            - ...
 
 
-``tags_have_required_values``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tags_have_required_values
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the given `resource` has properties set in an appropriate properties file.
 
@@ -282,8 +282,8 @@ Filters
 Filters for reducing the scope of the contract.
 You may limit the number of columns processed by the rules of this contract by defining one or more of the following filters
 
-``name``
-^^^^^^^^
+name
+^^^^
 
 Check whether a given `item` has a valid name.
 
@@ -309,24 +309,24 @@ Validations
 Validations to apply to the resources of this contract.
 These enforce certain standards that must be followed in order for the contract to be fulfilled.
 
-``has_data_type``
-^^^^^^^^^^^^^^^^^
+has_data_type
+^^^^^^^^^^^^^
 
 Check whether the given `column` of the given `parent` has a data type set.
 
 .. note::
    This method does not need further configuration.    Simply define the method name in your configuration.
 
-``has_description``
-^^^^^^^^^^^^^^^^^^^
+has_description
+^^^^^^^^^^^^^^^
 
 Check whether the given `resource` has a description set.
 
 .. note::
    This method does not need further configuration.    Simply define the method name in your configuration.
 
-``has_expected_name``
-^^^^^^^^^^^^^^^^^^^^^
+has_expected_name
+^^^^^^^^^^^^^^^^^
 
 Check whether the given `column` of the given `parent` has a name that matches some expectation.
 This expectation can be generic or specific to only columns of a certain data type.
@@ -351,8 +351,8 @@ This expectation can be generic or specific to only columns of a certain data ty
      - `exact` (``bool``) - When True, type must match exactly to the map of keys given in the patterns map. Otherwise, match roughly on keys that start with the same value as the column's data type ignoring any whitespaces
 
 
-``has_matching_data_type``
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+has_matching_data_type
+^^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the given `column` of the given `parent`
 has a data type configured which matches the remote resource.
@@ -365,8 +365,8 @@ has a data type configured which matches the remote resource.
      - `exact` (``bool``) - When True, type must match exactly including cases
 
 
-``has_matching_description``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+has_matching_description
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the given `column` of the given `parent`
 has a description configured which matches the remote resource.
@@ -379,8 +379,8 @@ has a description configured which matches the remote resource.
      - `case_sensitive` (``bool``) - When True, cases must match. When False, apply case-insensitive match
 
 
-``has_matching_index``
-^^^^^^^^^^^^^^^^^^^^^^
+has_matching_index
+^^^^^^^^^^^^^^^^^^
 
 Check whether the given `column` of the given `parent`
 is in the same position in the dbt config as the remote resource.
@@ -388,8 +388,8 @@ is in the same position in the dbt config as the remote resource.
 .. note::
    This method does not need further configuration.    Simply define the method name in your configuration.
 
-``has_tests``
-^^^^^^^^^^^^^
+has_tests
+^^^^^^^^^
 
 Check whether the given `column` of the given `parent` has an appropriate number of tests.
 
@@ -402,8 +402,8 @@ Check whether the given `column` of the given `parent` has an appropriate number
      - `max_count` (``int``) - The maximum number of tests allowed
 
 
-``meta_has_accepted_values``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+meta_has_accepted_values
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the resource's `meta` config is configured as expected.
 
@@ -423,8 +423,8 @@ Check whether the resource's `meta` config is configured as expected.
            ...
 
 
-``meta_has_allowed_keys``
-^^^^^^^^^^^^^^^^^^^^^^^^^
+meta_has_allowed_keys
+^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the resource's `meta` config contains only allowed keys.
 
@@ -444,8 +444,8 @@ Check whether the resource's `meta` config contains only allowed keys.
            - ...
 
 
-``meta_has_required_keys``
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+meta_has_required_keys
+^^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the resource's `meta` config contains all required keys.
 
@@ -465,8 +465,8 @@ Check whether the resource's `meta` config contains all required keys.
            - ...
 
 
-``tags_have_allowed_values``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tags_have_allowed_values
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the given `resource` has properties set in an appropriate properties file.
 
@@ -486,8 +486,8 @@ Check whether the given `resource` has properties set in an appropriate properti
            - ...
 
 
-``tags_have_required_values``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tags_have_required_values
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Check whether the given `resource` has properties set in an appropriate properties file.
 

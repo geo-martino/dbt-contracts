@@ -11,8 +11,8 @@ Filters
 Filters for reducing the scope of the contract.
 You may limit the number of macros processed by the rules of this contract by defining one or more of the following filters
 
-``name``
-^^^^^^^^
+name
+^^^^
 
 Check whether a given `item` has a valid name.
 
@@ -32,8 +32,8 @@ Check whether a given `item` has a valid name.
            - ...
 
 
-``paths``
-^^^^^^^^^
+paths
+^^^^^
 
 Check whether a given `item` has a valid path.
 Paths must match patterns which are relative to directory of the dbt project.
@@ -60,16 +60,16 @@ Validations
 Validations to apply to the resources of this contract.
 These enforce certain standards that must be followed in order for the contract to be fulfilled.
 
-``has_description``
-^^^^^^^^^^^^^^^^^^^
+has_description
+^^^^^^^^^^^^^^^
 
 Check whether the given `resource` has a description set.
 
 .. note::
    This method does not need further configuration.    Simply define the method name in your configuration.
 
-``has_properties``
-^^^^^^^^^^^^^^^^^^
+has_properties
+^^^^^^^^^^^^^^
 
 Check whether the given `resource` has properties set in an appropriate properties file.
 
@@ -85,8 +85,8 @@ Filters
 Filters for reducing the scope of the contract.
 You may limit the number of arguments processed by the rules of this contract by defining one or more of the following filters
 
-``name``
-^^^^^^^^
+name
+^^^^
 
 Check whether a given `item` has a valid name.
 
@@ -112,16 +112,16 @@ Validations
 Validations to apply to the resources of this contract.
 These enforce certain standards that must be followed in order for the contract to be fulfilled.
 
-``has_description``
-^^^^^^^^^^^^^^^^^^^
+has_description
+^^^^^^^^^^^^^^^
 
 Check whether the given `resource` has a description set.
 
 .. note::
    This method does not need further configuration.    Simply define the method name in your configuration.
 
-``has_type``
-^^^^^^^^^^^^
+has_type
+^^^^^^^^
 
 Check whether the given `argument` has its type set in an appropriate properties file.
 

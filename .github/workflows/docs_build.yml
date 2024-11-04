@@ -43,6 +43,7 @@ jobs:
 
       - name: 🏗️ Sphinx build
         run: |
+          python3 docs/reference.py
           make html
           make linkcheck
 

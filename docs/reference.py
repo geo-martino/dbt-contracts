@@ -28,7 +28,7 @@ SECTION_DESCRIPTIONS = {
     "Filters": [
         "Filters for reducing the scope of the contract.",
         "You may limit the number of {kind} processed by the rules of this contract "
-        "by defining one or more of the following filters"
+        "by defining one or more of the following filters."
     ],
     "Validations": [
         "Validations to apply to the resources of this contract.",
