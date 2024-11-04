@@ -34,7 +34,7 @@ def format_contract_reference(contract: type[Contract], parent_key: str = "") ->
         lines.extend((f"#### {header}", ""))
 
         for method_name in methods:
-            url = f"{DOCUMENTATION_URL}/configuration/{key}/#{method_name}"
+            url = f"{DOCUMENTATION_URL}/reference/{key}/#{method_name}"
             doc = getattr(contract, method_name).func.__doc__.split('.', 1)[0].strip()
             doc = re.sub(r"\s*\n\s+", " ", doc)
 

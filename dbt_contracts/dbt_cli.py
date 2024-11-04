@@ -1,15 +1,70 @@
 """
 Invoke various dbt CLI commands needed for hooks to function and return their results.
 """
+import json
+import os
+from argparse import Namespace
+from collections.abc import Mapping
+from pathlib import Path
+from typing import Any
+
 from dbt.cli.main import dbtRunner, dbtRunnerResult
+from dbt.config import RuntimeConfig
+from dbt.constants import MANIFEST_FILE_NAME
 from dbt.contracts.graph.manifest import Manifest
 from dbt.artifacts.schemas.catalog.v1.catalog import CatalogArtifact
+from dbt.flags import set_from_args
+from dbt.task.docs.generate import CATALOG_FILENAME
+from dbt_common.context import set_invocation_context
 
 
 def _format_option_key(key: str) -> str:
     key_clean = key.replace("_", "-").strip("-")
     prefix = "-" if len(key_clean) == 1 else "--"
     return prefix + key_clean
+
+
+def get_config() -> RuntimeConfig:
+    """
+    Get the dbt config for the current runtime.
+    The runtime config can be used to extract common dbt args for the current runtime
+    e.g. project_dir, profiles_dir, target_dir etc.
+
+    :return: The runtime config.
+    """
+    set_invocation_context(os.environ)
+    # provide the bare minimum set of args required to create the runtime config from args
+    args = Namespace(
+        project_dir=os.getenv("DBT_PROJECT_DIR"),
+        profiles_dir=os.getenv("DBT_PROFILES_DIR"),
+        target=None,
+        profile=None,
+        threads=None,
+    )
+    set_from_args(args, {})
+    return RuntimeConfig.from_args(args)
+
+
+def load_artifact(filename: str) -> Mapping[str, Any] | None:
+    """
+    Load an artifact from the currently configured dbt target directory.
+
+    :param filename: The filename of the artifact to load
+    :return: The loaded artifact if found. None otherwise.
+    """
+    config = get_config()
+    target_dir = Path(config.project_target_path)
+    if not target_dir.is_dir():
+        return
+
+    target_path = target_dir.joinpath(filename)
+    if not target_path.is_file():
+        return
+
+    with target_path.open("r") as file:
+        artifact = json.load(file)
+
+    return artifact
 
 
 def get_result(*args, runner: dbtRunner = None, **kwargs) -> dbtRunnerResult:
@@ -68,6 +123,9 @@ def get_manifest(*args, runner: dbtRunner = None, **kwargs) -> Manifest:
     :param kwargs: Args to pass to the `runner` in keyword format. Keys will be formatted to CLI appropriate keys.
     :return: The manifest.
     """
+    artifact = load_artifact(MANIFEST_FILE_NAME)
+    if artifact:
+        return Manifest.from_dict(artifact)
     return get_result("parse", *args, runner=runner, **kwargs).result
 
 
@@ -81,4 +139,7 @@ def get_catalog(*args, runner: dbtRunner = None, **kwargs) -> CatalogArtifact:
     :param kwargs: Args to pass to the `runner` in keyword format. Keys will be formatted to CLI appropriate keys.
     :return: The catalog.
     """
+    artifact = load_artifact(CATALOG_FILENAME)
+    if artifact:
+        return CatalogArtifact.from_dict(artifact)
     return get_result("docs", "generate", *args, runner=runner, **kwargs).result

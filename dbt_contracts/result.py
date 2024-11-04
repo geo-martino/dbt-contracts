@@ -117,7 +117,14 @@ class Result(Generic[T], metaclass=ABCMeta):
             cls, item: T, patches: MutableMapping[Path, Mapping[str, Any]] = None, **kwargs
     ) -> Mapping[str, Any] | None:
         patch_path = cls._get_patch_path_from_item(item=item, **kwargs)
-        if patch_path is None or not patch_path.is_file():
+        if patch_path is None:
+            return None
+
+        if not patch_path.is_absolute():
+            flags = get_flags()
+            project_dir = getattr(flags, "PROJECT_DIR", None)
+            patch_path = Path(project_dir, patch_path)
+        if not patch_path.is_file():
             return None
 
         if patches is None:
@@ -178,7 +185,9 @@ class Result(Generic[T], metaclass=ABCMeta):
 
 
 class ResultModel(Result[ModelNode]):
+    # noinspection PyPropertyDefinition,PyNestedDecorators
     @classmethod
+    @property
     def resource_type(cls) -> type[T]:
         return ModelNode
 
@@ -189,7 +198,9 @@ class ResultModel(Result[ModelNode]):
 
 
 class ResultSource(Result[SourceDefinition]):
+    # noinspection PyPropertyDefinition,PyNestedDecorators
     @classmethod
+    @property
     def resource_type(cls) -> type[T]:
         return SourceDefinition
 
@@ -204,7 +215,9 @@ class ResultSource(Result[SourceDefinition]):
 
 
 class ResultMacro(Result[Macro]):
+    # noinspection PyPropertyDefinition,PyNestedDecorators
     @classmethod
+    @property
     def resource_type(cls) -> type[T]:
         return Macro
 
@@ -215,7 +228,7 @@ class ResultMacro(Result[Macro]):
 
 
 @dataclass(kw_only=True)
-class ResultParent(Result[T], Generic[T, ParentT], metaclass=ABCMeta):
+class ResultChild(Result[T], Generic[T, ParentT], metaclass=ABCMeta):
     parent_id: str
     parent_name: str
     index: int
@@ -248,8 +261,10 @@ class ResultParent(Result[T], Generic[T, ParentT], metaclass=ABCMeta):
         raise NotImplementedError
 
 
-class ResultColumn(ResultParent[ColumnInfo, ParentT]):
+class ResultColumn(ResultChild[ColumnInfo, ParentT]):
+    # noinspection PyPropertyDefinition,PyNestedDecorators
     @classmethod
+    @property
     def resource_type(cls) -> type[T]:
         return ColumnInfo
 
@@ -280,8 +295,10 @@ class ResultColumn(ResultParent[ColumnInfo, ParentT]):
         return next(columns, None)
 
 
-class ResultMacroArgument(ResultParent[MacroArgument, Macro]):
+class ResultMacroArgument(ResultChild[MacroArgument, Macro]):
+    # noinspection PyPropertyDefinition,PyNestedDecorators
     @classmethod
+    @property
     def resource_type(cls) -> type[T]:
         return MacroArgument
 

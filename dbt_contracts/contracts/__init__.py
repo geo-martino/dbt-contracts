@@ -1,8 +1,9 @@
 """
 Implementations for dbt contracts according to the dbt object type.
 """
-from ._core import Contract, ParentContract, ChildContract
-from ._node import NodeContract, CompiledNodeContract
+from ._core import Contract, ParentContract, ChildContract, ProcessorMethod
+from ._properties import PatchT, MetaT, TagT
+from ._node import NodeT, NodeContract, CompiledNodeT, CompiledNodeContract
 from .macro import MacroContract
 from .model import ModelContract
 from .source import SourceContract

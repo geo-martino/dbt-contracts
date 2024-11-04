@@ -47,7 +47,7 @@ typehints_defaults = "braces"
 typehints_use_rtype = False
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "reference/dbt_contracts.rst"]
+exclude_patterns = ["_build",]
 
 suppress_warnings = [
     "sphinx_autodoc_typehints.forward_reference",

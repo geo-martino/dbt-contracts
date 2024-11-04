@@ -14,15 +14,15 @@ from dbt.contracts.graph.nodes import TestNode, SourceDefinition
 from dbt_contracts.contracts._core import validation_method, ChildContract
 from dbt_contracts.contracts._properties import DescriptionPropertyContract, TagContract, MetaContract
 
-ParentT = TypeVar('ParentT', ParsedResource, SourceDefinition)
+ColumnParentT = TypeVar('ColumnParentT', ParsedResource, SourceDefinition)
 
 
 class ColumnContract(
-    DescriptionPropertyContract[ColumnInfo, ParentT],
-    TagContract[ColumnInfo, ParentT],
-    MetaContract[ColumnInfo, ParentT],
-    ChildContract[ColumnInfo, ParentT],
-    Generic[ParentT]
+    DescriptionPropertyContract[ColumnInfo, ColumnParentT],
+    TagContract[ColumnInfo, ColumnParentT],
+    MetaContract[ColumnInfo, ColumnParentT],
+    ChildContract[ColumnInfo, ColumnParentT],
+    Generic[ColumnParentT]
 ):
     """Configures a contract configuration for columns."""
 
@@ -33,11 +33,11 @@ class ColumnContract(
         return "columns"
 
     @property
-    def items(self) -> Iterable[tuple[ColumnInfo, ParentT]]:
+    def items(self) -> Iterable[tuple[ColumnInfo, ColumnParentT]]:
         arguments = map(lambda parent: [(column, parent) for column in parent.columns.values()], self.parents)
         return self._filter_items(itertools.chain.from_iterable(arguments))
 
-    def get_tests(self, column: ColumnInfo, parent: ParentT) -> Iterable[TestNode]:
+    def get_tests(self, column: ColumnInfo, parent: ColumnParentT) -> Iterable[TestNode]:
         """
         Get the tests from the manifest that test the given `column` of the given `parent`.
 
@@ -53,7 +53,7 @@ class ColumnContract(
             ))
         return filter(_filter_nodes, self.manifest.nodes.values())
 
-    def _is_column_in_node(self, column: ColumnInfo, parent: ParentT) -> bool:
+    def _is_column_in_node(self, column: ColumnInfo, parent: ColumnParentT) -> bool:
         """
         Checks whether the given `column` is not a part of the given `parent` node.
 
@@ -67,7 +67,7 @@ class ColumnContract(
 
         return not missing_column
 
-    def _is_column_in_table(self, column: ColumnInfo, parent: ParentT, table: CatalogTable) -> bool:
+    def _is_column_in_table(self, column: ColumnInfo, parent: ColumnParentT, table: CatalogTable) -> bool:
         """
         Checks whether the given `column` exists in the given `table`.
 
@@ -85,7 +85,7 @@ class ColumnContract(
 
     @validation_method
     def has_expected_name(
-            self, column: ColumnInfo, parent: ParentT, contract: Mapping[str | None, Collection[str] | str]
+            self, column: ColumnInfo, parent: ColumnParentT, contract: Mapping[str | None, Collection[str] | str]
     ) -> bool:
         """
         Check whether the given `column` of the given `parent` has a name that matches some expectation.
@@ -135,7 +135,7 @@ class ColumnContract(
         return not unexpected_name
 
     @validation_method
-    def has_data_type(self, column: ColumnInfo, parent: ParentT) -> bool:
+    def has_data_type(self, column: ColumnInfo, parent: ColumnParentT) -> bool:
         """
         Check whether the given `column` of the given `parent` has a data type set.
 
@@ -155,7 +155,7 @@ class ColumnContract(
         return not missing_data_type
 
     @validation_method
-    def has_tests(self, column: ColumnInfo, parent: ParentT, min_count: int = 1, max_count: int = None) -> bool:
+    def has_tests(self, column: ColumnInfo, parent: ColumnParentT, min_count: int = 1, max_count: int = None) -> bool:
         """
         Check whether the given `column` of the given `parent` has an appropriate number of tests.
 
@@ -174,7 +174,7 @@ class ColumnContract(
         )
 
     @validation_method(needs_catalog=True)
-    def has_matching_description(self, column: ColumnInfo, parent: ParentT, case_sensitive: bool = False) -> bool:
+    def has_matching_description(self, column: ColumnInfo, parent: ColumnParentT, case_sensitive: bool = False) -> bool:
         """
         Check whether the given `column` of the given `parent`
         has a description configured which matches the remote resource.
@@ -210,7 +210,7 @@ class ColumnContract(
         return not unmatched_description
 
     @validation_method(needs_catalog=True)
-    def has_matching_data_type(self, column: ColumnInfo, parent: ParentT, exact: bool = False) -> bool:
+    def has_matching_data_type(self, column: ColumnInfo, parent: ColumnParentT, exact: bool = False) -> bool:
         """
         Check whether the given `column` of the given `parent`
         has a data type configured which matches the remote resource.
@@ -245,7 +245,7 @@ class ColumnContract(
         return not unmatched_type
 
     @validation_method(needs_catalog=True)
-    def has_matching_index(self, column: ColumnInfo, parent: ParentT) -> bool:
+    def has_matching_index(self, column: ColumnInfo, parent: ColumnParentT) -> bool:
         """
         Check whether the given `column` of the given `parent`
         is in the same position in the dbt config as the remote resource.

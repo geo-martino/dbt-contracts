@@ -76,7 +76,7 @@ class TableColumnFormatter:
         width = width - len(prefix)
         fmt = f"{self.alignment}{width}.{width}"
 
-        prefix = f"{colour.replace("m", ";1m")}{prefix}{Fore.RESET}"
+        prefix = f"{colour.replace("m", ";1m")}{prefix}{Fore.RESET.replace("m", ";0m")}"
         value_formatted = f"{colour}{self._truncate_value(value, width):{fmt}}{Fore.RESET}"
         return prefix + value_formatted
 
@@ -91,7 +91,7 @@ class TableColumnFormatter:
         lines = textwrap.wrap(
             value,
             width=width,
-            initial_indent=f"{colour.replace("m", ";1m")}{prefix}{Fore.RESET}{colour}",
+            initial_indent=f"{colour.replace("m", ";1m")}{prefix}{Fore.RESET.replace("m", ";0m")}{colour}",
             break_long_words=False,
             break_on_hyphens=False
         )

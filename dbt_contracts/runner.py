@@ -10,25 +10,18 @@ from dbt.cli.main import dbtRunner
 from dbt.contracts.graph.manifest import Manifest
 
 from dbt_contracts.contracts import Contract, CONTRACTS_CONFIG_MAP
-from dbt_contracts.dbt_cli import clean_paths, get_manifest, get_catalog
-
+from dbt_contracts.dbt_cli import get_manifest, get_catalog
 from dbt_contracts.formatters import ObjectFormatter
 from dbt_contracts.formatters.table import TableFormatter, TableColumnFormatter, GroupedTableFormatter
-from dbt_contracts.result import Result, ResultParent
+from dbt_contracts.result import Result, ResultChild
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
-def get_default_table_header(result: Result) -> str:
-    """
-    Formats a grouping value for the given `result`.
-
-    :param result: The result to format a group value for.
-    :return: The group value.
-    """
+def _get_default_table_header(result: Result) -> str:
     path = result.path
     header_path = (
-        f"{Fore.LIGHTWHITE_EX.replace("m", ";1m")}->{Fore.RESET} "
+        f"{Fore.LIGHTWHITE_EX.replace("m", ";1m")}->{Fore.RESET.replace("m", ";0m")} "
         f"{Fore.LIGHTBLUE_EX}{path}{Fore.RESET}"
     )
 
@@ -53,8 +46,8 @@ DEFAULT_TERMINAL_RESULT_LOG_COLUMNS = [
     ),
     TableColumnFormatter(
         keys=[
-            lambda result: result.parent_name if isinstance(result, ResultParent) else result.name,
-            lambda result: result.name if isinstance(result, ResultParent) else "",
+            lambda result: result.parent_name if isinstance(result, ResultChild) else result.name,
+            lambda result: result.name if isinstance(result, ResultChild) else "",
         ],
         colours=Fore.CYAN, prefixes=["", "> "], max_width=40
     ),
@@ -71,12 +64,12 @@ DEFAULT_TERMINAL_TABLE_FORMATTER = TableFormatter(
 DEFAULT_TERMINAL_FORMATTER = GroupedTableFormatter(
     table_formatter=DEFAULT_TERMINAL_TABLE_FORMATTER,
     group_key=lambda result: f"{result.result_type}: {result.path}",
-    header_key=get_default_table_header,
+    header_key=_get_default_table_header,
     sort_key=[
         lambda result: result.result_type,
         lambda result: result.path,
-        lambda result: result.parent_name if isinstance(result, ResultParent) else "",
-        lambda result: result.index if isinstance(result, ResultParent) else 0,
+        lambda result: result.parent_name if isinstance(result, ResultChild) else "",
+        lambda result: result.index if isinstance(result, ResultChild) else 0,
         lambda result: result.name,
     ],
     consistent_widths=True,
@@ -176,8 +169,6 @@ class ContractRunner:
 
         :return: The results.
         """
-        clean_paths()
-
         results = []
         for contract in self._contracts:
             if contract.needs_manifest:

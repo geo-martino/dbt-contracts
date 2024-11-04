@@ -124,10 +124,10 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
 
     # noinspection SpellCheckingInspection
     #: The set of available filter method names on this contract.
-    __filtermethods__: frozenset[str] = frozenset()
+    __filtermethods__: list[str] = []
     # noinspection SpellCheckingInspection
     #: The set of available validation method names on this contract.
-    __validationmethods__: frozenset[str] = frozenset()
+    __validationmethods__: list[str] = []
 
     # noinspection PyPropertyDefinition,PyNestedDecorators
     @property
@@ -206,22 +206,18 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         )
 
     def __new__(cls, *_, **__):
-        filter_methods = list(cls.__filtermethods__)
-        validation_methods = list(cls.__validationmethods__)
+        cls.__filtermethods__ = []
+        cls.__validationmethods__ = []
         for name in dir(cls):
             method = getattr(cls, name, None)
             if method is None or not isinstance(method, ProcessorMethod):
                 continue
 
-            if method.is_filter:
-                filter_methods.append(method.name)
-            if method.is_validation:
-                validation_methods.append(method.name)
+            if method.is_filter and method.name not in cls.__filtermethods__:
+                cls.__filtermethods__.append(method.name)
+            if method.is_validation and method.name not in cls.__validationmethods__:
+                cls.__validationmethods__.append(method.name)
 
-        # noinspection SpellCheckingInspection
-        cls.__filtermethods__ = frozenset(filter_methods)
-        # noinspection SpellCheckingInspection
-        cls.__validationmethods__ = frozenset(validation_methods)
         return super().__new__(cls)
 
     def __init__(
@@ -344,7 +340,6 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
     ###########################################################################
     ## Method helpers
     ###########################################################################
-    @validation_method(needs_catalog=True)
     def get_matching_catalog_table(self, resource: ParsedResource, test_name: str) -> CatalogTable | None:
         """
         Check whether the given `resource` exists in the database.
@@ -405,7 +400,7 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         return not include or any(re.match(pattern, value) for pattern in include)
 
     ###########################################################################
-    ## Core methods
+    ## Processor methods
     ###########################################################################
     @filter_method
     def name(
@@ -421,22 +416,6 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         :return: True if the node has a valid path, False otherwise.
         """
         return self._matches_patterns(item.name, *patterns, include=include, exclude=exclude)
-
-    @filter_method
-    def paths(
-            self, item: T, *patterns: str, include: Collection[str] | str = (), exclude: Collection[str] | str = ()
-    ) -> bool:
-        """
-        Check whether a given `item` has a valid path.
-        Paths must match patterns which are relative to directory of the dbt project.
-
-        :param item: The item to check.
-        :param patterns: Patterns to match against for paths to include.
-        :param include: Patterns to match against for paths to include.
-        :param exclude: Patterns to match against for paths to exclude.
-        :return: True if the node has a valid path, False otherwise.
-        """
-        return self._matches_patterns(item.original_file_path, *patterns, include=include, exclude=exclude)
 
 
 class ChildContract(Contract[ChildT, ParentT], Generic[ChildT, ParentT], metaclass=ABCMeta):
@@ -599,3 +578,22 @@ class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], 
             results.extend(self.child())
 
         return results
+
+    ###########################################################################
+    ## Processor methods
+    ###########################################################################
+    @filter_method
+    def paths(
+            self, item: T, *patterns: str, include: Collection[str] | str = (), exclude: Collection[str] | str = ()
+    ) -> bool:
+        """
+        Check whether a given `item` has a valid path.
+        Paths must match patterns which are relative to directory of the dbt project.
+
+        :param item: The item to check.
+        :param patterns: Patterns to match against for paths to include.
+        :param include: Patterns to match against for paths to include.
+        :param exclude: Patterns to match against for paths to exclude.
+        :return: True if the node has a valid path, False otherwise.
+        """
+        return self._matches_patterns(item.original_file_path, *patterns, include=include, exclude=exclude)
