@@ -25,6 +25,14 @@ What's in this documentation
    :caption: 📜 Guides & Getting Started
 
 
+.. toctree::
+   :maxdepth: 1
+   :caption: 📖 Contracts Reference
+
+   reference/models
+   reference/sources
+   reference/macros
+
 
 .. toctree::
    :maxdepth: 1
@@ -33,11 +41,3 @@ What's in this documentation
    info/release-history
    info/contributing
    info/licence
-
-.. toctree::
-   :maxdepth: 1
-   :caption: 📖 Reference
-
-   reference/models
-   reference/sources
-   reference/macros

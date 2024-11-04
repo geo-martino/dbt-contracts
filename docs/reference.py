@@ -244,7 +244,7 @@ class ReferencePageBuilder:
 
     def generate_ref_for_method(self, contract: type[Contract], method_name: str) -> None:
         method: ProcessorMethod = getattr(contract, method_name)
-        self.add_header(f"``{method_name}``", section=2)
+        self.add_header(method_name, section=2)
 
         description_split_on = "Example:"
 
