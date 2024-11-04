@@ -320,7 +320,9 @@ class ReferencePageBuilder:
 
 if __name__ == "__main__":
     reference_pages_dir = Path(__file__).parent.joinpath("reference")
-    shutil.rmtree(reference_pages_dir)
+    if reference_pages_dir.is_dir():
+        shutil.rmtree(reference_pages_dir)
+
     builder = ReferencePageBuilder(reference_pages_dir)
     for c in CONTRACTS:
         builder.build(c)
