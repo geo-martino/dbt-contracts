@@ -129,6 +129,14 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
     #: The set of available validation method names on this contract.
     __validationmethods__: frozenset[str] = frozenset()
 
+    # noinspection PyPropertyDefinition,PyNestedDecorators
+    @property
+    @classmethod
+    @abstractmethod
+    def config_key(cls) -> str:
+        """The key in a given config relating to the config which configures this contract."""
+        raise NotImplementedError
+
     @property
     def manifest(self) -> Manifest:
         """The dbt manifest."""
@@ -498,29 +506,17 @@ ChildContractT = TypeVar('ChildContractT', bound=ChildContract)
 class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], metaclass=ABCMeta):
     """Base class for contracts which have associated child contracts relating to specific dbt resource types."""
 
-    # noinspection PyPropertyDefinition,PyNestedDecorators
-    @property
-    @classmethod
-    @abstractmethod
-    def config_key(cls) -> str:
-        """The key in a given config relating to the config which configures this contract."""
-        raise NotImplementedError
-
     @property
     def child(self) -> ChildContractT | None:
         """The child contract object"""
         return self._child
 
-    @property
-    @abstractmethod
-    def _child_type(self) -> type[ChildContractT]:
-        raise NotImplementedError
-
     # noinspection PyPropertyDefinition
     @classmethod
     @property
     @abstractmethod
-    def _child_config_key(cls) -> str:
+    def child_type(cls) -> type[ChildContractT]:
+        """The child contract resource type"""
         raise NotImplementedError
 
     @property
@@ -587,13 +583,14 @@ class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], 
         :param filters: The filters to configure.
         :param validations: The validations to configure.
         """
-        self._child = self._child_type(
+        self._child = self.child_type(
             manifest=self.manifest, catalog=self.catalog, filters=filters, validations=validations
         )
 
     def _set_child_from_parent_dict(self, config: Mapping[str, Any]) -> None:
-        child_config = config.get(self._child_config_key)
-        self._child = self._child_type.from_dict(child_config, parents=self)
+        if self.child_type.config_key not in config or not (child_config := config[self.child_type.config_key]):
+            return
+        self._child = self.child_type.from_dict(child_config, parents=self)
 
     def run(self):
         """Run all configured contract methods for this contract."""

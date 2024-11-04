@@ -26,6 +26,12 @@ class ColumnContract(
 ):
     """Configures a contract configuration for columns."""
 
+    # noinspection PyPropertyDefinition
+    @classmethod
+    @property
+    def config_key(cls) -> str:
+        return "columns"
+
     @property
     def items(self) -> Iterable[tuple[ColumnInfo, ParentT]]:
         arguments = map(lambda parent: [(column, parent) for column in parent.columns.values()], self.parents)

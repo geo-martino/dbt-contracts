@@ -2,7 +2,7 @@
 
 [![PyPI Version](https://img.shields.io/pypi/v/{program_name_lower}?logo=pypi&label=Latest%20Version)](https://pypi.org/project/{program_name_lower})
 [![Python Version](https://img.shields.io/pypi/pyversions/{program_name_lower}.svg?logo=python&label=Supported%20Python%20Versions)](https://pypi.org/project/{program_name_lower}/)
-[![Documentation](https://img.shields.io/badge/Documentation-red.svg)](https://{program_owner_user}.github.io/{program_name_lower}/)
+[![Documentation](https://img.shields.io/badge/Documentation-red.svg)]({documentation_url})
 </br>
 [![PyPI Downloads](https://img.shields.io/pypi/dm/{program_name_lower}?label=Downloads)](https://pypi.org/project/{program_name_lower}/)
 [![Code Size](https://img.shields.io/github/languages/code-size/{program_owner_user}/{program_name_lower}?label=Code%20Size)](https://github.com/geo-martino/{program_name_lower})
@@ -15,4 +15,24 @@
 
 ### Enforce standards for your dbt projects through automated checks and generators
 
-Coming soon...
+## Contents
+* [Installation](#installation)
+* [Contracts Reference](#contracts-reference)
+{contracts_reference_toc}
+
+## Installation
+Install through pip using one of the following commands:
+
+```bash
+pip install {program_name_lower}
+```
+```bash
+python -m pip install {program_name_lower}
+```
+
+## Contracts Reference
+
+Below you will find a list of all available contracts grouped by the dbt object it operates on.
+Refer to this list to help when designing your contract file.
+
+{contracts_reference}

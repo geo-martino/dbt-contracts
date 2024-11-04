@@ -15,6 +15,12 @@ from dbt_contracts.contracts._properties import PatchContract, DescriptionProper
 class MacroArgumentContract(DescriptionPropertyContract[MacroArgument, Macro], ChildContract[MacroArgument, Macro]):
     """Configures a contract for macro arguments."""
 
+    # noinspection PyPropertyDefinition
+    @classmethod
+    @property
+    def config_key(cls) -> str:
+        return "arguments"
+
     @property
     def items(self) -> Iterable[tuple[MacroArgument, Macro]]:
         arguments = map(lambda macro: [(argument, macro) for argument in macro.arguments], self.parents)
@@ -46,15 +52,11 @@ class MacroContract(PatchContract[Macro, None], ParentContract[Macro, MacroArgum
     def config_key(cls) -> str:
         return "macros"
 
-    @property
-    def _child_type(self) -> type[MacroArgumentContract]:
-        return MacroArgumentContract
-
     # noinspection PyPropertyDefinition
     @classmethod
     @property
-    def _child_config_key(cls) -> str:
-        return "arguments"
+    def child_type(cls) -> type[MacroArgumentContract]:
+        return MacroArgumentContract
 
     @property
     def items(self) -> Iterable[Macro]:
