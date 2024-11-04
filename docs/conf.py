@@ -24,11 +24,7 @@ author = PROGRAM_OWNER_NAME
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx_rtd_theme",
-    "sphinx.ext.graphviz",
-    "sphinx.ext.inheritance_diagram",
-    "sphinx_autodoc_typehints",
-    "autodocsumm",
-    "sphinxext.opengraph",
+    "sphinx_design",
     "sphinx_new_tab_link",
 ]
 # noinspection SpellCheckingInspection

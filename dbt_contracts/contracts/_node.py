@@ -88,21 +88,21 @@ class NodeContract(
         return not missing_columns
 
     @validation_method
-    def has_expected_columns(self, node: NodeT, *columns: str, **column_types: str) -> bool:
+    def has_expected_columns(self, node: NodeT, *columns: str, **column_data_types: str) -> bool:
         """
         Check whether the node properties contain the expected set of `columns`.
 
         :param node: The node to check.
         :param columns: The names of the columns that should exist in the node.
-        :param column_types: The column names and associated data types that should exist.
+        :param column_data_types: The column names and associated data types that should exist.
         :return: True if the node's properties are valid, False otherwise.
         """
         test_name = inspect.currentframe().f_code.co_name
         node_columns = {column.name: column.data_type for column in node.columns.values()}
 
         missing_columns = set()
-        if columns or column_types:
-            missing_columns = (set(columns) | set(column_types)) - set(node_columns)
+        if columns or column_data_types:
+            missing_columns = (set(columns) | set(column_data_types)) - set(node_columns)
         if missing_columns:
             message = (
                 f"{node.resource_type.title()} does not have all expected columns. "
@@ -110,8 +110,8 @@ class NodeContract(
             )
             self._add_result(node, name=test_name, message=message)
 
-        unexpected_types = {} if not column_types else {
-            name: (node_columns[name], data_type) for name, data_type in column_types.items()
+        unexpected_types = {} if not column_data_types else {
+            name: (node_columns[name], data_type) for name, data_type in column_data_types.items()
             if name in node_columns and node_columns[name] != data_type
         }
         if unexpected_types:

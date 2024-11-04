@@ -4,7 +4,7 @@ Contract configuration for columns.
 import inspect
 import itertools
 import re
-from collections.abc import Collection, Mapping, Iterable
+from collections.abc import Collection, Iterable
 from typing import Any, Generic, TypeVar
 
 from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
@@ -85,7 +85,7 @@ class ColumnContract(
 
     @validation_method
     def has_expected_name(
-            self, column: ColumnInfo, parent: ColumnParentT, contract: Mapping[str | None, Collection[str] | str]
+            self, column: ColumnInfo, parent: ColumnParentT, exact: bool = True, **patterns: Collection[str] | str
     ) -> bool:
         """
         Check whether the given `column` of the given `parent` has a name that matches some expectation.
@@ -93,11 +93,14 @@ class ColumnContract(
 
         :param column: The column to check.
         :param parent: The parent node that the column belongs to.
-        :param contract: A map of data types to regex patterns for which to
+        :param exact: When True, type must match exactly to the map of keys given in the patterns map.
+            Otherwise, match roughly on keys that start with the same value as the column's data type
+            ignoring any whitespaces.
+        :param patterns: A map of data types to regex patterns for which to
             validate names of columns which have the matching data type.
             To define a generic contract which can apply to all unmatched data types,
-            specify the data type key as 'None'.
-            e.g. {"BOOLEAN": "(is|has|do)_.*", "TIMESTAMP": ".*_at", None: "name_.*", ...}
+            specify the data type key as an empty key.
+            e.g. {"BOOLEAN": "(is|has|do)_.*", "TIMESTAMP": ".*_at", "": "name_.*", ...}
         :return: True if the column's properties are valid, False otherwise.
         """
         if not self._is_column_in_node(column, parent):
@@ -117,19 +120,27 @@ class ColumnContract(
                     return False
                 data_type = table.columns[column.name].type
 
-        pattern_key = next((key for key in contract if key.casefold() == data_type.casefold()), None)
-        patterns = contract.get(pattern_key)
-        if not patterns:
+        if exact:
+            pattern_finder_iter = (key for key in patterns if key.casefold() == data_type.casefold())
+        else:
+            pattern_finder_iter = (
+                key for key in patterns
+                if key.replace(" ", "").casefold().startswith(data_type.replace(" ", "").casefold())
+            )
+        pattern_key = next(pattern_finder_iter, "")
+        pattern_values = patterns.get(pattern_key)
+        if not pattern_values:
             return True
-        if not isinstance(patterns, Collection) or isinstance(patterns, str):
-            patterns = tuple(str(patterns))
+        if not isinstance(pattern_values, Collection) or isinstance(pattern_values, str):
+            pattern_values = tuple(str(pattern_values))
 
-        unexpected_name = not all(re.match(pattern, column.name) for pattern in patterns)
+        unexpected_name = not all(re.match(pattern, column.name) for pattern in pattern_values)
         if unexpected_name:
+            patterns_log = ', '.join(pattern_values)
             if pattern_key:
-                message = f"Column name does not match expected pattern for type {data_type}: {', '.join(patterns)}"
+                message = f"Column name does not match expected pattern for type {data_type!r}: {patterns_log}"
             else:
-                message = f"Column name does not match expected patterns: {', '.join(patterns)}"
+                message = f"Column name does not match expected patterns: {patterns_log}"
             self._add_result(column, parent=parent, name=test_name, message=message)
 
         return not unexpected_name
@@ -239,7 +250,7 @@ class ColumnContract(
             unmatched_type = column_type != table_type.casefold().replace(" ", "")
 
         if unmatched_type:
-            message = f"Data type does not match remote entity: {column.data_type} != {table_type}"
+            message = f"Data type does not match remote entity: {column.data_type!r} != {table_type!r}"
             self._add_result(column, parent=parent, name=test_name, message=message)
 
         return not unmatched_type

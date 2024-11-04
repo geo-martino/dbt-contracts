@@ -368,9 +368,9 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
             self, item: T, kind: str, count: int, min_count: int = 1, max_count: int = None, parent: ParentT = None
     ) -> bool:
         if min_count < 1:
-            raise Exception(f"Minimum count must be greater than 0, not {min_count}")
+            raise Exception(f"Minimum count must be greater than 0. Got {min_count}")
         if max_count is not None and max_count < 1:
-            raise Exception(f"Maximum count must be greater than 0, not {max_count}")
+            raise Exception(f"Maximum count must be greater than 0. Got {max_count}")
 
         too_small = count < min_count
         too_large = max_count is not None and count > max_count

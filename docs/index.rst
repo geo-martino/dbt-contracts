@@ -38,15 +38,6 @@ What's in this documentation
    :maxdepth: 1
    :caption: 📖 Reference
 
-   reference.models
-   reference.sources
-   reference.macros
-
-.. raw:: html
-
-   <hr>
-
-.. toctree::
-   :maxdepth: 1
-
-   genindex
+   reference/models
+   reference/sources
+   reference/macros
