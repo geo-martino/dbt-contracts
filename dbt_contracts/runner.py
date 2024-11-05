@@ -126,18 +126,21 @@ class ContractRunner:
         paths = []
         for path in value:
             path = Path(path)
+            project_root = Path(self.config.project_root)
+            if not project_root.is_absolute():
+                project_root = Path(os.getcwd(), project_root)
 
             if path.is_absolute():
                 path = path
-            elif (path_in_project := Path(self.config.project_root, path)).exists():
+            elif (path_in_project := Path(project_root, path)).exists():
                 path = path_in_project
             elif (path_in_cwd := Path(os.getcwd(), path)).exists():
                 path = path_in_cwd
 
-            if not path.is_relative_to(self.config.project_root):
-                raise Exception(f"Could not determine relative path to {self.config.project_root} for {path}")
+            if not path.is_relative_to(project_root):
+                raise Exception(f"Could not determine relative path to {project_root} for {path}")
 
-            paths.append(str(path.relative_to(self.config.project_root)))
+            paths.append(str(path.relative_to(project_root)))
 
         self._paths = paths
 
