@@ -1,5 +1,6 @@
+import json
 import logging
-from collections.abc import Mapping, Collection
+from collections.abc import Mapping, Collection, Iterable, Callable
 from pathlib import Path
 from typing import Any, Self
 
@@ -9,7 +10,8 @@ from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.cli.main import dbtRunner
 from dbt.contracts.graph.manifest import Manifest
 
-from dbt_contracts.contracts import Contract, CONTRACTS_CONFIG_MAP
+from dbt_contracts.cli import DEFAULT_CONFIG_FILE_NAME, DEFAULT_OUTPUT_FILE_NAME
+from dbt_contracts.contracts import Contract, CONTRACTS_CONFIG_MAP, ParentContract
 from dbt_contracts.dbt_cli import get_manifest, get_catalog
 from dbt_contracts.formatters import ObjectFormatter
 from dbt_contracts.formatters.table import TableFormatter, TableColumnFormatter, GroupedTableFormatter
@@ -79,7 +81,8 @@ DEFAULT_TERMINAL_FORMATTER = GroupedTableFormatter(
 class ContractRunner:
     """Handles loading config for contracts and their execution."""
 
-    default_config_file_name: str = "contracts.yml"
+    default_config_file_name: str = DEFAULT_CONFIG_FILE_NAME
+    default_output_file_name: str = DEFAULT_OUTPUT_FILE_NAME
 
     @property
     def dbt(self) -> dbtRunner:
@@ -160,24 +163,48 @@ class ContractRunner:
         self._manifest: Manifest | None = None
         self._catalog: CatalogArtifact | None = None
 
-    def __call__(self) -> list[Result]:
-        return self.run()
+    def __call__(self, contract: str = None, validations: Collection[str] = ()) -> list[Result]:
+        return self.run(contract=contract, validations=validations)
 
-    def run(self) -> list[Result]:
+    def run(self, contract: str = None, validations: Collection[str] = ()) -> list[Result]:
         """
         Run all contracts and get the results.
 
+        :param contract: Only the run the contract which matches this config key.
+            Specify granular contracts by separating keys by a '.' e.g. 'model', 'model.columns'.
+        :param validations: Limit the validations to run only this list of method names.
         :return: The results.
         """
-        results = []
-        for contract in self._contracts:
+        if not contract:
+            contracts = [(c, None) for c in self._contracts]
+        elif any(c.config_key == contract for c in self._contracts):
+            contracts = [next(iter((c, None) for c in self._contracts if c.config_key == contract))]
+        else:
+            try:
+                contracts = [next(iter(
+                    (c.child, c) for c in self._contracts
+                    if isinstance(c, ParentContract) and f"{c.config_key}.{c.child.config_key}" == contract
+                ))]
+            except StopIteration:
+                raise Exception(f"Could not find a configured contract for the key: {contract}")
+
+        for contract, parent in contracts:
             if contract.needs_manifest:
+                if parent is not None:
+                    parent.manifest = self.manifest
                 contract.manifest = self.manifest
             if contract.needs_catalog:
+                if parent is not None:
+                    parent.catalog = self.catalog
                 contract.catalog = self.catalog
 
-            contract.run()
-            results.extend(contract.results)
+        results = []
+        for contract, _ in contracts:
+            results.extend(self._run_contract(contract, validations=validations))
+
+        if not results:
+            self.logger.info(f"{Fore.LIGHTGREEN_EX}All contracts passed successfully{Fore.RESET}")
+            return results
 
         output_lines = self._results_formatter.format(results)
         output_str = self._results_formatter.combine(output_lines)
@@ -186,8 +213,67 @@ class ContractRunner:
 
         return results
 
+    def _run_contract(self, contract: Contract, validations: Collection[str] = ()) -> list[Result]:
+        if isinstance(contract, ParentContract):
+            contract.run(validations=validations, child=not bool(validations))
+        else:
+            contract.run(validations=validations)
 
-if __name__ == "__main__":
-    path = "/Users/gmarino/Desktop/Projects/dlh-datamodel/cibc"
-    runner = ContractRunner.from_yaml(path)
-    results = runner()
+        return contract.results
+
+    def write_results(self, results: Collection[Result], format: str, output: str | Path) -> Path:
+        """
+        Write the given results to an output file with the given `format`.
+
+        :param results: The results to write.
+        :param format: The format to write the file to e.g. 'txt', 'json' etc.
+        :param output: The path to a directory or file to write to.
+        :return: The path the file was written to.
+        """
+        method_name = f"_write_results_as_{format.lower().replace('-', '_').replace(' ', '_')}"
+        try:
+            method: Callable[[Collection[Result], Path], Path] = getattr(self, method_name)
+        except AttributeError:
+            raise Exception(f"Unrecognised format: {format}")
+
+        if (output := Path(output)).is_dir():
+            output = output.joinpath(self.default_output_file_name)
+        output.parent.mkdir(parents=True, exist_ok=True)
+
+        output_path = method(results, output)
+        self.logger.info(f"Wrote {format} output to {str(output_path)!r}")
+        return output_path
+
+    def _write_results_as_text(self, results: Collection[Result], output_path: Path) -> Path:
+        output_lines = self._results_formatter.format(results)
+        output = self._results_formatter.combine(output_lines)
+
+        with (path := output_path.with_suffix(".txt")).open("w") as file:
+            file.write(output)
+
+        return path
+
+    @staticmethod
+    def _write_results_as_json(results: Collection[Result], output_path: Path) -> Path:
+        output = [result.as_json() for result in results]
+        with (path := output_path.with_suffix(".json")).open("w") as file:
+            json.dump(output, file, indent=2)
+
+        return path
+
+    @staticmethod
+    def _write_results_as_jsonl(results: Collection[Result], output_path: Path) -> Path:
+        with  (path := output_path.with_suffix(".json")).open("w") as file:
+            for result in results:
+                json.dump(result.as_json(), file)
+                file.write("\n")
+
+        return path
+
+    @staticmethod
+    def _write_results_as_github_annotations(results: Collection[Result], output_path: Path) -> Path:
+        output = [result.as_github_annotation() for result in results]
+        with (path := output_path.with_suffix(".json")).open("w") as file:
+            json.dump(output, file, indent=2)
+
+        return path

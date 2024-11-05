@@ -74,8 +74,8 @@ class NodeContract(
         if not table:
             return False
 
-        actual_columns = {column.name for column in table.columns.values()}
-        expected_columns = {column.name for column in node.columns.values()}
+        actual_columns = {column.name for column in node.columns.values()}
+        expected_columns = {column.name for column in table.columns.values()}
 
         missing_columns = expected_columns - actual_columns
         if missing_columns:

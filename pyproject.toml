@@ -57,6 +57,13 @@ dev = [
     "ipywidgets",
 ]
 
+[project.scripts]
+dbt-clean = "dbt_contracts.dbt_cli:clean_paths"
+dbt-deps = "dbt_contracts.dbt_cli:install_dependencies"
+dbt-parse = "dbt_contracts.dbt_cli:get_manifest"
+dbt-docs = "dbt_contracts.dbt_cli:get_manifest"
+run-contracts = "dbt_contracts.main:main"
+
 [project.urls]
 "Documentation" = "https://geo-martino.github.io/dbt-contracts/"
 "Release Notes" = "https://geo-martino.github.io/dbt-contracts/info/release-history.html"

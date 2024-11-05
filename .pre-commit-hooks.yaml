@@ -1,0 +1,30 @@
+- id: dbt-clean
+  name: dbt clean
+  description: Clean the dbt directories configured for this project.
+  entry: dbt-clean
+  language: python
+  pass_filenames: false
+- id: dbt-deps
+  name: dbt deps
+  description: Install the dependencies required for this project.
+  entry: dbt-deps
+  language: python
+  pass_filenames: false
+- id: dbt-parse
+  name: dbt parse
+  description: Parse this project and generate the manifest artifact.
+  entry: dbt-parse
+  language: python
+  pass_filenames: false
+- id: dbt-docs
+  name: dbt docs
+  description: Generate the docs for this project and generate the catalog artifact.
+  entry: dbt-docs
+  language: python
+  pass_filenames: false
+- id: run-contracts
+  name: Run contracts
+  description: Run the configured contracts.
+  entry: run-contracts
+  language: python
+  types_or: [sql, yaml]

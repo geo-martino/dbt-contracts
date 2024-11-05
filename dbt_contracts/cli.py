@@ -6,16 +6,22 @@ from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 from dbt_contracts import PROGRAM_NAME
 from dbt_contracts.contracts import CONTRACTS, ParentContract
 
+DEFAULT_CONFIG_FILE_NAME: str = "contracts.yml"
+DEFAULT_OUTPUT_FILE_NAME: str = "contracts_results"
+
 CORE_PARSER = argparse.ArgumentParser(
     prog=PROGRAM_NAME,
 )
 
+################################################################################
+## DBT args
+################################################################################
 profiles_dir = CORE_PARSER.add_argument(
     "--profiles-dir",
     help="Which directory to look in for the profiles.yml file. "
          "If not set, dbt will look in the current working directory first, then HOME/.dbt/",
     nargs="?",
-    default=os.getenv("DBT_PROFILES_DIR", default_profiles_dir),
+    default=os.getenv("DBT_PROFILES_DIR", default_profiles_dir()),
     type=str,
 )
 
@@ -24,7 +30,7 @@ project_dir = CORE_PARSER.add_argument(
     help="Which directory to look in for the dbt_project.yml file. "
          "Default is the current working directory and its parents.",
     nargs="?",
-    default=os.getenv("DBT_PROJECT_DIR", default_project_dir),
+    default=os.getenv("DBT_PROJECT_DIR", default_project_dir()),
     type=str,
 )
 
@@ -53,15 +59,9 @@ threads = CORE_PARSER.add_argument(
     type=int,
 )
 
-output_format = CORE_PARSER.add_argument(
-    "--format",
-    help="Specify the format of results output if desired. Output file will not be generated when not specified.",
-    nargs="?",
-    default=None,
-    choices=["text", "json", "github-annotations"],
-    type=str,
-)
-
+################################################################################
+## DBT commands
+################################################################################
 clean = CORE_PARSER.add_argument(
     "--clean",
     help="When this option is passed, run `dbt clean` before operations. "
@@ -75,18 +75,49 @@ install_deps = CORE_PARSER.add_argument(
     action='store_true'
 )
 
+################################################################################
+## Runner args
+################################################################################
+config = CORE_PARSER.add_argument(
+    "--config",
+    help="Either the path to a contracts configuration file, "
+         f"or the directory to look in for the {DEFAULT_CONFIG_FILE_NAME!r} file. "
+         "Defaults to the project dir when not specified.",
+    nargs="?",
+    default=None,
+    type=str,
+)
+
+output = CORE_PARSER.add_argument(
+    "--output",
+    help="Either the path to a file to write to when formatting results output, "
+         f"or the directory to write a file to with filename {DEFAULT_OUTPUT_FILE_NAME!r}. "
+         "Defaults to the project's target folder when not specified.",
+    nargs="?",
+    default=None,
+    type=str,
+)
+
+output_format = CORE_PARSER.add_argument(
+    "--format",
+    help="Specify the format of results output if desired. Output file will not be generated when not specified.",
+    nargs="?",
+    default=None,
+    choices=["text", "json", "jsonl", "github-annotations"],
+    type=str,
+)
+
 contract = CORE_PARSER.add_argument(
     "--contract",
     help="Limit the execution to a specific contract type. "
-         "Specify granular contracts by seperating keys by a '.'. "
-         "e.g. 'model', 'model.columns'",
+         "Specify granular contracts by separating keys by a '.' e.g. 'model', 'model.columns'",
     nargs="?",
     default=None,
     choices=[
         str(contract.config_key) for contract in CONTRACTS
     ] + [
         f"{contract.config_key}.{contract.child_type.config_key}"
-        for contract in CONTRACTS if isinstance(contract, ParentContract)
+        for contract in CONTRACTS if issubclass(contract, ParentContract)
     ],
     type=str,
 )

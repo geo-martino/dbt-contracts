@@ -56,7 +56,7 @@ class ProcessorMethod(ProcessorMethodT):
 
     def __get__(self, obj, _):
         """Support instance methods."""
-        if self.instance is None:
+        if obj is not None:
             self.instance = obj
         return self
 
@@ -272,8 +272,17 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
     ###########################################################################
     ## Method execution
     ###########################################################################
-    def __call__(self) -> list[CombinedT]:
-        return self.run()
+    def __call__(self, validations: Collection[str] = ()) -> list[CombinedT]:
+        return self.run(validations=validations)
+
+    def run(self, validations: Collection[str] = ()) -> list[CombinedT]:
+        """
+        Run all configured contract methods for this contract.
+
+        :param validations: Limit the validations to run only this list of method names.
+        :return: The items which failed their validations.
+        """
+        return list(self._validate_items(validations=validations))
 
     @staticmethod
     def _call_methods(item: CombinedT, methods: Iterable[tuple[ProcessorMethodT, Any]]) -> bool:
@@ -297,26 +306,27 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
     def _filter_items(self, items: Iterable[CombinedT]) -> Iterable[CombinedT]:
         return filter(self._apply_filters, items)
 
-    def _apply_validations(self, item: CombinedT) -> bool:
-        return self._call_methods(item, self._validations)
+    def _apply_validations(self, item: CombinedT, validations: Collection[str] = ()) -> bool:
+        if validations:
+            validations = [val for val in self._validations if val[0].name in validations]
+        else:
+            validations = self._validations
 
-    def _validate_items(self) -> Generator[CombinedT, None, None]:
+        return self._call_methods(item, validations)
+
+    def _validate_items(self, validations: Collection[str] = ()) -> Generator[CombinedT, None, None]:
         self.results.clear()
         self._patches.clear()
 
         seen = set()
 
-        for item in filterfalse(self._apply_validations, self.items):
+        for item in filterfalse(lambda item: self._apply_validations(item, validations), self.items):
             key = f"{item[1].unique_id}.{item[0].name}" if isinstance(item, tuple) else item.unique_id
             if key not in seen:
                 seen.add(key)
                 yield item
 
         self.logger.debug(f"Validations applied. Found {len(self.results)} errors.")
-
-    def run(self) -> list[CombinedT]:
-        """Run all configured contract methods for this contract."""
-        return list(self._validate_items())
 
     ###########################################################################
     ## Logging
@@ -354,13 +364,8 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
             table = self.catalog.nodes.get(resource.unique_id)
 
         if table is None:
-            name = inspect.currentframe().f_code.co_name
-            message = (
-                f"Could not run test {test_name!r}: "
-                f"The {resource.resource_type.lower()} cannot be found in the database"
-            )
-
-            self._add_result(item=resource, parent=resource, name=name, message=message)
+            message = f"Could not run test: The {resource.resource_type.lower()} cannot be found in the database"
+            self._add_result(item=resource, parent=resource, name=test_name, message=message)
 
         return table
 
@@ -571,11 +576,17 @@ class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], 
             return
         self._child = self.child_type.from_dict(child_config, parents=self)
 
-    def run(self):
-        """Run all configured contract methods for this contract."""
-        results = list(self._validate_items())
-        if self.child is not None:
-            results.extend(self.child())
+    def run(self, validations: Collection[str] = (), child: bool = True):
+        """
+        Run all configured contract methods for this contract.
+
+        :param validations: Limit the validations to run only this list of method names.
+        :param child: Toggle whether child validations should also be run.
+        :return: The items which failed their validations.
+        """
+        results = list(self._validate_items(validations=validations))
+        if child and self.child is not None:
+            results.extend(self.child.run(validations=validations))
 
         return results
 

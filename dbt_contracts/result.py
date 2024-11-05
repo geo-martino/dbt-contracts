@@ -1,7 +1,7 @@
 import dataclasses
 import json
 from abc import ABCMeta, abstractmethod
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping, Collection, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Self, Generic, Any
@@ -11,6 +11,7 @@ from dbt.artifacts.resources.v1.components import ParsedResource, ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import Macro, ModelNode, SourceDefinition
 from dbt.flags import get_flags
+from dbt_common.dataclass_schema import dbtClassMixin
 
 from dbt_contracts.types import T, ParentT
 
@@ -79,7 +80,10 @@ class Result(Generic[T], metaclass=ABCMeta):
             patch_end_line=patch_object["__end_line__"] if patch_object else None,
             patch_end_col=patch_object["__end_col__"] if patch_object else None,
             **{key: val for key, val in kwargs.items() if key in field_names},
-            extra={key: val for key, val in kwargs.items() if key not in field_names},
+            extra={
+                key: val for key, val in kwargs.items()
+                if key not in field_names and val is not None and not isinstance(val, dbtClassMixin)
+            },
         )
 
     @staticmethod
@@ -142,13 +146,23 @@ class Result(Generic[T], metaclass=ABCMeta):
     def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: T, **__) -> Mapping[str, Any] | None:
         raise NotImplementedError
 
-    def as_dict(self) -> Mapping[str, str]:
+    def as_dict(self) -> dict[str, Any]:
         """Format this result as a dictionary."""
         return dataclasses.asdict(self)
 
-    def as_json(self) -> str:
-        """Format this result as a JSON string."""
-        return json.dumps(self.as_dict())
+    def as_json(self) -> dict[str, Any]:
+        """Format this result as a dictionary suitable for dumping to JSON."""
+        return {k: self._as_json(v) for k, v in self.as_dict().items()}
+
+    def _as_json(self, value: Any) -> Any:
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+        if isinstance(value, MutableMapping):
+            return {k: self._as_json(v) for k, v in value.items()}
+        if isinstance(value, Iterable):
+            return [self._as_json(v) for v in value]
+
+        return str(value)
 
     @property
     def _github_annotation(self) -> Mapping[str, str]:
@@ -157,7 +171,7 @@ class Result(Generic[T], metaclass=ABCMeta):
         https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run
         """
         return {
-            "path": self.patch_path or self.path,
+            "path": str(self.patch_path or self.path),
             "start_line": self.patch_start_line,
             "start_column": self.patch_start_col,
             "end_line": self.patch_end_line,
@@ -271,9 +285,7 @@ class ResultColumn(ResultChild[ColumnInfo, ParentT]):
     @classmethod
     def from_resource(cls, item: ColumnInfo, parent: ParentT, **kwargs) -> Self:
         index = list(parent.columns.keys()).index(item.name)
-        return super().from_resource(
-            item=item, parent=parent, index=index, **kwargs
-        )
+        return super().from_resource(item=item, parent=parent, index=index, **kwargs)
 
     @staticmethod
     def _get_result_type(item: T, parent: ParentT = None, **__) -> str:
@@ -305,9 +317,7 @@ class ResultMacroArgument(ResultChild[MacroArgument, Macro]):
     @classmethod
     def from_resource(cls, item: MacroArgument, parent: Macro, **kwargs) -> Self:
         index = parent.arguments.index(item)
-        return super().from_resource(
-            item=item, parent=parent, index=index, **kwargs
-        )
+        return super().from_resource(item=item, parent=parent, index=index, **kwargs)
 
     @staticmethod
     def _get_result_type(*_, **__) -> str:

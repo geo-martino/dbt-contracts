@@ -78,7 +78,7 @@ class ColumnContract(
         """
         missing_column = column.name not in table.columns.keys()
         if missing_column:
-            message = f"The column cannot be found in {table.key()!r}"
+            message = f"The column cannot be found in {table.unique_id!r}"
             self._add_result(item=column, parent=parent, name="exists_in_table", message=message)
 
         return not missing_column
