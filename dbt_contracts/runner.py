@@ -137,11 +137,11 @@ class ContractRunner:
                 print("in project", path_in_project)
                 path = path_in_project
             elif (path_in_cwd := Path(os.getcwd(), path)).exists():
-                print("in cwd", path_in_project)
+                print("in cwd", path_in_cwd)
                 path = path_in_cwd
 
             if path.is_relative_to(project_root):
-                print("relative to", project_root)
+                print("relative to", project_root, path.relative_to(project_root))
                 paths.append(str(path.relative_to(project_root)))
 
         self._paths = paths
