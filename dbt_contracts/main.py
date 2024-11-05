@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from dbt_contracts.dbt_cli import get_config, clean_paths, install_dependencies
@@ -5,6 +6,7 @@ from dbt_contracts.runner import ContractRunner
 
 
 def main():
+    print(sys.argv)
     config = get_config()
 
     if config.args.config is None:
