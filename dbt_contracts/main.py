@@ -17,7 +17,7 @@ def main():
     if config.args.deps:
         install_dependencies()
 
-    runner = ContractRunner.from_yaml(config.args.config)
+    runner = ContractRunner.from_config(config)
     if config.args.files:
         runner.paths = config.args.files
 

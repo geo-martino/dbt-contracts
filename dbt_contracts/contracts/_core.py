@@ -680,10 +680,6 @@ class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], 
         if isinstance(item, ParsedResource) and item.patch_path:
             paths.append(item.patch_path.split("://")[1])
 
-        if "models/silver/calendar/_config.yml" in paths:
-            print(paths, patterns, include, exclude)
-            print([self._matches_patterns(path, *patterns, include=include, exclude=exclude, match_all=match_all) for path in paths])
-
         return any(
             self._matches_patterns(path, *patterns, include=include, exclude=exclude, match_all=match_all)
             for path in paths

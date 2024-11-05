@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from argparse import Namespace
 from collections.abc import Mapping, Collection, Iterable, Callable
 from pathlib import Path
 from typing import Any, Self
@@ -139,6 +140,30 @@ class ContractRunner:
             paths.append(str(path.relative_to(self.config.project_root)))
 
         self._paths = paths
+
+    @classmethod
+    def from_config(cls, config: RuntimeConfig) -> Self:
+        """
+        Set up a new runner from the dbt runtime config with custom args parsed from CLI.
+
+        :param config: The dbt runtime config with args associated.
+        :return: The configured runner.
+        """
+        obj = cls.from_yaml(config.args.config)
+        obj._config = config
+        return obj
+
+    @classmethod
+    def from_args(cls, args: Namespace) -> Self:
+        """
+        Set up a new runner from the args parsed from CLI.
+
+        :param args: The parsed CLI args.
+        :return: The configured runner.
+        """
+        obj = cls.from_yaml(args.config)
+        obj._config = get_config(args)
+        return obj
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> Self:
