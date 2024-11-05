@@ -122,11 +122,6 @@ class Result(Generic[T], metaclass=ABCMeta):
 
     @classmethod
     def _read_patch_file(cls, path: Path) -> dict[str, Any]:
-        flags = get_flags()
-        project_dir = getattr(flags, "PROJECT_DIR", None)
-
-        path = Path(project_dir, path)
-
         with path.open("r") as file:
             patch = yaml.load(file, Loader=SafeLineLoader)
 
