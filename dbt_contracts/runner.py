@@ -320,7 +320,7 @@ class ContractRunner:
             return
 
         for line in self.format_results(results).split("\n"):
-            self.logger.error(line)
+            self.logger.info(line)
 
     def write_results(self, results: Collection[Result], format_type: str, output: str | Path) -> Path:
         """

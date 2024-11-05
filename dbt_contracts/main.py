@@ -26,7 +26,6 @@ def main():
     if config.args.format:
         runner.write_results(results, format_type=config.args.format, output=config.args.output)
 
-    print(config.args.no_fail, len(results))
     if not config.args.no_fail and results:
         raise Exception(f"Found {len(results)} contract violations.")
 
