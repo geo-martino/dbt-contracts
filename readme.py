@@ -69,6 +69,7 @@ def format_contracts_reference_toc_entry(contract: type[Contract], parent_key: s
     title = format_contract_title(contract, parent_key)
     return f"  * [{title}](#{title.replace(" ", "-").lower()})"
 
+
 def format_contracts_reference_toc() -> str:
     """Format the readme template for the contracts reference table of contents"""
     lines = []
@@ -91,7 +92,7 @@ def format_readme():
         "program_owner_user": PROGRAM_OWNER_USER,
         "documentation_url": DOCUMENTATION_URL,
         "contracts_reference": format_contracts_reference().strip(),
-        "contracts_reference_toc": format_contracts_reference_toc().strip(),
+        "contracts_reference_toc": format_contracts_reference_toc().rstrip(),
     }
     format_map_code = {
     }

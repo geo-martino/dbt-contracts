@@ -18,7 +18,7 @@
 ## Contents
 * [Installation](#installation)
 * [Contracts Reference](#contracts-reference)
-* [Models](#models)
+  * [Models](#models)
   * [Model Columns](#model-columns)
   * [Sources](#sources)
   * [Source Columns](#source-columns)
