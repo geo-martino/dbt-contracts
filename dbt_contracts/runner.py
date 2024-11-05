@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from collections.abc import Mapping, Collection, Iterable, Callable
 from pathlib import Path
 from typing import Any, Self
@@ -8,11 +9,12 @@ import yaml
 from colorama import Fore
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.cli.main import dbtRunner
+from dbt.config import RuntimeConfig
 from dbt.contracts.graph.manifest import Manifest
 
 from dbt_contracts.cli import DEFAULT_CONFIG_FILE_NAME, DEFAULT_OUTPUT_FILE_NAME
 from dbt_contracts.contracts import Contract, CONTRACTS_CONFIG_MAP, ParentContract
-from dbt_contracts.dbt_cli import get_manifest, get_catalog
+from dbt_contracts.dbt_cli import get_manifest, get_catalog, get_config
 from dbt_contracts.formatters import ObjectFormatter
 from dbt_contracts.formatters.table import TableFormatter, TableColumnFormatter, GroupedTableFormatter
 from dbt_contracts.result import Result, ResultChild
@@ -70,9 +72,9 @@ DEFAULT_TERMINAL_FORMATTER = GroupedTableFormatter(
     sort_key=[
         lambda result: result.result_type,
         lambda result: result.path,
-        lambda result: result.parent_name if isinstance(result, ResultChild) else "",
+        lambda result: result.parent_name if isinstance(result, ResultChild) else result.name,
         lambda result: result.index if isinstance(result, ResultChild) else 0,
-        lambda result: result.name,
+        lambda result: result.name if isinstance(result, ResultChild) else "",
     ],
     consistent_widths=True,
 )
@@ -87,15 +89,22 @@ class ContractRunner:
     @property
     def dbt(self) -> dbtRunner:
         """The dbt runner"""
-        if self._dbt is not None:
+        if self._dbt is None:
             self._dbt = dbtRunner(manifest=self._manifest)
         return self._dbt
+
+    @property
+    def config(self) -> RuntimeConfig:
+        """The dbt runtime config"""
+        if self._config is None:
+            self._config = get_config()
+        return self._config
 
     @property
     def manifest(self) -> Manifest:
         """The dbt manifest"""
         if self._manifest is None:
-            self._manifest = get_manifest(runner=self.dbt)
+            self._manifest = get_manifest(runner=self.dbt, config=self.config)
             self._dbt = None
         return self._manifest
 
@@ -103,8 +112,33 @@ class ContractRunner:
     def catalog(self) -> CatalogArtifact:
         """The dbt catalog"""
         if self._catalog is None:
-            self._catalog = get_catalog(runner=self.dbt)
+            self._catalog = get_catalog(runner=self.dbt, config=self.config)
         return self._catalog
+
+    @property
+    def paths(self) -> Collection[str]:
+        """An additional set of paths to filter on when filter contract items."""
+        return self._paths
+
+    @paths.setter
+    def paths(self, value: Collection[str]):
+        paths = []
+        for path in value:
+            path = Path(path)
+
+            if path.is_absolute():
+                path = path
+            elif (path_in_project := Path(self.config.project_root, path)).exists():
+                path = path_in_project
+            elif (path_in_cwd := Path(os.getcwd(), path)).exists():
+                path = path_in_cwd
+
+            if not path.is_relative_to(self.config.project_root):
+                raise Exception(f"Could not determine absolute path for {path!r}")
+
+            paths.append(str(path.relative_to(self.config.project_root)))
+
+        self._paths = paths
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> Self:
@@ -145,7 +179,7 @@ class ContractRunner:
     def _create_contract_from_config(cls, key: str, config: Mapping[str, Any]) -> Contract:
         key = key.replace(" ", "_").casefold().rstrip("s") + "s"
         if key not in CONTRACTS_CONFIG_MAP:
-            raise Exception(f"Unrecognised validator key: {key}")
+            raise Exception(f"Unrecognised enforcement key: {key}")
 
         return CONTRACTS_CONFIG_MAP[key].from_dict(config=config)
 
@@ -160,47 +194,42 @@ class ContractRunner:
         self._results_formatter = results_formatter
 
         self._dbt: dbtRunner | None = None
+        self._config: RuntimeConfig | None = None
         self._manifest: Manifest | None = None
         self._catalog: CatalogArtifact | None = None
 
-    def __call__(self, contract: str = None, validations: Collection[str] = ()) -> list[Result]:
-        return self.run(contract=contract, validations=validations)
+        self._paths: Collection[str] = []
 
-    def run(self, contract: str = None, validations: Collection[str] = ()) -> list[Result]:
+    def __call__(self, contract_key: str = None, enforcements: Collection[str] = ()) -> list[Result]:
+        return self.run(contract_key=contract_key, enforcements=enforcements)
+
+    def run(self, contract_key: str = None, enforcements: Collection[str] = ()) -> list[Result]:
         """
         Run all contracts and get the results.
 
-        :param contract: Only the run the contract which matches this config key.
+        :param contract_key: Only the run the contract which matches this config key.
             Specify granular contracts by separating keys by a '.' e.g. 'model', 'model.columns'.
-        :param validations: Limit the validations to run only this list of method names.
+        :param enforcements: Apply only these enforcements. If none given, apply all configured enforcements.
         :return: The results.
         """
-        if not contract:
-            contracts = [(c, None) for c in self._contracts]
-        elif any(c.config_key == contract for c in self._contracts):
-            contracts = [next(iter((c, None) for c in self._contracts if c.config_key == contract))]
-        else:
-            try:
-                contracts = [next(iter(
-                    (c.child, c) for c in self._contracts
-                    if isinstance(c, ParentContract) and f"{c.config_key}.{c.child.config_key}" == contract
-                ))]
-            except StopIteration:
-                raise Exception(f"Could not find a configured contract for the key: {contract}")
+        if not contract_key:
+            contracts = [contract for contract in self._contracts]
+        elif any(contract.config_key == contract_key for contract in self._contracts):
+            contracts = [next(iter(c for c in self._contracts if c.config_key == contract_key))]
+        else:  # assume contract key relates to a child contract
+            parent = self._get_parent_contract(contract_key)
+            if parent is None:
+                raise Exception(f"Could not find a configured contract for the key: {contract_key}")
 
-        for contract, parent in contracts:
-            if contract.needs_manifest:
-                if parent is not None:
-                    parent.manifest = self.manifest
-                contract.manifest = self.manifest
-            if contract.needs_catalog:
-                if parent is not None:
-                    parent.catalog = self.catalog
-                contract.catalog = self.catalog
+            # ensure parent has artifacts assigned to get parent items on child
+            self._assign_artifacts_to_contracts([parent])
+            contracts = [parent.child]
+
+        self._assign_artifacts_to_contracts(contracts)
 
         results = []
-        for contract, _ in contracts:
-            results.extend(self._run_contract(contract, validations=validations))
+        for parent in contracts:
+            results.extend(self._run_contract(parent, enforcements=enforcements, run_children=not contract_key))
 
         if not results:
             self.logger.info(f"{Fore.LIGHTGREEN_EX}All contracts passed successfully{Fore.RESET}")
@@ -213,11 +242,36 @@ class ContractRunner:
 
         return results
 
-    def _run_contract(self, contract: Contract, validations: Collection[str] = ()) -> list[Result]:
+    def _get_parent_contract(self, contract: Contract | str) -> ParentContract | None:
+        parents = (
+            parent for parent in self._contracts if isinstance(parent, ParentContract) and parent.child is not None
+        )
+
+        if isinstance(contract, Contract):
+            return next(iter(parent for parent in parents if parent.child.config_key == contract.config_key), None)
+        return next(
+            iter(parent for parent in parents if f"{parent.config_key}.{parent.child.config_key}" == contract), None
+        )
+
+    def _assign_artifacts_to_contracts(self, contracts: Iterable[Contract]) -> None:
+        for contract in contracts:
+            if contract.needs_manifest:
+                contract.manifest = self.manifest
+            if contract.needs_catalog:
+                contract.catalog = self.catalog
+            if isinstance(contract, ParentContract) and self.paths:
+                contract.filters.append((contract.paths, self.paths))
+
+            parent = self._get_parent_contract(contract)
+            if parent is not None:
+                self._assign_artifacts_to_contracts([parent])
+
+    @staticmethod
+    def _run_contract(contract: Contract, enforcements: Collection[str] = (), run_children: bool = True) -> list[Result]:
         if isinstance(contract, ParentContract):
-            contract.run(validations=validations, child=not bool(validations))
+            contract.run(enforcements=enforcements, child=run_children)
         else:
-            contract.run(validations=validations)
+            contract.run(enforcements=enforcements)
 
         return contract.results
 
@@ -241,7 +295,7 @@ class ContractRunner:
         output.parent.mkdir(parents=True, exist_ok=True)
 
         output_path = method(results, output)
-        self.logger.info(f"Wrote {format} output to {str(output_path)!r}")
+        self.logger.info(f"{Fore.LIGHTBLUE_EX}Wrote {format} output to {str(output_path)!r}{Fore.RESET}")
         return output_path
 
     def _write_results_as_text(self, results: Collection[Result], output_path: Path) -> Path:

@@ -5,7 +5,7 @@ import inspect
 
 from dbt.contracts.graph.nodes import SourceDefinition
 
-from dbt_contracts.contracts._core import filter_method, validation_method
+from dbt_contracts.contracts._core import filter_method, enforce_method
 from dbt_contracts.contracts._node import NodeContract
 
 
@@ -32,7 +32,7 @@ class SourceContract(NodeContract[SourceDefinition]):
         """
         return source.config.enabled
 
-    @validation_method
+    @enforce_method
     def has_loader(self, source: SourceDefinition) -> bool:
         """
         Check whether the given `source` has a loader configured.
@@ -47,7 +47,7 @@ class SourceContract(NodeContract[SourceDefinition]):
 
         return not missing_loader
 
-    @validation_method
+    @enforce_method
     def has_freshness(self, source: SourceDefinition) -> bool:
         """
         Check whether the given `source` has freshness configured.
@@ -64,7 +64,7 @@ class SourceContract(NodeContract[SourceDefinition]):
 
         return not missing_freshness
 
-    @validation_method
+    @enforce_method
     def has_downstream_dependencies(self, source: SourceDefinition, min_count: int = 1, max_count: int = None) -> bool:
         """
         Check whether the given `source` has freshness configured.

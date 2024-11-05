@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import Macro
 
-from dbt_contracts.contracts._core import validation_method, ParentContract, ChildContract
+from dbt_contracts.contracts._core import enforce_method, ParentContract, ChildContract
 from dbt_contracts.contracts._properties import PatchContract, DescriptionPropertyContract
 
 
@@ -26,7 +26,7 @@ class MacroArgumentContract(DescriptionPropertyContract[MacroArgument, Macro], C
         arguments = map(lambda macro: [(argument, macro) for argument in macro.arguments], self.parents)
         return self._filter_items(itertools.chain.from_iterable(arguments))
 
-    @validation_method
+    @enforce_method
     def has_type(self, argument: MacroArgument, parent: Macro) -> bool:
         """
         Check whether the given `argument` has its type set in an appropriate properties file.

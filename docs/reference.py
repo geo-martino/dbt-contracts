@@ -22,7 +22,7 @@ HEADER_SECTION_CHARS = ["=", "-", "^", '"']
 
 SECTIONS = {
     "Filters": lambda contract: contract.__filtermethods__,
-    "Validations": lambda contract: contract.__validationmethods__,
+    "Enforcements": lambda contract: contract.__enforcementmethods__,
 }
 SECTION_DESCRIPTIONS = {
     "Filters": [
@@ -30,8 +30,8 @@ SECTION_DESCRIPTIONS = {
         "You may limit the number of {kind} processed by the rules of this contract "
         "by defining one or more of the following filters."
     ],
-    "Validations": [
-        "Validations to apply to the resources of this contract.",
+    "Enforcements": [
+        "Enforcements to apply to the resources of this contract.",
         "These enforce certain standards that must be followed in order for the contract to be fulfilled."
     ]
 }

@@ -131,7 +131,7 @@ class TableFormatter(ObjectFormatter):
 
         calculate_widths = len(widths) != len(self.columns)
 
-        for obj in sorted(objects, key=lambda r: get_value_from_object(r, self.columns[0].keys[0])):
+        for obj in objects:
             if calculate_widths:
                 widths = [column.get_width(objects) for column in self.columns]
             cols = [column.get_column(obj, width=width) for column, width in zip(self.columns, widths)]

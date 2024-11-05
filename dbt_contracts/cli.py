@@ -109,7 +109,7 @@ output_format = CORE_PARSER.add_argument(
 
 contract = CORE_PARSER.add_argument(
     "--contract",
-    help="Limit the execution to a specific contract type. "
+    help="Run only this contract. If none given, apply all configured contracts. "
          "Specify granular contracts by separating keys by a '.' e.g. 'model', 'model.columns'",
     nargs="?",
     default=None,
@@ -122,9 +122,18 @@ contract = CORE_PARSER.add_argument(
     type=str,
 )
 
-validations = CORE_PARSER.add_argument(
-    "--validations",
-    help="Limit the execution to specific validations.",
+enforcements = CORE_PARSER.add_argument(
+    "--enforce",
+    help="Apply only these enforcements. If none given, apply all configured enforcements.",
+    nargs="+",
+    default=None,
+    type=str,
+)
+
+files = CORE_PARSER.add_argument(
+    "files",
+    help="Apply contract to only these files. "
+         "Must either be relative to the current folder, relative to the project folder, or absolute.",
     nargs="*",
     default=None,
     type=str,

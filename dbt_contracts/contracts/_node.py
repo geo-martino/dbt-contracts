@@ -10,7 +10,7 @@ from typing import TypeVar, Generic, Any
 
 from dbt.contracts.graph.nodes import TestNode, SourceDefinition, CompiledNode, BaseNode
 
-from dbt_contracts.contracts._core import validation_method, ParentContract
+from dbt_contracts.contracts._core import enforce_method, ParentContract
 from dbt_contracts.contracts._properties import PatchContract, TagContract, MetaContract
 from dbt_contracts.contracts.column import ColumnContract
 
@@ -47,7 +47,7 @@ class NodeContract(
             ))
         return filter(_filter_nodes, self.manifest.nodes.values())
 
-    @validation_method
+    @enforce_method
     def has_tests(self, node: NodeT, min_count: int = 1, max_count: int = None) -> bool:
         """
         Check whether the given `node` has an appropriate number of tests.
@@ -60,7 +60,23 @@ class NodeContract(
         count = len(tuple(self.get_tests(node)))
         return self._is_in_range(item=node, kind="tests", count=count, min_count=min_count, max_count=max_count)
 
-    @validation_method(needs_catalog=True)
+    @enforce_method(needs_catalog=True)
+    def exists(self, node: NodeT) -> bool:
+        """
+        Check whether the node exists in the database.
+
+        :param node: The node to check.
+        :return: True if the node's properties are valid, False otherwise.
+        """
+        table = self.get_matching_catalog_table(node)
+        if table is None:
+            test_name = inspect.currentframe().f_code.co_name
+            message = f"The {node.resource_type.lower()} cannot be found in the database"
+            self._add_result(node, name=test_name, message=message)
+
+        return table is not None
+
+    @enforce_method(needs_catalog=True)
     def has_all_columns(self, node: NodeT) -> bool:
         """
         Check whether the node properties contain all available columns of the node.
@@ -87,7 +103,7 @@ class NodeContract(
 
         return not missing_columns
 
-    @validation_method
+    @enforce_method
     def has_expected_columns(self, node: NodeT, *columns: str, **column_data_types: str) -> bool:
         """
         Check whether the node properties contain the expected set of `columns`.
@@ -123,6 +139,47 @@ class NodeContract(
 
         return not missing_columns and not unexpected_types
 
+    @enforce_method(needs_catalog=True)
+    def has_matching_description(
+            self, node: NodeT, case_insensitive: bool = False, compare_start_only: bool = False
+    ) -> bool:
+        """
+        Check whether the given `node` has a description configured which matches the remote resource.
+
+        :param node: The node to check.
+        :param case_insensitive: When True, ignore cases and compare only case-insensitively.
+        :param compare_start_only: When True, match when the two values start with the same value.
+            Ignore the rest of the text in this case.
+        :return: True if the column's properties are valid, False otherwise.
+        """
+
+        test_name = inspect.currentframe().f_code.co_name
+
+        table = self.get_matching_catalog_table(node, test_name=test_name)
+        if not table:
+            return False
+
+        table_comment = table.metadata.comment or ""
+        node_comment = node.description
+        if not case_insensitive:
+            table_comment = table_comment.casefold()
+            node_comment = node_comment.casefold()
+
+        if not table_comment:
+            unmatched_description = bool(node_comment)
+        elif compare_start_only:
+            unmatched_description = not (
+                    table_comment.startswith(node_comment) or node_comment.startswith(table_comment)
+            )
+        else:
+            unmatched_description = node_comment != table_comment
+
+        if unmatched_description:
+            message = f"Description does not match remote entity: {node.description!r} != {table.metadata.comment!r}"
+            self._add_result(node, name=test_name, message=message)
+
+        return not unmatched_description
+
 
 CompiledNodeT = TypeVar('CompiledNodeT', bound=CompiledNode)
 
@@ -130,7 +187,7 @@ CompiledNodeT = TypeVar('CompiledNodeT', bound=CompiledNode)
 class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
     """Configures a contract for compiled nodes."""
 
-    @validation_method(needs_catalog=True)
+    @enforce_method(needs_catalog=True)
     def has_contract(self, node: CompiledNodeT) -> bool:
         """
         Check whether the node properties define a contract.
@@ -164,7 +221,7 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
 
         return not missing
 
-    @validation_method
+    @enforce_method
     def has_valid_ref_dependencies(self, node: CompiledNodeT) -> bool:
         """
         Check whether the given `node` has valid upstream ref dependencies.
@@ -177,7 +234,7 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
         missing_dependencies = upstream_dependencies - set(self.manifest.nodes.keys())
         return self._has_valid_upstream_dependencies(node, missing=missing_dependencies, kind="ref")
 
-    @validation_method
+    @enforce_method
     def has_valid_source_dependencies(self, node: CompiledNodeT) -> bool:
         """
         Check whether the given `node` has valid upstream source dependencies.
@@ -190,7 +247,7 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
         missing_dependencies = upstream_dependencies - set(self.manifest.sources.keys())
         return self._has_valid_upstream_dependencies(node, missing=missing_dependencies, kind="source")
 
-    @validation_method
+    @enforce_method
     def has_valid_macro_dependencies(self, node: CompiledNodeT) -> bool:
         """
         Check whether the given `node` has valid upstream macro dependencies.
@@ -203,7 +260,7 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
         missing_dependencies = upstream_dependencies - set(self.manifest.macros.keys())
         return self._has_valid_upstream_dependencies(node, missing=missing_dependencies, kind="macro")
 
-    @validation_method
+    @enforce_method
     def has_no_final_semicolon(self, node: CompiledNodeT) -> bool:
         """
         Check whether the given `node` has a no closing semicolon at the end of the script.
@@ -218,7 +275,7 @@ class CompiledNodeContract(NodeContract[CompiledNodeT], metaclass=ABCMeta):
 
         return not has_final_semicolon
 
-    @validation_method
+    @enforce_method
     def has_no_hardcoded_refs(self, node: CompiledNodeT) -> bool:
         """
         Check whether the given `node` has a no hardcoded upstream references.

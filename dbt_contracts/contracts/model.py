@@ -5,7 +5,7 @@ from collections.abc import Iterable
 
 from dbt.contracts.graph.nodes import ModelNode
 
-from dbt_contracts.contracts._core import filter_method, validation_method
+from dbt_contracts.contracts._core import filter_method, enforce_method
 from dbt_contracts.contracts._node import CompiledNodeContract
 
 
@@ -33,7 +33,7 @@ class ModelContract(CompiledNodeContract[ModelNode]):
         """
         return node.config.materialized != "ephemeral"
 
-    @validation_method
+    @enforce_method
     def has_constraints(self, node: ModelNode, min_count: int = 1, max_count: int = None) -> bool:
         """
         Check whether the given `node` has an appropriate number of constraints.

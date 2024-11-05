@@ -11,7 +11,7 @@ from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
 from dbt.artifacts.schemas.catalog import CatalogTable
 from dbt.contracts.graph.nodes import TestNode, SourceDefinition
 
-from dbt_contracts.contracts._core import validation_method, ChildContract
+from dbt_contracts.contracts._core import enforce_method, ChildContract
 from dbt_contracts.contracts._properties import DescriptionPropertyContract, TagContract, MetaContract
 
 ColumnParentT = TypeVar('ColumnParentT', ParsedResource, SourceDefinition)
@@ -45,12 +45,14 @@ class ColumnContract(
         :param parent: The parent node for which to get tests.
         :return: The matching test nodes.
         """
+
         def _filter_nodes(test: Any) -> bool:
             return isinstance(test, TestNode) and all((
                 test.attached_node == parent.unique_id,
                 test.column_name is not None,
                 test.column_name == column.name,
             ))
+
         return filter(_filter_nodes, self.manifest.nodes.values())
 
     def _is_column_in_node(self, column: ColumnInfo, parent: ColumnParentT) -> bool:
@@ -67,7 +69,13 @@ class ColumnContract(
 
         return not missing_column
 
-    def _is_column_in_table(self, column: ColumnInfo, parent: ColumnParentT, table: CatalogTable) -> bool:
+    def _is_column_in_table(
+            self,
+            column: ColumnInfo,
+            parent: ColumnParentT,
+            table: CatalogTable,
+            test_name: str | None = None
+    ) -> bool:
         """
         Checks whether the given `column` exists in the given `table`.
 
@@ -77,15 +85,21 @@ class ColumnContract(
         :return: True if the column exists, False otherwise.
         """
         missing_column = column.name not in table.columns.keys()
-        if missing_column:
+        if missing_column and test_name:
             message = f"The column cannot be found in {table.unique_id!r}"
-            self._add_result(item=column, parent=parent, name="exists_in_table", message=message)
+            self._add_result(item=column, parent=parent, name=test_name, message=message)
 
         return not missing_column
 
-    @validation_method
+    @enforce_method
     def has_expected_name(
-            self, column: ColumnInfo, parent: ColumnParentT, exact: bool = True, **patterns: Collection[str] | str
+            self,
+            column: ColumnInfo,
+            parent: ColumnParentT,
+            ignore_whitespace: bool = False,
+            case_insensitive: bool = False,
+            compare_start_only: bool = False,
+            **patterns: Collection[str] | str
     ) -> bool:
         """
         Check whether the given `column` of the given `parent` has a name that matches some expectation.
@@ -93,9 +107,10 @@ class ColumnContract(
 
         :param column: The column to check.
         :param parent: The parent node that the column belongs to.
-        :param exact: When True, type must match exactly to the map of keys given in the patterns map.
-            Otherwise, match roughly on keys that start with the same value as the column's data type
-            ignoring any whitespaces.
+        :param ignore_whitespace: When True, ignore any whitespaces when comparing data type keys.
+        :param case_insensitive: When True, ignore cases and compare data type keys only case-insensitively.
+        :param compare_start_only: When True, match data type keys when the two values start with the same value.
+            Ignore the rest of the data type definition in this case.
         :param patterns: A map of data types to regex patterns for which to
             validate names of columns which have the matching data type.
             To define a generic contract which can apply to all unmatched data types,
@@ -116,18 +131,20 @@ class ColumnContract(
                 if not table:
                     return False
 
-                if not self._is_column_in_table(column, parent=parent, table=table):
+                if not self._is_column_in_table(column, parent=parent, table=table, test_name=test_name):
                     return False
                 data_type = table.columns[column.name].type
 
-        if exact:
-            pattern_finder_iter = (key for key in patterns if key.casefold() == data_type.casefold())
-        else:
-            pattern_finder_iter = (
-                key for key in patterns
-                if key.replace(" ", "").casefold().startswith(data_type.replace(" ", "").casefold())
+        pattern_key = next((
+            key for key in patterns if self._compare_strings(
+                key,
+                data_type,
+                ignore_whitespace=ignore_whitespace,
+                case_insensitive=case_insensitive,
+                compare_start_only=compare_start_only
             )
-        pattern_key = next(pattern_finder_iter, "")
+        ), "")
+
         pattern_values = patterns.get(pattern_key)
         if not pattern_values:
             return True
@@ -145,7 +162,7 @@ class ColumnContract(
 
         return not unexpected_name
 
-    @validation_method
+    @enforce_method
     def has_data_type(self, column: ColumnInfo, parent: ColumnParentT) -> bool:
         """
         Check whether the given `column` of the given `parent` has a data type set.
@@ -165,7 +182,7 @@ class ColumnContract(
 
         return not missing_data_type
 
-    @validation_method
+    @enforce_method
     def has_tests(self, column: ColumnInfo, parent: ColumnParentT, min_count: int = 1, max_count: int = None) -> bool:
         """
         Check whether the given `column` of the given `parent` has an appropriate number of tests.
@@ -184,15 +201,44 @@ class ColumnContract(
             item=column, parent=parent, kind="tests", count=count, min_count=min_count, max_count=max_count
         )
 
-    @validation_method(needs_catalog=True)
-    def has_matching_description(self, column: ColumnInfo, parent: ColumnParentT, case_sensitive: bool = False) -> bool:
+    @enforce_method(needs_catalog=True)
+    def exists(self, column: ColumnInfo, parent: ColumnParentT) -> bool:
+        """
+        Check whether the column exists in the database.
+
+        :param column: The column to check.
+        :param parent: The parent node that the column belongs to.
+        :return: True if the node's properties are valid, False otherwise.
+        """
+        if not self._is_column_in_node(column, parent):
+            return False
+
+        test_name = inspect.currentframe().f_code.co_name
+        table = self.get_matching_catalog_table(parent)
+        if table is None:
+            message = f"The {parent.resource_type.lower()} cannot be found in the database"
+            self._add_result(column, parent=parent, name=test_name, message=message)
+            return False
+
+        return self._is_column_in_table(column, parent=parent, table=table, test_name=test_name)
+
+    @enforce_method(needs_catalog=True)
+    def has_matching_description(
+            self,
+            column: ColumnInfo,
+            parent: ColumnParentT,
+            case_insensitive: bool = False,
+            compare_start_only: bool = False
+    ) -> bool:
         """
         Check whether the given `column` of the given `parent`
         has a description configured which matches the remote resource.
 
         :param column: The column to check.
         :param parent: The parent node that the column belongs to.
-        :param case_sensitive: When True, cases must match. When False, apply case-insensitive match.
+        :param case_insensitive: When True, ignore cases and compare only case-insensitively.
+        :param compare_start_only: When True, match when the two values start with the same value.
+            Ignore the rest of the text in this case.
         :return: True if the column's properties are valid, False otherwise.
         """
         if not self._is_column_in_node(column, parent):
@@ -203,32 +249,44 @@ class ColumnContract(
         table = self.get_matching_catalog_table(parent, test_name=test_name)
         if not table:
             return False
-        if not self._is_column_in_table(column, parent=parent, table=table):
+        if not self._is_column_in_table(column, parent=parent, table=table, test_name=test_name):
             return False
 
-        table_comment = table.columns[column.name].comment
-        if not table_comment:
-            unmatched_description = True
-        elif case_sensitive:
-            unmatched_description = column.description != table_comment
-        else:
-            unmatched_description = column.description.casefold() != table_comment.casefold()
+        unmatched_description = not self._compare_strings(
+            column.description,
+            table.columns[column.name].comment,
+            case_insensitive=case_insensitive,
+            compare_start_only=compare_start_only
+        )
 
         if unmatched_description:
-            message = f"Description does not match remote entity: {column.description!r} != {table_comment!r}"
+            message = (
+                f"Description does not match remote entity: "
+                f"{column.description!r} != {table.columns[column.name].comment!r}"
+            )
             self._add_result(column, parent=parent, name=test_name, message=message)
 
         return not unmatched_description
 
-    @validation_method(needs_catalog=True)
-    def has_matching_data_type(self, column: ColumnInfo, parent: ColumnParentT, exact: bool = False) -> bool:
+    @enforce_method(needs_catalog=True)
+    def has_matching_data_type(
+            self,
+            column: ColumnInfo,
+            parent: ColumnParentT,
+            ignore_whitespace: bool = False,
+            case_insensitive: bool = False,
+            compare_start_only: bool = False,
+    ) -> bool:
         """
         Check whether the given `column` of the given `parent`
         has a data type configured which matches the remote resource.
 
         :param column: The column to check.
         :param parent: The parent node that the column belongs to.
-        :param exact: When True, type must match exactly including cases.
+        :param ignore_whitespace: When True, ignore any whitespaces when comparing.
+        :param case_insensitive: When True, ignore cases and compare only case-insensitively.
+        :param compare_start_only: When True, match when the two values start with the same value.
+            Ignore the rest of the text in this case.
         :return: True if the column's properties are valid, False otherwise.
         """
         if not self._is_column_in_node(column, parent):
@@ -239,23 +297,27 @@ class ColumnContract(
         table = self.get_matching_catalog_table(parent, test_name=test_name)
         if not table:
             return False
-        if not self._is_column_in_table(column, parent=parent, table=table):
+        if not self._is_column_in_table(column, parent=parent, table=table, test_name=test_name):
             return False
 
-        table_type = table.columns[column.name].type
-        if exact:
-            unmatched_type = column.data_type != table_type
-        else:
-            column_type = column.data_type.casefold().replace(" ", "")
-            unmatched_type = column_type != table_type.casefold().replace(" ", "")
+        unmatched_type = not self._compare_strings(
+            column.data_type,
+            table.columns[column.name].type,
+            ignore_whitespace=ignore_whitespace,
+            case_insensitive=case_insensitive,
+            compare_start_only=compare_start_only
+        )
 
         if unmatched_type:
-            message = f"Data type does not match remote entity: {column.data_type!r} != {table_type!r}"
+            message = (
+                f"Data type does not match remote entity: "
+                f"{column.data_type!r} != {table.columns[column.name].type!r}"
+            )
             self._add_result(column, parent=parent, name=test_name, message=message)
 
         return not unmatched_type
 
-    @validation_method(needs_catalog=True)
+    @enforce_method(needs_catalog=True)
     def has_matching_index(self, column: ColumnInfo, parent: ColumnParentT) -> bool:
         """
         Check whether the given `column` of the given `parent`
@@ -273,7 +335,7 @@ class ColumnContract(
         table = self.get_matching_catalog_table(parent, test_name=test_name)
         if not table:
             return False
-        if not self._is_column_in_table(column, parent=parent, table=table):
+        if not self._is_column_in_table(column, parent=parent, table=table, test_name=test_name):
             return False
 
         node_index = list(parent.columns).index(column.name)

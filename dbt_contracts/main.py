@@ -18,7 +18,10 @@ def main():
         install_dependencies()
 
     runner = ContractRunner.from_yaml(config.args.config)
-    results = runner.run(contract=config.args.contract, validations=config.args.validations)
+    if config.args.files:
+        runner.paths = config.args.files
+
+    results = runner.run(contract_key=config.args.contract, enforcements=config.args.enforce)
 
     if config.args.format:
         runner.write_results(results, format=config.args.format, output=config.args.output)
