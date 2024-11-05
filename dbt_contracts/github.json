@@ -1,0 +1,24 @@
+[
+  {
+    "path": "models/silver/calendar/_config.yml",
+    "start_line": 4,
+    "start_column": 5,
+    "end_line": 39,
+    "end_column": 3,
+    "annotation_level": "warning",
+    "title": "Has Expected Columns",
+    "message": "Model does not have all expected columns. Missing: _updated_at, _process_id",
+    "raw_details": "Model"
+  },
+  {
+    "path": "models/silver/calendar/_config.yml",
+    "start_line": 39,
+    "start_column": 5,
+    "end_line": 87,
+    "end_column": 1,
+    "annotation_level": "warning",
+    "title": "Has Expected Columns",
+    "message": "Model does not have all expected columns. Missing: _updated_at, _process_id",
+    "raw_details": "Model"
+  }
+]

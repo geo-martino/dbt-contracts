@@ -261,12 +261,7 @@ class ContractRunner:
             self.logger.info(f"{Fore.LIGHTGREEN_EX}All contracts passed successfully{Fore.RESET}")
             return results
 
-        output_lines = self._results_formatter.format(results)
-        output_str = self._results_formatter.combine(output_lines)
-        for line in output_str.split("\n"):
-            self.logger.info(line)
-
-        return results
+        self.log_results(results)
 
     def _get_parent_contract(self, contract: Contract | str) -> ParentContract | None:
         parents = (
@@ -301,27 +296,55 @@ class ContractRunner:
 
         return contract.results
 
-    def write_results(self, results: Collection[Result], format: str, output: str | Path) -> Path:
+    def format_results(self, results: Collection[Result]) -> str | None:
+        """
+        Format the given results to the terminal using the currently set formatter.
+
+        :param results: The results to format.
+        :return: The formatted results.
+        """
+        if not self._results_formatter or not results:
+            return
+
+        output_lines = self._results_formatter.format(results)
+        return self._results_formatter.combine(output_lines)
+
+    def log_results(self, results: Collection[Result]) -> None:
+        """
+        Log the given results to the terminal using the currently set formatter.
+
+        :param results: The results to log.
+        """
+        if not self._results_formatter or not results:
+            return
+
+        for line in self.format_results(results).split("\n"):
+            self.logger.error(line)
+
+    def write_results(self, results: Collection[Result], format_type: str, output: str | Path) -> Path:
         """
         Write the given results to an output file with the given `format`.
 
         :param results: The results to write.
-        :param format: The format to write the file to e.g. 'txt', 'json' etc.
+        :param format_type: The format to write the file to e.g. 'txt', 'json' etc.
         :param output: The path to a directory or file to write to.
         :return: The path the file was written to.
         """
-        method_name = f"_write_results_as_{format.lower().replace('-', '_').replace(' ', '_')}"
+        if not results:
+            return
+
+        method_name = f"_write_results_as_{format_type.lower().replace('-', '_').replace(' ', '_')}"
         try:
             method: Callable[[Collection[Result], Path], Path] = getattr(self, method_name)
         except AttributeError:
-            raise Exception(f"Unrecognised format: {format}")
+            raise Exception(f"Unrecognised format: {format_type}")
 
         if (output := Path(output)).is_dir():
             output = output.joinpath(self.default_output_file_name)
         output.parent.mkdir(parents=True, exist_ok=True)
 
         output_path = method(results, output)
-        self.logger.info(f"{Fore.LIGHTBLUE_EX}Wrote {format} output to {str(output_path)!r}{Fore.RESET}")
+        self.logger.info(f"{Fore.LIGHTBLUE_EX}Wrote {format_type} output to {str(output_path)!r}{Fore.RESET}")
         return output_path
 
     def _write_results_as_text(self, results: Collection[Result], output_path: Path) -> Path:

@@ -6,6 +6,8 @@ from dbt_contracts.runner import ContractRunner
 
 def main():
     config = get_config()
+    print(config.args)
+
 
     if config.args.config is None:
         config.args.config = config.args.project_dir
@@ -24,9 +26,9 @@ def main():
     results = runner.run(contract_key=config.args.contract, enforcements=config.args.enforce)
 
     if config.args.format:
-        runner.write_results(results, format=config.args.format, output=config.args.output)
+        runner.write_results(results, format_type=config.args.format, output=config.args.output)
 
-    if not config.args.no_fail:
+    if not config.args.no_fail and results:
         raise Exception(f"Found {len(results)} contract violations.")
 
 
