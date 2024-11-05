@@ -107,6 +107,12 @@ output_format = CORE_PARSER.add_argument(
     type=str,
 )
 
+install_deps = CORE_PARSER.add_argument(
+    "--no-fail",
+    help="When this option is passed, do not fail when contracts do not pass.",
+    action='store_false'
+)
+
 contract = CORE_PARSER.add_argument(
     "--contract",
     help="Run only this contract. If none given, apply all configured contracts. "

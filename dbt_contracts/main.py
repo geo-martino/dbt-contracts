@@ -26,6 +26,9 @@ def main():
     if config.args.format:
         runner.write_results(results, format=config.args.format, output=config.args.output)
 
+    if not config.args.no_fail:
+        raise Exception(f"Found {len(results)} contract violations.")
+
 
 if __name__ == "__main__":
     main()
