@@ -31,7 +31,9 @@ What's in this documentation
 
    reference/models
    reference/sources
+   reference/columns
    reference/macros
+   reference/arguments
 
 
 .. toctree::

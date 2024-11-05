@@ -13,7 +13,7 @@ import docstring_parser
 from dbt_common.dataclass_schema import dbtClassMixin
 from docstring_parser import DocstringParam
 
-from dbt_contracts.contracts import Contract, ProcessorMethod, CONTRACTS, CompiledNodeT, NodeT, ParentContract
+from dbt_contracts.contracts import Contract, ParentContract, ProcessorMethod, CONTRACTS, CompiledNodeT, NodeT
 from dbt_contracts.contracts import PatchT, MetaT, TagT
 from dbt_contracts.contracts.column import ColumnParentT
 from dbt_contracts.types import T, ChildT, ParentT
@@ -36,6 +36,8 @@ SECTION_DESCRIPTIONS = {
     ]
 }
 
+URL_PATH = ("reference",)
+
 IGNORE_ARG_TYPES = [T, ChildT, ParentT, NodeT, CompiledNodeT, PatchT, MetaT, TagT, ColumnParentT, dbtClassMixin]
 
 VAR_KWARG_KEY_MAP = {
@@ -51,11 +53,27 @@ class ReferencePageBuilder:
         self.lines: list[str] = []
         self.indent = " " * 3
 
-    def add_lines(self, lines: str | Iterable[str]) -> None:
-        self.lines.extend(lines) if not isinstance(lines, str) else self.lines.append(lines)
+    def add_lines(self, lines: str | Iterable[str], indent: int = 0) -> None:
+        if isinstance(lines, str):
+            lines = [lines]
+
+        if indent:
+            indent_str = self.indent * indent
+            lines = (indent_str + line for line in lines)
+
+        self.lines.extend(lines)
 
     def add_empty_lines(self, count: int = 1) -> None:
         self.add_lines([""] * count)
+
+    def add_code_block_lines(self, lines: str | Iterable[str], indent: int = 0) -> None:
+        if isinstance(lines, str):
+            lines = [lines]
+
+        indent_str = self.indent * indent
+        lines = (self.indent + indent_str + line if i != 0 else indent_str + line for i, line in enumerate(lines))
+
+        self.lines.extend(lines)
 
     @staticmethod
     def make_title(value: str) -> str:
@@ -107,17 +125,26 @@ class ReferencePageBuilder:
 
         return f"<{self._format_type_to_str(kind).strip("`")}>"
 
+    def _get_dropdown_block(self, title: str, colour: str = "primary", icon: str = None) -> list[str]:
+        block = [
+            f".. dropdown:: {title}",
+            ":animate: fade-in",
+            f":color: {colour}",
+        ]
+        if icon:
+            block.append(f":icon: {icon}")
+
+        block.append("")
+        return block
+
     def generate_ref_for_vararg(
             self, method_name: str, arg_name: str, kind: str | type | TypeVar = None, param: DocstringParam = None
     ) -> None:
         doc = [
             f"**{arg_name}**",
             "",
-            f"You may define the {self.make_title(arg_name).lower().rstrip('s')}s as a list of values i.e.",
+            f"*You may define the {self.make_title(arg_name).lower().rstrip('s')}s as a list of values i.e.*",
             "",
-            ".. code-block:: yaml",
-            "",
-            f"{self.indent}{method_name}:"
         ]
 
         if param:
@@ -126,13 +153,20 @@ class ReferencePageBuilder:
             if len(description) > 1:
                 doc.insert(1, description[1])
 
-        if kind is not None:
-            kind_doc = self._format_type_to_example(kind)
-            types_doc = [f"{self.indent}  - {kind_doc}" for _ in range(2)]
-            types_doc.append(f"{self.indent}  - ...")
-            doc.extend(types_doc)
+        self.add_code_block_lines(doc, 1)
 
-        self.add_lines(self.indent * 2 + line if i != 0 else self.indent + line for i, line in enumerate(doc))
+        example = [
+            ".. code-block:: yaml",
+            "",
+            f"{method_name}:"
+        ]
+        kind_doc = self._format_type_to_example(kind) if kind is not None else "..."
+
+        indent = " " * 2
+        example.extend(f"{indent}- {kind_doc}" for _ in range(2))
+        example.append(f"{indent}- ...")
+
+        self.add_code_block_lines(example, 2)
         self.add_empty_lines()
 
     def generate_ref_for_varkwarg(
@@ -141,11 +175,8 @@ class ReferencePageBuilder:
         doc = [
             f"**{arg_name}**",
             "",
-            f"You may define the {self.make_title(arg_name).lower().rstrip('s')}s as a map of values i.e.",
+            f"*You may define the {self.make_title(arg_name).lower().rstrip('s')}s as a map of values i.e.*",
             "",
-            ".. code-block:: yaml",
-            "",
-            f"{self.indent}{method_name}: ",
         ]
 
         if param:
@@ -154,14 +185,21 @@ class ReferencePageBuilder:
             if len(description) > 1:
                 doc.insert(1, description[1])
 
-        if kind is not None:
-            key_doc = VAR_KWARG_KEY_MAP.get(method_name, 'key')
-            kind_doc = self._format_type_to_example(kind)
-            types_doc = [f"{self.indent}  <{key_doc}>: {kind_doc}" for _ in range(2)]
-            types_doc.append(f"{self.indent}  ...")
-            doc.extend(types_doc)
+        self.add_code_block_lines(doc, indent=1)
 
-        self.add_lines(self.indent * 2 + line if i != 0 else self.indent + line for i, line in enumerate(doc))
+        example = [
+            ".. code-block:: yaml",
+            "",
+            f"{method_name}:"
+        ]
+        kind_doc = self._format_type_to_example(kind) if kind is not None else "..."
+
+        indent = " " * 2
+        key_doc = VAR_KWARG_KEY_MAP.get(method_name, 'key')
+        example.extend(f"{indent}<{key_doc}>: {kind_doc}" for _ in range(2))
+        example.append(f"{indent}...")
+
+        self.add_code_block_lines(example, 2)
         self.add_empty_lines()
 
     def generate_ref_for_kwargs(
@@ -213,19 +251,13 @@ class ReferencePageBuilder:
         if not any((kwarg_names, arg_spec.varargs, arg_spec.varkw)):
             no_args_doc = [
                 ".. note::",
-                "   This method does not need further configuration. "
-                "   Simply define the method name in your configuration."
+                "This method does not need further configuration. "
+                "Simply define the method name in your configuration."
             ]
-            self.add_lines(no_args_doc)
+            self.add_code_block_lines(no_args_doc)
             return
 
-        dropdown_block = [
-            ".. dropdown:: Arguments",
-            f"{self.indent}:animate: fade-in",
-            f"{self.indent}:color: primary",
-            self.indent,
-        ]
-        self.add_lines(dropdown_block)
+        self.add_code_block_lines(self._get_dropdown_block("Arguments", icon="gear"))
 
         if arg_spec.varargs:
             name = arg_spec.varargs
@@ -244,7 +276,7 @@ class ReferencePageBuilder:
 
     def generate_ref_for_method(self, contract: type[Contract], method_name: str) -> None:
         method: ProcessorMethod = getattr(contract, method_name)
-        self.add_header(method_name, section=2)
+        self.add_header(method_name, section=1)
 
         description_split_on = "Example:"
 
@@ -258,7 +290,7 @@ class ReferencePageBuilder:
 
         example = next(description_split, None)
         if example:
-            self.add_header("Example", section=3)
+            self.add_code_block_lines(self._get_dropdown_block("Example", colour="info", icon="code"))
             self.add_lines(example.strip())
 
         self.add_empty_lines()
@@ -270,7 +302,7 @@ class ReferencePageBuilder:
             method_names: Collection[str],
             description: str | Iterable[str] = None
     ) -> None:
-        self.add_header(self.make_title(kind), section=1)
+        self.add_header(self.make_title(kind), section=0)
         if description:
             self.add_lines(description)
             self.add_empty_lines()
@@ -279,38 +311,49 @@ class ReferencePageBuilder:
             self.generate_ref_for_method(contract, method_name)
 
     def generate_ref_for_contract_body(self, contract: type[Contract]) -> None:
-        kind = self.make_title(str(contract.config_key))
+        title = self.make_title(str(contract.config_key))
 
         for key, method_getter in SECTIONS.items():
             method_names = method_getter(contract)
-            description = map(lambda line: line.format(kind=kind.lower()), SECTION_DESCRIPTIONS[key])
+            description = map(lambda line: line.format(kind=title.lower()), SECTION_DESCRIPTIONS[key])
             self.generate_ref_for_methods(contract, key, method_names=method_names, description=description)
+
+    def generate_ref_for_child(self, contract: ParentContract, parent_title: str) -> None:
+        key = str(contract.config_key)
+        title = self.make_title(key)
+        self.add_header(title, section=0)
+
+        link_ref = f":ref:`{title.lower()} <{key}>`"
+        description = (
+            f"You may also define {title.lower().rstrip('s')}s contracts as a child set of contracts "
+            f"on {parent_title.lower().rstrip('s')}s. "
+            f"Refer to the {link_ref} reference for its contracts configuration."
+        )
+
+        self.add_lines(description)
+        self.add_empty_lines()
 
     def build(self, contract: type[Contract], description: str | Iterable[str] = None) -> None:
         self.lines.clear()
 
         contract.__new__(contract)
-        kind = self.make_title(str(contract.config_key))
-        self.add_header(kind, section=None)
+        key = str(contract.config_key)
+        title = self.make_title(key)
+        self.add_lines(f".. _{key}:")
+        self.add_header(title, section=None)
 
         if description:
             self.add_lines(description)
             self.add_empty_lines()
 
-        header = "Main configuration" if issubclass(contract, ParentContract) else "Configuration"
-        self.add_header(header, section=0)
         self.generate_ref_for_contract_body(contract=contract)
 
         if issubclass(contract, ParentContract):
-            # noinspection PyTypeChecker
-            child_contract: type[Contract] = contract.child_type
-            child_kind = self.make_title(str(child_contract.config_key))
+            self.generate_ref_for_child(contract.child_type, parent_title=title)
 
-            child_contract.__new__(child_contract)
-            self.add_header(f"{child_kind} configuration", section=0)
-            self.generate_ref_for_contract_body(contract=child_contract)
+        self._save(str(contract.config_key))
 
-        filename = str(contract.config_key)
+    def _save(self, filename: str) -> None:
         output_path = self.output_dir.joinpath(filename).with_suffix(".rst")
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -319,10 +362,13 @@ class ReferencePageBuilder:
 
 
 if __name__ == "__main__":
-    reference_pages_dir = Path(__file__).parent.joinpath("reference")
+    reference_pages_dir = Path(__file__).parent.joinpath(*URL_PATH)
     if reference_pages_dir.is_dir():
         shutil.rmtree(reference_pages_dir)
 
     builder = ReferencePageBuilder(reference_pages_dir)
     for c in CONTRACTS:
         builder.build(c)
+
+        if issubclass(c, ParentContract):
+            builder.build(c.child_type)

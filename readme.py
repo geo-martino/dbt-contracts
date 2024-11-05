@@ -7,6 +7,7 @@ import docstring_parser
 
 from dbt_contracts import PROGRAM_OWNER_USER, PROGRAM_NAME, DOCUMENTATION_URL
 from dbt_contracts.contracts import CONTRACTS, Contract, ParentContract
+from docs.reference import URL_PATH
 
 SRC_FILENAME = "README.template.md"
 TRG_FILENAME = SRC_FILENAME.replace(".template", "")
@@ -36,7 +37,7 @@ def format_contract_reference(contract: type[Contract], parent_key: str = "") ->
         lines.extend((f"#### {header}", ""))
 
         for method_name in methods:
-            url = f"{DOCUMENTATION_URL}/reference/{key}.html#{method_name.replace('_', '-')}"
+            url = f"{DOCUMENTATION_URL}/{'/'.join(URL_PATH)}/{key}.html#{method_name.replace('_', '-')}"
             method = getattr(contract, method_name).func
             doc = docstring_parser.parse(method.__doc__).short_description.strip()
             doc = re.sub(r"\s*\n\s+", " ", doc)
