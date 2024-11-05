@@ -102,18 +102,22 @@ class Result(Generic[T], metaclass=ABCMeta):
             patch_path = Path(item.patch_path.split("://")[1])
         elif (path := Path(item.path)).suffix in [".yml", ".yaml"]:
             patch_path = path
-
+        print("initial", patch_path, to_absolute)
         if patch_path is None or not to_absolute or patch_path.is_absolute():
             return patch_path
 
         flags = get_flags()
         project_dir = getattr(flags, "PROJECT_DIR", None)
+        print("project dir", project_dir)
 
         if (path_in_project := Path(project_dir, patch_path)).exists():
+            print("in project", path_in_project)
             patch_path = path_in_project
         elif (path_in_cwd := Path(os.getcwd(), patch_path)).exists():
+            print("in cwd", path_in_cwd)
             patch_path = path_in_cwd
 
+        print("final", patch_path)
         return patch_path
 
     @classmethod
