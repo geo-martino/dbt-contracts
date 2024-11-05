@@ -1,5 +1,6 @@
 import dataclasses
 import json
+import os
 from abc import ABCMeta, abstractmethod
 from collections.abc import Mapping, MutableMapping, Collection, Iterable
 from dataclasses import dataclass
@@ -95,12 +96,23 @@ class Result(Generic[T], metaclass=ABCMeta):
         return Path(item.path)
 
     @staticmethod
-    def _get_patch_path_from_item(item: T, **__) -> Path | None:
+    def _get_patch_path_from_item(item: T, to_absolute: bool = False, **__) -> Path | None:
         patch_path = None
         if isinstance(item, ParsedResource) and item.patch_path:
             patch_path = Path(item.patch_path.split("://")[1])
         elif (path := Path(item.path)).suffix in [".yml", ".yaml"]:
             patch_path = path
+
+        if patch_path is None or not to_absolute or patch_path.is_absolute():
+            return patch_path
+
+        flags = get_flags()
+        project_dir = getattr(flags, "PROJECT_DIR", None)
+
+        if (path_in_project := Path(project_dir, patch_path)).exists():
+            patch_path = path_in_project
+        elif (path_in_cwd := Path(os.getcwd(), patch_path)).exists():
+            patch_path = path_in_cwd
 
         return patch_path
 
@@ -120,15 +132,8 @@ class Result(Generic[T], metaclass=ABCMeta):
     def _get_patch_object_from_item(
             cls, item: T, patches: MutableMapping[Path, Mapping[str, Any]] = None, **kwargs
     ) -> Mapping[str, Any] | None:
-        patch_path = cls._get_patch_path_from_item(item=item, **kwargs)
-        if patch_path is None:
-            return None
-
-        if not patch_path.is_absolute():
-            flags = get_flags()
-            project_dir = getattr(flags, "PROJECT_DIR", None)
-            patch_path = Path(project_dir, patch_path)
-        if not patch_path.is_file():
+        patch_path = cls._get_patch_path_from_item(item=item, to_absolute=True, **kwargs)
+        if patch_path is None or not patch_path.is_file():
             return None
 
         if patches is None:
