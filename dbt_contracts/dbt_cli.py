@@ -17,6 +17,8 @@ from dbt.flags import set_from_args
 from dbt.task.docs.generate import CATALOG_FILENAME
 from dbt_common.context import set_invocation_context
 
+from dbt_contracts.cli import CORE_PARSER
+
 
 def _format_option_key(key: str) -> str:
     key_clean = key.replace("_", "-").strip("-")
@@ -33,14 +35,8 @@ def get_config() -> RuntimeConfig:
     :return: The runtime config.
     """
     set_invocation_context(os.environ)
-    # provide the bare minimum set of args required to create the runtime config from args
-    args = Namespace(
-        project_dir=os.getenv("DBT_PROJECT_DIR"),
-        profiles_dir=os.getenv("DBT_PROFILES_DIR"),
-        target=None,
-        profile=None,
-        threads=None,
-    )
+    args = CORE_PARSER.parse_args()
+    print(args)
     set_from_args(args, {})
     return RuntimeConfig.from_args(args)
 

@@ -327,7 +327,7 @@ class ReferencePageBuilder:
         description = (
             f"You may also define {title.lower().rstrip('s')}s contracts as a child set of contracts "
             f"on {parent_title.lower().rstrip('s')}s. "
-            f"Refer to the {link_ref} reference for its contracts configuration."
+            f"Refer to the {link_ref} reference for more info."
         )
 
         self.add_lines(description)
