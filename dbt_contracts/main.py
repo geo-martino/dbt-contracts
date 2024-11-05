@@ -6,8 +6,6 @@ from dbt_contracts.runner import ContractRunner
 
 def main():
     config = get_config()
-    print(config.args)
-
 
     if config.args.config is None:
         config.args.config = config.args.project_dir

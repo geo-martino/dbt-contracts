@@ -262,6 +262,7 @@ class ContractRunner:
             return results
 
         self.log_results(results)
+        return results
 
     def _get_parent_contract(self, contract: Contract | str) -> ParentContract | None:
         parents = (
