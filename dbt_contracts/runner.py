@@ -135,7 +135,7 @@ class ContractRunner:
                 path = path_in_cwd
 
             if not path.is_relative_to(self.config.project_root):
-                raise Exception(f"Could not determine absolute path for {path!r}")
+                raise Exception(f"Could not determine relative path to {self.config.project_root} for {path}")
 
             paths.append(str(path.relative_to(self.config.project_root)))
 
