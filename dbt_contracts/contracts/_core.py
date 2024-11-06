@@ -109,7 +109,7 @@ def enforce_method(
 ) -> ProcessorMethod | Callable[[ProcessorMethodT], ProcessorMethod]:
     """
     A decorator for enforcement methods.
-    Assigns the `is_enforcement` property to the method to identify it as a enforcement method.
+    Assigns the `is_enforcement` property to the method to identify it as an enforcement method.
 
     :param arg: Usually the `func`. Need to allow decorator to be used with or without calling it directly.
     :param needs_manifest: Tag this method as requiring a manifest to function.
@@ -218,7 +218,9 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         )
 
     def __new__(cls, *_, **__):
+        # noinspection SpellCheckingInspection
         cls.__filtermethods__ = []
+        # noinspection SpellCheckingInspection
         cls.__enforcementmethods__ = []
 
         for name in dir(cls):
@@ -334,7 +336,7 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
 
         seen = set()
 
-        for item in filterfalse(lambda item: self._apply_enforcements(item, enforcements), self.items):
+        for item in filterfalse(lambda i: self._apply_enforcements(i, enforcements), self.items):
             key = f"{item[1].unique_id}.{item[0].name}" if isinstance(item, tuple) else item.unique_id
             if key not in seen:
                 seen.add(key)

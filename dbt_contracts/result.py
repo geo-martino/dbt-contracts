@@ -1,8 +1,7 @@
 import dataclasses
-import json
 import os
 from abc import ABCMeta, abstractmethod
-from collections.abc import Mapping, MutableMapping, Collection, Iterable
+from collections.abc import Mapping, MutableMapping, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Self, Generic, Any
@@ -165,7 +164,7 @@ class Result(Generic[T], metaclass=ABCMeta):
         return str(value)
 
     @property
-    def _github_annotation(self) -> Mapping[str, str]:
+    def _github_annotation(self) -> Mapping[str, str | int | list[str] | dict[str, str]]:
         """
         See annotations spec in the `output` param 'Update a check run':
         https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run
@@ -179,7 +178,10 @@ class Result(Generic[T], metaclass=ABCMeta):
             "annotation_level": self.result_level,
             "title": self.result_name.replace("_", " ").title(),
             "message": self.message,
-            "raw_details": self.result_type,
+            "raw_details": {
+                "result_type": self.result_type,
+                "name": self.name,
+            },
         }
 
     @property
@@ -245,13 +247,19 @@ class ResultMacro(Result[Macro]):
 class ResultChild(Result[T], Generic[T, ParentT], metaclass=ABCMeta):
     parent_id: str
     parent_name: str
+    parent_type: str
     index: int
 
     # noinspection PyMethodOverriding
     @classmethod
     def from_resource(cls, item: T, parent: ParentT, **kwargs) -> Self:
         return super().from_resource(
-            item=item, parent=parent, parent_id=parent.unique_id, parent_name=parent.name, **kwargs
+            item=item,
+            parent=parent,
+            parent_id=parent.unique_id,
+            parent_name=parent.name,
+            parent_type=str(parent.resource_type),
+            **kwargs
         )
 
     @staticmethod
@@ -273,6 +281,14 @@ class ResultChild(Result[T], Generic[T, ParentT], metaclass=ABCMeta):
     @abstractmethod
     def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: T, parent: ParentT, **__):
         raise NotImplementedError
+
+    @property
+    def _github_annotation(self) -> Mapping[str, str]:
+        annotation = super()._github_annotation
+        details: dict[str, str] = annotation["raw_details"]
+        details["parent_name"] = self.parent_name
+        details["parent_type"] = self.parent_type
+        return annotation
 
 
 class ResultColumn(ResultChild[ColumnInfo, ParentT]):

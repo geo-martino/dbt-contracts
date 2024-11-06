@@ -289,7 +289,9 @@ class ContractRunner:
                 self._assign_artifacts_to_contracts([parent])
 
     @staticmethod
-    def _run_contract(contract: Contract, enforcements: Collection[str] = (), run_children: bool = True) -> list[Result]:
+    def _run_contract(
+            contract: Contract, enforcements: Collection[str] = (), run_children: bool = True
+    ) -> list[Result]:
         if isinstance(contract, ParentContract):
             contract.run(enforcements=enforcements, child=run_children)
         else:
@@ -322,7 +324,7 @@ class ContractRunner:
         for line in self.format_results(results).split("\n"):
             self.logger.info(line)
 
-    def write_results(self, results: Collection[Result], format_type: str, output: str | Path) -> Path:
+    def write_results(self, results: Collection[Result], format_type: str, output: str | Path) -> Path | None:
         """
         Write the given results to an output file with the given `format`.
 
@@ -367,7 +369,7 @@ class ContractRunner:
 
     @staticmethod
     def _write_results_as_jsonl(results: Collection[Result], output_path: Path) -> Path:
-        with  (path := output_path.with_suffix(".json")).open("w") as file:
+        with (path := output_path.with_suffix(".json")).open("w") as file:
             for result in results:
                 json.dump(result.as_json(), file)
                 file.write("\n")
