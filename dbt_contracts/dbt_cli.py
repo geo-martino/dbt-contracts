@@ -45,6 +45,9 @@ def add_default_args(*args: str, config: RuntimeConfig = None) -> list[str]:
     :param config: The runtime config to use for default args.
     :return: The formatted CLI args.
     """
+    if config is None:
+        config = get_config()
+
     defaults = {
         "--project-dir": config.project_root,
         "--profiles-dir": config.args.profiles_dir,
