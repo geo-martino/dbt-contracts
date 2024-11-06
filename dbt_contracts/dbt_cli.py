@@ -99,6 +99,7 @@ def clean_paths(*args, runner: dbtRunner = None, **kwargs) -> None:
     :param args: Args to pass to the `runner`.
     :param kwargs: Args to pass to the `runner` in keyword format. Keys will be formatted to CLI appropriate keys.
     """
+    get_config()
     return get_result("clean", *args, runner=runner, **kwargs).result
 
 
@@ -111,6 +112,7 @@ def install_dependencies(*args, runner: dbtRunner = None, **kwargs) -> None:
     :param args: Args to pass to the `runner`.
     :param kwargs: Args to pass to the `runner` in keyword format. Keys will be formatted to CLI appropriate keys.
     """
+    get_config()
     return get_result("deps", *args, runner=runner, **kwargs).result
 
 
