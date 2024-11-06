@@ -38,19 +38,24 @@ def get_config(args: Namespace = None) -> RuntimeConfig:
     return RuntimeConfig.from_args(args)
 
 
-def get_default_args(args: Namespace = None) -> list[str]:
+def add_default_args(*args: str, config: RuntimeConfig = None) -> list[str]:
     """
     Gets the default args to give to all commands.
 
+    :param config: The runtime config to use for default args.
     :return: The formatted CLI args.
     """
-    config = get_config(args)
-    args = [
-        "--project-dir", config.project_root,
-        "--profiles-dir", config.args.profiles_dir,
-        "--profile", config.profile_name,
-        "--target", config.target_name,
-    ]
+    defaults = {
+        "--project-dir": config.project_root,
+        "--profiles-dir": config.args.profiles_dir,
+        "--profile": config.profile_name,
+        "--target": config.target_name,
+    }
+
+    args = list(args)
+    for key, val in defaults.items():
+        if key not in args:
+            args.extend((key, val))
     return args
 
 
@@ -106,7 +111,7 @@ def clean_paths(*args, runner: dbtRunner = None) -> None:
         If None, creates a new runner for this invocation.
     :param args: Args to pass to the `runner`.
     """
-    args += [*get_default_args(), "--no-clean-project-files-only"]
+    args = add_default_args(*args)
     return get_result("clean", *args, runner=runner).result
 
 
@@ -118,7 +123,7 @@ def install_dependencies(*args, runner: dbtRunner = None) -> None:
         If None, creates a new runner for this invocation.
     :param args: Args to pass to the `runner`.
     """
-    args += get_default_args()
+    args = add_default_args(*args)
     return get_result("deps", *args, runner=runner).result
 
 
@@ -136,7 +141,7 @@ def get_manifest(*args, runner: dbtRunner = None, config: RuntimeConfig = None) 
     if artifact:
         return Manifest.from_dict(artifact)
 
-    args += get_default_args()
+    args = add_default_args(*args)
     return get_result("parse", *args, runner=runner).result
 
 
@@ -154,5 +159,5 @@ def get_catalog(*args, runner: dbtRunner = None, config: RuntimeConfig = None) -
     if artifact:
         return CatalogArtifact.from_dict(artifact)
 
-    args += get_default_args()
+    args = add_default_args(*args)
     return get_result("docs", "generate", *args, runner=runner).result
