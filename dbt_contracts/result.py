@@ -92,14 +92,14 @@ class Result(Generic[T], metaclass=ABCMeta):
 
     @staticmethod
     def _get_path_from_item(item: T, **__) -> Path | None:
-        return Path(item.path)
+        return Path(item.original_file_path)
 
     @staticmethod
     def _get_patch_path_from_item(item: T, to_absolute: bool = False, **__) -> Path | None:
         patch_path = None
         if isinstance(item, ParsedResource) and item.patch_path:
             patch_path = Path(item.patch_path.split("://")[1])
-        elif (path := Path(item.path)).suffix in [".yml", ".yaml"]:
+        elif (path := Path(item.original_file_path)).suffix in [".yml", ".yaml"]:
             patch_path = path
 
         if patch_path is None or not to_absolute or patch_path.is_absolute():
