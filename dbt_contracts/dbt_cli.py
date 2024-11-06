@@ -115,7 +115,7 @@ def clean_paths(*args, runner: dbtRunner = None) -> None:
     :param args: Args to pass to the `runner`.
     """
     args = add_default_args(*args)
-    return get_result("clean", *args, runner=runner).result
+    return get_result("clean", "--no-clean-project-files-only", *args, runner=runner).result
 
 
 def install_dependencies(*args, runner: dbtRunner = None) -> None:
