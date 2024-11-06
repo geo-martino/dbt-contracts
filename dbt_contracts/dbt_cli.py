@@ -5,6 +5,7 @@ import json
 import os
 from argparse import Namespace
 from collections.abc import Mapping
+from itertools import chain
 from pathlib import Path
 from typing import Any
 
@@ -18,12 +19,6 @@ from dbt.task.docs.generate import CATALOG_FILENAME
 from dbt_common.context import set_invocation_context
 
 from dbt_contracts.cli import CORE_PARSER
-
-
-def _format_option_key(key: str) -> str:
-    key_clean = key.replace("_", "-").strip("-")
-    prefix = "-" if len(key_clean) == 1 else "--"
-    return prefix + key_clean
 
 
 def get_config(args: Namespace = None) -> RuntimeConfig:
@@ -68,55 +63,63 @@ def load_artifact(filename: str, config: RuntimeConfig = None) -> Mapping[str, A
     return artifact
 
 
-def get_result(*args, runner: dbtRunner = None, **kwargs) -> dbtRunnerResult:
+def get_result(*args, runner: dbtRunner = None) -> dbtRunnerResult:
     """
     Get the result of a dbt invocation with the given `args` and `kwargs` against a given `runner`.
 
     :param runner: The :py:class:`dbtRunner` to invoke commands against.
         If None, creates a new runner for this invocation.
     :param args: Args to pass to the `runner`.
-    :param kwargs: Args to pass to the `runner` in keyword format. Keys will be formatted to CLI appropriate keys.
     :return: The result from the invocation.
     """
     if runner is None:
         runner = dbtRunner()
 
-    kwargs = [item for key, val in kwargs.items() for item in (_format_option_key(key), str(val))]
-
-    result: dbtRunnerResult = runner.invoke(list(args) + kwargs)
+    result: dbtRunnerResult = runner.invoke(list(args))
     if not result.success:
         raise result.exception
 
     return result
 
 
-def clean_paths(*args, runner: dbtRunner = None, **kwargs) -> None:
+def clean_paths(*args, runner: dbtRunner = None) -> None:
     """
     Clean the configured paths i.e. run the `dbt clean` command.
 
     :param runner: The :py:class:`dbtRunner` to invoke commands against.
         If None, creates a new runner for this invocation.
     :param args: Args to pass to the `runner`.
-    :param kwargs: Args to pass to the `runner` in keyword format. Keys will be formatted to CLI appropriate keys.
     """
-    print(get_config().args)
-    return get_result("clean", *args, runner=runner, **kwargs).result
+    config = get_config()
+    args = [
+        "--project-dir", config.project_root,
+        "--profiles-dir", config.args.profiles_dir,
+        "--profile", config.profile_name,
+        "--target", config.target_name,
+        "--no-clean-project-files-only",
+    ]
+    return get_result("clean", *args, runner=runner).result
 
 
-def install_dependencies(*args, runner: dbtRunner = None, **kwargs) -> None:
+def install_dependencies(*args, runner: dbtRunner = None) -> None:
     """
     Install additional dbt dependencies i.e. run the `dbt deps` command.
 
     :param runner: The :py:class:`dbtRunner` to invoke commands against.
         If None, creates a new runner for this invocation.
     :param args: Args to pass to the `runner`.
-    :param kwargs: Args to pass to the `runner` in keyword format. Keys will be formatted to CLI appropriate keys.
     """
-    print(get_config().args)
-    return get_result("deps", *args, runner=runner, **kwargs).result
+    config = get_config()
+    args = [
+        "--project-dir", config.project_root,
+        "--profiles-dir", config.args.profiles_dir,
+        "--profile", config.profile_name,
+        "--target", config.target_name,
+    ]
+    return get_result("deps", *args, runner=runner).result
 
 
-def get_manifest(*args, runner: dbtRunner = None, config: RuntimeConfig = None, **kwargs) -> Manifest:
+def get_manifest(*args, runner: dbtRunner = None, config: RuntimeConfig = None) -> Manifest:
     """
     Generate and return the dbt manifest for a project i.e. run the `dbt parse` command.
 
@@ -124,16 +127,15 @@ def get_manifest(*args, runner: dbtRunner = None, config: RuntimeConfig = None, 
         If None, creates a new runner for this invocation.
     :param config: The runtime config to use when trying to load the artifact from the target path.
     :param args: Args to pass to the `runner`.
-    :param kwargs: Args to pass to the `runner` in keyword format. Keys will be formatted to CLI appropriate keys.
     :return: The manifest.
     """
     artifact = load_artifact(MANIFEST_FILE_NAME, config=config)
     if artifact:
         return Manifest.from_dict(artifact)
-    return get_result("parse", *args, runner=runner, **kwargs).result
+    return get_result("parse", *args, runner=runner).result
 
 
-def get_catalog(*args, runner: dbtRunner = None, config: RuntimeConfig = None, **kwargs) -> CatalogArtifact:
+def get_catalog(*args, runner: dbtRunner = None, config: RuntimeConfig = None) -> CatalogArtifact:
     """
     Generate and return the dbt catalog for a project i.e. run the `dbt docs generate` command.
 
@@ -141,10 +143,9 @@ def get_catalog(*args, runner: dbtRunner = None, config: RuntimeConfig = None, *
         If None, creates a new runner for this invocation.
     :param config: The runtime config to use when trying to load the artifact from the target path.
     :param args: Args to pass to the `runner`.
-    :param kwargs: Args to pass to the `runner` in keyword format. Keys will be formatted to CLI appropriate keys.
     :return: The catalog.
     """
     artifact = load_artifact(CATALOG_FILENAME, config=config)
     if artifact:
         return CatalogArtifact.from_dict(artifact)
-    return get_result("docs", "generate", *args, runner=runner, **kwargs).result
+    return get_result("docs", "generate", *args, runner=runner).result
