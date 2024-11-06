@@ -297,7 +297,10 @@ class ContractRunner:
         else:
             contract.run(enforcements=enforcements)
 
-        return contract.results
+        results = contract.results
+        if isinstance(contract, ParentContract) and contract.child is not None:
+            results.extend(contract.child.results)
+        return results
 
     def format_results(self, results: Collection[Result]) -> str | None:
         """
