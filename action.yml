@@ -10,15 +10,44 @@ inputs:
     required: false
     default: 'DBT Contracts results'
   path:
-    description: 'Path to a JSON file which contains the output of a dbt-contracts execution as a list of annotations.'
+    description: |-
+      Path to a JSON file which contains the results of a dbt-contracts execution as a list of annotations.
     required: true
+  additional_file_dir:
+    description: |-
+      When working with a nested dbt project,
+      appending this additional parent file dir to the paths in the results.
   repo-token:
-    description: 'Token used to interact with the GitHub API.'
+    description: Token used to interact with the GitHub API.
     required: true
   ignore-missing-file:
-    description: 'Ignore if the file which contains annotations is missing'
+    description: Ignore if the file which contains annotations is missing
     required: false
     default: 'true'
 runs:
-  using: 'ubuntu'
-  main: 'scripts/summarise_results.sh'
+  using: "composite"
+  steps:
+    - name: Check file exists
+      if: ${{ ! inputs.ignore-missing-file }}
+      shell: bash
+      env:
+        ANNOTATIONS_PATH: ${{ inputs.path }}
+      run: |
+        if [ ! -f "$ANNOTATIONS_PATH" ]; then
+            echo "File not found: $ANNOTATIONS_PATH"
+            exit 1
+        fi
+
+    - name: Populate summary
+      shell: bash
+      env:
+        ANNOTATIONS_PATH: ${{ inputs.path }}
+        TITLE: ${{ inputs.title }}
+        FILE_DIR: ${{ inputs.additional_file_dir }}
+      run: "dist/summarise_results.sh"
+
+    - name: Show summary url
+      shell: bash
+      run: |
+        summary_url="$(".github/workflows/scripts/get_summary_url.sh")"
+        echo "::notice::View the summary: $summary_url"
