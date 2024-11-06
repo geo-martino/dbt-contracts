@@ -5,7 +5,6 @@ import json
 import os
 from argparse import Namespace
 from collections.abc import Mapping
-from itertools import chain
 from pathlib import Path
 from typing import Any
 

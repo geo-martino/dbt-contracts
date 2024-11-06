@@ -1,4 +1,3 @@
-from argparse import Namespace
 from pathlib import Path
 
 from dbt_contracts.dbt_cli import get_config, clean_paths, install_dependencies
