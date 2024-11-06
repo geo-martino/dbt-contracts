@@ -12,14 +12,14 @@ inputs:
   path:
     description: |-
       Path to a JSON file which contains the results of a dbt-contracts execution as a list of annotations.
-    required: true
+    default: 'contracts_results.json'
   additional_file_dir:
     description: |-
       When working with a nested dbt project,
       appending this additional parent file dir to the paths in the results.
-  repo-token:
-    description: Token used to interact with the GitHub API.
-    required: true
+#  repo-token:
+#    description: Token used to interact with the GitHub API.
+#    required: true
   ignore-missing-file:
     description: Ignore if the file which contains annotations is missing
     required: false
