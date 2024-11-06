@@ -1,17 +1,18 @@
 import sys
 from pathlib import Path
 
+from dbt_contracts.cli import CORE_PARSER
 from dbt_contracts.dbt_cli import get_config, clean_paths, install_dependencies
 from dbt_contracts.runner import ContractRunner
 
 
 def main():
+    args = CORE_PARSER.parse_args()
+    print(args)
     config = get_config()
 
     if config.args.config is None and config.args.project_dir:
         config.args.config = config.args.project_dir
-    if config.args.project_dir is None and config.args.config:
-        config.args.project_dir = config.args.config
     if config.args.output is None:
         config.args.output = Path(config.project_root, config.target_path)
 

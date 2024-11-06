@@ -27,4 +27,5 @@
   description: Run the configured contracts.
   entry: run-contracts
   language: python
+  require_serial: true
   types_or: [sql, yaml]
