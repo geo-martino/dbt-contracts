@@ -38,6 +38,22 @@ def get_config(args: Namespace = None) -> RuntimeConfig:
     return RuntimeConfig.from_args(args)
 
 
+def get_default_args(args: Namespace = None) -> list[str]:
+    """
+    Gets the default args to give to all commands.
+
+    :return: The formatted CLI args.
+    """
+    config = get_config(args)
+    args = [
+        "--project-dir", config.project_root,
+        "--profiles-dir", config.args.profiles_dir,
+        "--profile", config.profile_name,
+        "--target", config.target_name,
+    ]
+    return args
+
+
 def load_artifact(filename: str, config: RuntimeConfig = None) -> Mapping[str, Any] | None:
     """
     Load an artifact from the currently configured dbt target directory.
@@ -90,14 +106,7 @@ def clean_paths(*args, runner: dbtRunner = None) -> None:
         If None, creates a new runner for this invocation.
     :param args: Args to pass to the `runner`.
     """
-    config = get_config()
-    args = [
-        "--project-dir", config.project_root,
-        "--profiles-dir", config.args.profiles_dir,
-        "--profile", config.profile_name,
-        "--target", config.target_name,
-        "--no-clean-project-files-only",
-    ]
+    args += [*get_default_args(), "--no-clean-project-files-only"]
     return get_result("clean", *args, runner=runner).result
 
 
@@ -109,13 +118,7 @@ def install_dependencies(*args, runner: dbtRunner = None) -> None:
         If None, creates a new runner for this invocation.
     :param args: Args to pass to the `runner`.
     """
-    config = get_config()
-    args = [
-        "--project-dir", config.project_root,
-        "--profiles-dir", config.args.profiles_dir,
-        "--profile", config.profile_name,
-        "--target", config.target_name,
-    ]
+    args += get_default_args()
     return get_result("deps", *args, runner=runner).result
 
 
@@ -132,6 +135,8 @@ def get_manifest(*args, runner: dbtRunner = None, config: RuntimeConfig = None) 
     artifact = load_artifact(MANIFEST_FILE_NAME, config=config)
     if artifact:
         return Manifest.from_dict(artifact)
+
+    args += get_default_args()
     return get_result("parse", *args, runner=runner).result
 
 
@@ -148,4 +153,6 @@ def get_catalog(*args, runner: dbtRunner = None, config: RuntimeConfig = None) -
     artifact = load_artifact(CATALOG_FILENAME, config=config)
     if artifact:
         return CatalogArtifact.from_dict(artifact)
+
+    args += get_default_args()
     return get_result("docs", "generate", *args, runner=runner).result
