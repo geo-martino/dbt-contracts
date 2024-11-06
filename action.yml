@@ -6,9 +6,9 @@ author: 'George Martin Marino'
 description: 'Creates a summary table on actions to summarise results from dbt-contracts'
 inputs:
   title:
-    description: 'Title of the check'
+    description: 'Title of the summary'
     required: false
-    default: 'check'
+    default: 'DBT Contracts results'
   path:
     description: 'Path to a JSON file which contains the output of a dbt-contracts execution as a list of annotations.'
     required: true
