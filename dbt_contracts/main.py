@@ -6,11 +6,12 @@ from dbt_contracts.runner import ContractRunner
 
 
 def main():
-    print(sys.argv)
     config = get_config()
 
-    if config.args.config is None:
+    if config.args.config is None and config.args.project_dir:
         config.args.config = config.args.project_dir
+    if config.args.project_dir is None and config.args.config:
+        config.args.project_dir = config.args.config
     if config.args.output is None:
         config.args.output = Path(config.project_root, config.target_path)
 

@@ -176,7 +176,7 @@ class ContractRunner:
             If a directory is given, the default file name will be appended.
         :return: The configured runner.
         """
-        path = Path(path)
+        path = Path(path).resolve()
         if path.is_dir():
             path = path.joinpath(cls.default_config_file_name)
         if not path.is_file():
