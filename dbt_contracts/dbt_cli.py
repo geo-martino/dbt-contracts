@@ -19,6 +19,10 @@ from dbt_common.context import set_invocation_context
 
 from dbt_contracts.cli import CORE_PARSER
 
+DEFAULT_GLOBAL_ARGS = [
+    "--no-use-colors",
+]
+
 
 def get_config(args: Namespace = None) -> RuntimeConfig:
     """
@@ -98,7 +102,7 @@ def get_result(*args, runner: dbtRunner = None) -> dbtRunnerResult:
     if runner is None:
         runner = dbtRunner()
 
-    result: dbtRunnerResult = runner.invoke(list(args))
+    result: dbtRunnerResult = runner.invoke(list(args) + DEFAULT_GLOBAL_ARGS)
     if not result.success:
         raise result.exception
 

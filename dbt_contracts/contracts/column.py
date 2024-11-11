@@ -11,6 +11,7 @@ from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
 from dbt.artifacts.schemas.catalog import CatalogTable
 from dbt.contracts.graph.nodes import TestNode, SourceDefinition
 
+from dbt_contracts.contracts._comparisons import match_strings, is_not_in_range
 from dbt_contracts.contracts._core import enforce_method, ChildContract
 from dbt_contracts.contracts._properties import DescriptionPropertyContract, TagContract, MetaContract
 
@@ -136,7 +137,7 @@ class ColumnContract(
                 data_type = table.columns[column.name].type
 
         pattern_key = next((
-            key for key in patterns if self._compare_strings(
+            key for key in patterns if match_strings(
                 key,
                 data_type,
                 ignore_whitespace=ignore_whitespace,
@@ -197,9 +198,17 @@ class ColumnContract(
             return False
 
         count = len(tuple(self.get_tests(column, parent)))
-        return self._is_in_range(
-            item=column, parent=parent, kind="tests", count=count, min_count=min_count, max_count=max_count
-        )
+        too_small, too_large = is_not_in_range(count=count, min_count=min_count, max_count=max_count)
+
+        if too_small or too_large:
+            test_name = inspect.currentframe().f_code.co_name
+            quantifier = 'few' if too_small else 'many'
+            expected = min_count if too_small else max_count
+            message = f"Too {quantifier} tests found: {count}. Expected: {expected}."
+
+            self._add_result(column, parent=parent, name=test_name, message=message)
+
+        return not too_small and not too_large
 
     @enforce_method(needs_catalog=True)
     def exists(self, column: ColumnInfo, parent: ColumnParentT) -> bool:
@@ -252,7 +261,7 @@ class ColumnContract(
         if not self._is_column_in_table(column, parent=parent, table=table, test_name=test_name):
             return False
 
-        unmatched_description = not self._compare_strings(
+        unmatched_description = not match_strings(
             column.description,
             table.columns[column.name].comment,
             case_insensitive=case_insensitive,
@@ -300,7 +309,7 @@ class ColumnContract(
         if not self._is_column_in_table(column, parent=parent, table=table, test_name=test_name):
             return False
 
-        unmatched_type = not self._compare_strings(
+        unmatched_type = not match_strings(
             column.data_type,
             table.columns[column.name].type,
             ignore_whitespace=ignore_whitespace,

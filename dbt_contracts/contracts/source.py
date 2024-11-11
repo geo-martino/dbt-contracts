@@ -5,6 +5,7 @@ import inspect
 
 from dbt.contracts.graph.nodes import SourceDefinition
 
+from dbt_contracts.contracts._comparisons import is_not_in_range
 from dbt_contracts.contracts._core import filter_method, enforce_method
 from dbt_contracts.contracts._node import NodeContract
 
@@ -75,6 +76,14 @@ class SourceContract(NodeContract[SourceDefinition]):
         :return: True if the source's properties are valid, False otherwise.
         """
         count = sum(source.unique_id in node.depends_on_nodes for node in self.manifest.nodes.values())
-        return self._is_in_range(
-            item=source, kind="downstream dependencies", count=count, min_count=min_count, max_count=max_count
-        )
+        too_small, too_large = is_not_in_range(count=count, min_count=min_count, max_count=max_count)
+
+        if too_small or too_large:
+            test_name = inspect.currentframe().f_code.co_name
+            quantifier = 'few' if too_small else 'many'
+            expected = min_count if too_small else max_count
+            message = f"Too {quantifier} downstream dependencies found: {count}. Expected: {expected}."
+
+            self._add_result(source, name=test_name, message=message)
+
+        return not too_small and not too_large

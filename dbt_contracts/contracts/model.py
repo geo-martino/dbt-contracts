@@ -1,10 +1,12 @@
 """
 Contract configuration for models.
 """
+import inspect
 from collections.abc import Iterable
 
 from dbt.contracts.graph.nodes import ModelNode
 
+from dbt_contracts.contracts._comparisons import is_not_in_range
 from dbt_contracts.contracts._core import filter_method, enforce_method
 from dbt_contracts.contracts._node import CompiledNodeContract
 
@@ -44,4 +46,14 @@ class ModelContract(CompiledNodeContract[ModelNode]):
         :return: True if the node's properties are valid, False otherwise.
         """
         count = len(node.constraints)
-        return self._is_in_range(item=node, kind="constraints", count=count, min_count=min_count, max_count=max_count)
+        too_small, too_large = is_not_in_range(count=count, min_count=min_count, max_count=max_count)
+
+        if too_small or too_large:
+            test_name = inspect.currentframe().f_code.co_name
+            quantifier = 'few' if too_small else 'many'
+            expected = min_count if too_small else max_count
+            message = f"Too {quantifier} constraints found: {count}. Expected: {expected}."
+
+            self._add_result(node, name=test_name, message=message)
+
+        return not too_small and not too_large

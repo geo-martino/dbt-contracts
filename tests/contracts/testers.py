@@ -6,8 +6,9 @@ import pytest
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 
+# noinspection PyProtectedMember
 from dbt_contracts.contracts._core import filter_method, enforce_method, Contract
-from dbt_contracts.types import CombinedT, ChildT, ParentT
+from dbt_contracts.types import CombinedT, ParentT
 
 
 class ContractTester(metaclass=ABCMeta):
@@ -46,13 +47,14 @@ class ContractTester(metaclass=ABCMeta):
     ) -> Iterable[CombinedT]:
         return [item for item in filtered_items if item not in valid_items]
 
-    def mock_method(self, *args, **kwargs) -> bool:
+    @staticmethod
+    def mock_method(*args, **kwargs) -> bool:
         return True
 
     def test_manifest_properties(self, contract: Contract, manifest: Manifest):
         contract._manifest = None
         assert not contract.manifest_is_set
-        with pytest.raises(Exception, match=".*is not set.*"):
+        with pytest.raises(Exception, match="is not set"):
             assert contract.manifest
 
         contract._manifest = manifest
@@ -73,7 +75,7 @@ class ContractTester(metaclass=ABCMeta):
     def test_catalog_properties(self, contract: Contract, catalog: CatalogArtifact):
         contract._catalog = None
         assert not contract.catalog_is_set
-        with pytest.raises(Exception, match=".*is not set.*"):
+        with pytest.raises(Exception, match="is not set"):
             assert contract.catalog
 
         contract._catalog = catalog
@@ -186,75 +188,20 @@ class ContractTester(metaclass=ABCMeta):
             arg_offset = len(item) if isinstance(item, tuple) else 1
             assert contract._call_methods(item, [tuple((_test_call, expected))])
 
-    def test_get_matching_catalog_table(
-            self, contract: Contract, catalog: CatalogArtifact, valid_items: Iterable[CombinedT]
-    ):
-        pass
+    def test_add_result(self, contract: Contract, filtered_items: Iterable[CombinedT]):
+        item = next(iter(filtered_items))
+        parent = None
+        if isinstance(item, tuple):
+            parent = item[1]
+            item = item[0]
 
-    def test_is_in_range(self, contract: Contract):
-        pass
+        expected_name = "test_name"
+        expected_message = "this test has failed"
+        contract._add_result(item=item, parent=parent, name=expected_name, message=expected_message)
 
-    def test_compare_strings(self, contract: Contract):
-        pass
-
-    def test_matches_patterns(self, contract: Contract):
-        pass
-
-    def test_filter_on_name(self, contract: Contract):
-        pass
-
-
-class ChildContractTester(ContractTester, metaclass=ABCMeta):
-
-    @abstractmethod
-    def parents(self) -> Iterable[ParentT]:
-        raise NotImplementedError
-
-    # noinspection PyMethodOverriding
-    @abstractmethod
-    def contract(self, manifest: Manifest, catalog: CatalogArtifact, parents: Iterable[ParentT]) -> Iterable[CombinedT]:
-        raise NotImplementedError
-
-    # noinspection PyMethodOverriding
-    @abstractmethod
-    def available_items(self, parents: Iterable[ParentT]) -> Iterable[CombinedT]:
-        raise NotImplementedError
-
-    def test_filter_items(
-            self,
-            contract: Contract,
-            available_items: Iterable[tuple[ChildT, ParentT]],
-            filtered_items: Iterable[tuple[ChildT, ParentT]],
-    ):
-        for item in available_items:
-            if contract._apply_filters(item):
-                print(item)
-                assert item in filtered_items
-            else:
-                assert item not in filtered_items
-
-        assert list(contract._filter_items(available_items)) == list(filtered_items)
-        assert list(contract.items) == list(filtered_items)
-
-    def test_enforce_contract(
-            self,
-            contract: Contract,
-            filtered_items: Iterable[CombinedT],
-            valid_items: Iterable[CombinedT],
-            invalid_items: Iterable[CombinedT],
-    ):
-        for item in filtered_items:
-            if contract._apply_enforcements(item):
-                assert item in valid_items
-            else:
-                assert item not in valid_items
-
-        assert list(contract._enforce_contract_on_items()) == invalid_items
-        assert contract.run() == invalid_items
-        assert contract() == invalid_items
-
-
-class ParentContractTester(ContractTester, metaclass=ABCMeta):
+        assert any(result.name == item.name for result in contract.results)
+        assert any(result.result_name == expected_name for result in contract.results)
+        assert any(result.message == expected_message for result in contract.results)
 
     def test_filter_items(
             self,
@@ -287,4 +234,34 @@ class ParentContractTester(ContractTester, metaclass=ABCMeta):
         assert list(contract._enforce_contract_on_items()) == invalid_items
         assert contract.run() == invalid_items
         assert contract() == invalid_items
+
+    def test_get_matching_catalog_table(
+            self, contract: Contract, catalog: CatalogArtifact, valid_items: Iterable[CombinedT]
+    ):
+        pass
+
+    def test_filter_on_name(self, contract: Contract):
+        pass
+
+
+class ChildContractTester(ContractTester, metaclass=ABCMeta):
+
+    @abstractmethod
+    def parents(self) -> Iterable[ParentT]:
+        raise NotImplementedError
+
+    # noinspection PyMethodOverriding
+    @abstractmethod
+    def contract(self, manifest: Manifest, catalog: CatalogArtifact, parents: Iterable[ParentT]) -> Iterable[CombinedT]:
+        raise NotImplementedError
+
+    # noinspection PyMethodOverriding
+    @abstractmethod
+    def available_items(self, parents: Iterable[ParentT]) -> Iterable[CombinedT]:
+        raise NotImplementedError
+
+
+class ParentContractTester(ContractTester, metaclass=ABCMeta):
+    pass
+
 

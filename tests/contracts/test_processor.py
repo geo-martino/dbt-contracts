@@ -3,12 +3,13 @@ from typing import Any
 
 import pytest
 
+# noinspection PyProtectedMember
 from dbt_contracts.contracts._core import filter_method, enforce_method, ProcessorMethod
 
 
 class TestProcessorMethod:
 
-    @filter_method
+    @filter_method(needs_manifest=True, needs_catalog=False)
     def decorated_filter_method(self, *args, **kwargs) -> tuple[Collection[Any], Mapping[str, Any]]:
         return args, kwargs
 
@@ -16,7 +17,7 @@ class TestProcessorMethod:
     def decorated_filter_method_with_args(self, *args, **kwargs) -> tuple[Collection[Any], Mapping[str, Any]]:
         return args, kwargs
 
-    @enforce_method
+    @enforce_method(needs_manifest=True, needs_catalog=False)
     def decorated_enforcement_method(self, *args, **kwargs) -> tuple[Collection[Any], Mapping[str, Any]]:
         return args, kwargs
 
@@ -36,12 +37,10 @@ class TestProcessorMethod:
 
     @pytest.fixture(scope="class")
     def filter_methods(self, decorated_methods: list[ProcessorMethod]) -> list[ProcessorMethod]:
-        # noinspection PyUnboundLocalVariable
         return [method for method in decorated_methods if method.is_filter]
 
     @pytest.fixture(scope="class")
     def enforce_methods(self, decorated_methods: list[ProcessorMethod]) -> list[ProcessorMethod]:
-        # noinspection PyUnboundLocalVariable
         return [method for method in decorated_methods if method.is_enforcement]
 
     def test_methods_are_wrapped(self, decorated_methods: list[ProcessorMethod]):

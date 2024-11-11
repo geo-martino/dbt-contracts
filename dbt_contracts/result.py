@@ -350,6 +350,6 @@ class ResultMacroArgument(ResultChild[MacroArgument, Macro]):
         return next(arguments, None)
 
 
-RESULT_PROCESSORS: list[type[Result]] = [ResultModel, ResultSource, ResultMacro, ResultColumn, ResultMacro]
+RESULT_PROCESSORS: list[type[Result]] = [ResultModel, ResultSource, ResultMacro, ResultColumn, ResultMacroArgument]
 # noinspection PyTypeChecker
 RESULT_PROCESSOR_MAP: Mapping[type[T], type[Result]] = {cls.resource_type: cls for cls in RESULT_PROCESSORS}

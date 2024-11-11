@@ -4,7 +4,6 @@ Core abstractions and utilities for all contract implementations.
 import inspect
 import itertools
 import logging
-import re
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Collection, Mapping, MutableMapping, Iterable, Generator, MutableSequence
 from functools import update_wrapper
@@ -18,6 +17,7 @@ from dbt.artifacts.schemas.catalog import CatalogArtifact, CatalogTable
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import SourceDefinition
 
+from dbt_contracts.contracts._comparisons import match_patterns
 from dbt_contracts.result import RESULT_PROCESSOR_MAP, Result
 from dbt_contracts.types import T, ChildT, ParentT, CombinedT
 
@@ -394,82 +394,6 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
 
         return table
 
-    def _is_in_range(
-            self, item: T, kind: str, count: int, min_count: int = 1, max_count: int = None, parent: ParentT = None
-    ) -> bool:
-        if min_count < 1:
-            raise Exception(f"Minimum count must be greater than 0. Got {min_count}")
-        if max_count is not None and max_count < 1:
-            raise Exception(f"Maximum count must be greater than 0. Got {max_count}")
-
-        too_small = count < min_count
-        too_large = max_count is not None and count > max_count
-        if too_small or too_large:
-            kind = kind.replace("_", " ").rstrip("s") + "s"
-            if too_small:
-                message = f"Too few {kind} found: {count}. Expected: {min_count}."
-            else:
-                message = f"Too many {kind} found: {count}. Expected: {max_count}."
-
-            self._add_result(item, parent=parent, name=f"has_{kind.replace(" ", "_")}", message=message)
-
-        return not too_small and not too_large
-
-    @staticmethod
-    def _compare_strings(
-            actual: str | None,
-            expected: str | None,
-            ignore_whitespace: bool = False,
-            case_insensitive: bool = False,
-            compare_start_only: bool = False,
-    ) -> bool:
-        if not actual or not expected:
-            return not actual and not expected
-
-        if ignore_whitespace:
-            actual = actual.replace(" ", "")
-            expected = expected.replace(" ", "")
-        if case_insensitive:
-            actual = actual.casefold()
-            expected = expected.casefold()
-
-        if compare_start_only:
-            match = expected.startswith(actual) or actual.startswith(expected)
-        else:
-            match = actual == expected
-
-        return match
-
-    @staticmethod
-    def _matches_patterns(
-            value: str | None,
-            *patterns: str,
-            include: Collection[str] | str = (),
-            exclude: Collection[str] | str = (),
-            match_all: bool = False,
-    ) -> bool:
-        if not value:
-            return False
-
-        if isinstance(exclude, str):
-            exclude = [exclude]
-
-        if exclude:
-            if match_all and all(pattern == value or re.match(pattern, value) for pattern in exclude):
-                return False
-            elif any(pattern == value or re.match(pattern, value) for pattern in exclude):
-                return True
-
-        if isinstance(include, str):
-            include = [include]
-        include += patterns
-
-        if not include:
-            return True
-        elif match_all and all(pattern == value or re.match(pattern, value) for pattern in include):
-            return True
-        return any(pattern == value or re.match(pattern, value) for pattern in include)
-
 
 class ChildContract(Contract[ChildT, ParentT], Generic[ChildT, ParentT], metaclass=ABCMeta):
     """Base class for contracts which have associated parent contracts relating to specific dbt resource types."""
@@ -531,7 +455,6 @@ class ChildContract(Contract[ChildT, ParentT], Generic[ChildT, ParentT], metacla
         super().__init__(manifest=manifest, catalog=catalog, filters=filters, enforcements=enforcements)
         self._parents = parents
 
-
     ###########################################################################
     ## Processor methods
     ###########################################################################
@@ -539,7 +462,7 @@ class ChildContract(Contract[ChildT, ParentT], Generic[ChildT, ParentT], metacla
     def name(
             self,
             item: T,
-            parent: ParentT,
+            _: ParentT,
             *patterns: str,
             include: Collection[str] | str = (),
             exclude: Collection[str] | str = (),
@@ -549,14 +472,14 @@ class ChildContract(Contract[ChildT, ParentT], Generic[ChildT, ParentT], metacla
         Check whether a given `item` has a valid name.
 
         :param item: The item to check.
-        :param parent: The parent item that the given `item` belongs to if available.
+        :param _: The parent item that the given `item` belongs to if available. Ignored.
         :param patterns: Patterns to match against for paths to include.
         :param include: Patterns to match against for paths to include.
         :param exclude: Patterns to match against for paths to exclude.
         :param match_all: When True, all given patterns must match to be considered a match for either pattern type.
         :return: True if the node has a valid path, False otherwise.
         """
-        return self._matches_patterns(
+        return match_patterns(
             item.name, *patterns, include=include, exclude=exclude, match_all=match_all
         )
 
@@ -689,7 +612,7 @@ class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], 
         :param match_all: When True, all given patterns must match to be considered a match for either pattern type.
         :return: True if the node has a valid path, False otherwise.
         """
-        return self._matches_patterns(
+        return match_patterns(
             item.name, *patterns, include=include, exclude=exclude, match_all=match_all
         )
 
@@ -718,6 +641,6 @@ class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], 
             paths.append(item.patch_path.split("://")[1])
 
         return any(
-            self._matches_patterns(path, *patterns, include=include, exclude=exclude, match_all=match_all)
+            match_patterns(path, *patterns, include=include, exclude=exclude, match_all=match_all)
             for path in paths
         )
