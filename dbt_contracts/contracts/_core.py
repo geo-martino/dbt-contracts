@@ -2,10 +2,11 @@
 Core abstractions and utilities for all contract implementations.
 """
 import inspect
+import itertools
 import logging
 import re
 from abc import ABCMeta, abstractmethod
-from collections.abc import Callable, Collection, Mapping, MutableMapping, Iterable, Generator
+from collections.abc import Callable, Collection, Mapping, MutableMapping, Iterable, Generator, MutableSequence
 from functools import update_wrapper
 from itertools import filterfalse
 from pathlib import Path
@@ -158,7 +159,7 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
     @property
     def needs_manifest(self) -> bool:
         """Is the catalog set."""
-        return any(f.needs_manifest for f, args in self._filters + self._enforcements if isinstance(f, ProcessorMethod))
+        return any(f.needs_manifest for f, args in self._all_methods if isinstance(f, ProcessorMethod))
 
     @property
     def catalog(self) -> CatalogArtifact:
@@ -179,15 +180,19 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
     @property
     def needs_catalog(self) -> bool:
         """Is the catalog set."""
-        return any(f.needs_catalog for f, args in self._filters + self._enforcements if isinstance(f, ProcessorMethod))
+        return any(f.needs_catalog for f, args in self._all_methods if isinstance(f, ProcessorMethod))
 
     @property
-    def filters(self) -> list[tuple[ProcessorMethod, Any]]:
+    def _all_methods(self) -> Iterable[tuple[ProcessorMethod, Any]]:
+        return iter(itertools.chain(self._filters, self._enforcements))
+
+    @property
+    def filters(self) -> MutableSequence[tuple[ProcessorMethod, Any]]:
         """The filter methods and their associated arguments configured for this contract."""
         return self._filters
 
     @property
-    def enforcements(self) -> list[tuple[ProcessorMethod, Any]]:
+    def enforcements(self) -> MutableSequence[tuple[ProcessorMethod, Any]]:
         """The enforcement methods and their associated arguments configured for this contract."""
         return self._enforcements
 
@@ -207,8 +212,12 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         :param catalog: The dbt catalog.
         :return: The configured contract.
         """
-        filters = config.get("filter", ())
-        enforcements = config.get("enforce", ())
+        filters = cls._get_methods_from_config(
+            config.get("filter", ()), expected=cls.__filtermethods__, kind="filters"
+        )
+        enforcements = cls._get_methods_from_config(
+            config.get("enforce", ()), expected=cls.__enforcementmethods__, kind="enforcements"
+        )
 
         return cls(
             manifest=manifest,
@@ -216,6 +225,32 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
             filters=filters,
             enforcements=enforcements,
         )
+
+    @classmethod
+    def _get_methods_from_config(
+            cls, config: Iterable[str | Mapping[str, Any]], expected: Collection[str], kind: str
+    ) -> list[tuple[ProcessorMethod, Any]]:
+        kind = kind.lower().rstrip("s") + "s"
+
+        names = set(next(iter(conf)) if isinstance(conf, Mapping) else str(conf) for conf in config)
+        unrecognised_names = names - set(expected)
+        if unrecognised_names:
+            log = f"Unrecognised {kind} given: {', '.join(unrecognised_names)}. Choose from {', '.join(expected)}"
+            raise Exception(log)
+
+        methods: list[tuple[ProcessorMethod, Any]] = []
+        for conf in config:
+            if isinstance(conf, Mapping):
+                method_name = next(iter(conf))
+                args = conf[method_name]
+            else:
+                method_name = str(conf)
+                args = None
+
+            method: ProcessorMethod = getattr(cls, method_name)
+            methods.append(tuple((method, args)))
+
+        return methods
 
     def __new__(cls, *_, **__):
         # noinspection SpellCheckingInspection
@@ -239,51 +274,22 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
             self,
             manifest: Manifest = None,
             catalog: CatalogArtifact = None,
-            filters: Iterable[str | Mapping[str, Any]] = (),
-            enforcements: Iterable[str | Mapping[str, Any]] = (),
+            filters: MutableSequence[tuple[ProcessorMethod, Any]] = None,
+            enforcements: MutableSequence[tuple[ProcessorMethod, Any]] = None,
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self._manifest: Manifest = manifest
         self._catalog: CatalogArtifact = catalog
 
-        self._filters = self._get_methods_from_config(
-            filters, expected=self.__filtermethods__, kind="filters"
-        )
-        self._enforcements = self._get_methods_from_config(
-            enforcements, expected=self.__enforcementmethods__, kind="enforcements"
-        )
+        self._filters = filters or []
+        self._enforcements = enforcements or []
 
         self.logger.debug(f"Filters configured: {', '.join(f.name for f, _ in self._filters)}")
         self.logger.debug(f"Enforcements configured: {', '.join(f.name for f, _ in self._enforcements)}")
 
         self.results: list[Result] = []
         self._patches: MutableMapping[Path, Mapping[str, Any]] = {}
-
-    def _get_methods_from_config(
-            self, config: Iterable[str | Mapping[str, Any]], expected: Collection[str], kind: str
-    ) -> list[tuple[ProcessorMethod, Any]]:
-        kind = kind.lower().rstrip("s") + "s"
-
-        names = set(next(iter(conf)) if isinstance(conf, Mapping) else str(conf) for conf in config)
-        unrecognised_names = names - set(expected)
-        if unrecognised_names:
-            log = f"Unrecognised {kind} given: {', '.join(unrecognised_names)}. Choose from {', '.join(expected)}"
-            raise Exception(log)
-
-        methods: list[tuple[ProcessorMethod, Any]] = []
-        for conf in config:
-            if isinstance(conf, Mapping):
-                method_name = next(iter(conf))
-                args = conf[method_name]
-            else:
-                method_name = str(conf)
-                args = None
-
-            method: ProcessorMethod = getattr(self, method_name)
-            methods.append(tuple((method, args)))
-
-        return methods
 
     ###########################################################################
     ## Method execution
@@ -302,9 +308,12 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
 
     def _call_methods(self, item: CombinedT, methods: Iterable[tuple[ProcessorMethod, Any]]) -> bool:
         result = True
+
         for method, args in methods:
             method.instance = self
             match args:
+                case None:
+                    result &= method(*item) if isinstance(item, tuple) else method(item)
                 case str():
                     result &= method(*item, args) if isinstance(item, tuple) else method(item, args)
                 case Mapping():
@@ -312,7 +321,7 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
                 case Iterable():
                     result &= method(*item, *args) if isinstance(item, tuple) else method(item, *args)
                 case _:
-                    result &= method(*item) if isinstance(item, tuple) else method(item)
+                    result &= method(*item, args) if isinstance(item, tuple) else method(item, args)
 
         return result
 
@@ -461,32 +470,6 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
             return True
         return any(pattern == value or re.match(pattern, value) for pattern in include)
 
-    ###########################################################################
-    ## Processor methods
-    ###########################################################################
-    @filter_method
-    def name(
-            self,
-            item: T,
-            *patterns: str,
-            include: Collection[str] | str = (),
-            exclude: Collection[str] | str = (),
-            match_all: bool = False,
-    ) -> bool:
-        """
-        Check whether a given `item` has a valid name.
-
-        :param item: The item to check.
-        :param patterns: Patterns to match against for paths to include.
-        :param include: Patterns to match against for paths to include.
-        :param exclude: Patterns to match against for paths to exclude.
-        :param match_all: When True, all given patterns must match to be considered a match for either pattern type.
-        :return: True if the node has a valid path, False otherwise.
-        """
-        return self._matches_patterns(
-            item.name, *patterns, include=include, exclude=exclude, match_all=match_all
-        )
-
 
 class ChildContract(Contract[ChildT, ParentT], Generic[ChildT, ParentT], metaclass=ABCMeta):
     """Base class for contracts which have associated parent contracts relating to specific dbt resource types."""
@@ -540,13 +523,42 @@ class ChildContract(Contract[ChildT, ParentT], Generic[ChildT, ParentT], metacla
             self,
             manifest: Manifest = None,
             catalog: CatalogArtifact = None,
-            filters: Iterable[str | Mapping[str, Any]] = (),
-            enforcements: Iterable[str | Mapping[str, Any]] = (),
+            filters: MutableSequence[tuple[ProcessorMethod, Any]] = None,
+            enforcements: MutableSequence[tuple[ProcessorMethod, Any]] = None,
             # defer execution of getting parents to allow for dynamic dbt artifact assignment
             parents: Iterable[ParentT] | Contract[ParentT, None] = (),
     ):
         super().__init__(manifest=manifest, catalog=catalog, filters=filters, enforcements=enforcements)
         self._parents = parents
+
+
+    ###########################################################################
+    ## Processor methods
+    ###########################################################################
+    @filter_method
+    def name(
+            self,
+            item: T,
+            parent: ParentT,
+            *patterns: str,
+            include: Collection[str] | str = (),
+            exclude: Collection[str] | str = (),
+            match_all: bool = False,
+    ) -> bool:
+        """
+        Check whether a given `item` has a valid name.
+
+        :param item: The item to check.
+        :param parent: The parent item that the given `item` belongs to if available.
+        :param patterns: Patterns to match against for paths to include.
+        :param include: Patterns to match against for paths to include.
+        :param exclude: Patterns to match against for paths to exclude.
+        :param match_all: When True, all given patterns must match to be considered a match for either pattern type.
+        :return: True if the node has a valid path, False otherwise.
+        """
+        return self._matches_patterns(
+            item.name, *patterns, include=include, exclude=exclude, match_all=match_all
+        )
 
 
 ChildContractT = TypeVar('ChildContractT', bound=ChildContract)
@@ -615,8 +627,8 @@ class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], 
             self,
             manifest: Manifest = None,
             catalog: CatalogArtifact = None,
-            filters: Iterable[str | Mapping[str, Any]] = (),
-            enforcements: Iterable[str | Mapping[str, Any]] = (),
+            filters: MutableSequence[tuple[ProcessorMethod, Any]] = None,
+            enforcements: MutableSequence[tuple[ProcessorMethod, Any]] = None,
     ):
         super().__init__(manifest=manifest, catalog=catalog, filters=filters, enforcements=enforcements)
         self._child: ChildContractT | None = None
@@ -658,6 +670,29 @@ class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], 
     ###########################################################################
     ## Processor methods
     ###########################################################################
+    @filter_method
+    def name(
+            self,
+            item: T,
+            *patterns: str,
+            include: Collection[str] | str = (),
+            exclude: Collection[str] | str = (),
+            match_all: bool = False,
+    ) -> bool:
+        """
+        Check whether a given `item` has a valid name.
+
+        :param item: The item to check.
+        :param patterns: Patterns to match against for paths to include.
+        :param include: Patterns to match against for paths to include.
+        :param exclude: Patterns to match against for paths to exclude.
+        :param match_all: When True, all given patterns must match to be considered a match for either pattern type.
+        :return: True if the node has a valid path, False otherwise.
+        """
+        return self._matches_patterns(
+            item.name, *patterns, include=include, exclude=exclude, match_all=match_all
+        )
+
     @filter_method
     def paths(
             self,
