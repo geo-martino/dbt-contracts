@@ -122,6 +122,9 @@ def enforce_method(
     return _decorator(arg) if callable(arg) else _decorator
 
 
+ProcessorMethodCollection = MutableSequence[tuple[ProcessorMethod, Any]]
+
+
 class Contract(Generic[T, ParentT], metaclass=ABCMeta):
     """Base class for contracts relating to specific dbt resource types."""
 
@@ -183,16 +186,16 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         return any(f.needs_catalog for f, args in self._all_methods if isinstance(f, ProcessorMethod))
 
     @property
-    def _all_methods(self) -> Iterable[tuple[ProcessorMethod, Any]]:
-        return iter(itertools.chain(self._filters, self._enforcements))
+    def _all_methods(self) -> ProcessorMethodCollection:
+        return list(itertools.chain(self._filters, self._enforcements))
 
     @property
-    def filters(self) -> MutableSequence[tuple[ProcessorMethod, Any]]:
+    def filters(self) -> ProcessorMethodCollection:
         """The filter methods and their associated arguments configured for this contract."""
         return self._filters
 
     @property
-    def enforcements(self) -> MutableSequence[tuple[ProcessorMethod, Any]]:
+    def enforcements(self) -> ProcessorMethodCollection:
         """The enforcement methods and their associated arguments configured for this contract."""
         return self._enforcements
 
@@ -274,8 +277,8 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
             self,
             manifest: Manifest = None,
             catalog: CatalogArtifact = None,
-            filters: MutableSequence[tuple[ProcessorMethod, Any]] = None,
-            enforcements: MutableSequence[tuple[ProcessorMethod, Any]] = None,
+            filters: ProcessorMethodCollection = None,
+            enforcements: ProcessorMethodCollection = None,
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -306,7 +309,7 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         """
         return list(self._enforce_contract_on_items(enforcements=enforcements))
 
-    def _call_methods(self, item: CombinedT, methods: Iterable[tuple[ProcessorMethod, Any]]) -> bool:
+    def _call_methods(self, item: CombinedT, methods: ProcessorMethodCollection) -> bool:
         result = True
 
         for method, args in methods:
@@ -425,8 +428,8 @@ class ChildContract(Contract[ChildT, ParentT], Generic[ChildT, ParentT], metacla
             self,
             manifest: Manifest = None,
             catalog: CatalogArtifact = None,
-            filters: MutableSequence[tuple[ProcessorMethod, Any]] = None,
-            enforcements: MutableSequence[tuple[ProcessorMethod, Any]] = None,
+            filters: ProcessorMethodCollection = None,
+            enforcements: ProcessorMethodCollection = None,
             # defer execution of getting parents to allow for dynamic dbt artifact assignment
             parents: Iterable[ParentT] | Contract[ParentT, None] = (),
     ):
@@ -528,17 +531,13 @@ class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], 
             self,
             manifest: Manifest = None,
             catalog: CatalogArtifact = None,
-            filters: MutableSequence[tuple[ProcessorMethod, Any]] = None,
-            enforcements: MutableSequence[tuple[ProcessorMethod, Any]] = None,
+            filters: ProcessorMethodCollection = None,
+            enforcements: ProcessorMethodCollection = None,
     ):
         super().__init__(manifest=manifest, catalog=catalog, filters=filters, enforcements=enforcements)
         self._child: ChildContractT | None = None
 
-    def set_child(
-            self,
-            filters: Iterable[str | Mapping[str, Any]] = (),
-            enforcements: Iterable[str | Mapping[str, Any]] = ()
-    ) -> None:
+    def set_child(self, filters: ProcessorMethodCollection = (), enforcements: ProcessorMethodCollection = ()) -> None:
         """
         Set the child contract object for this parent contract with the given methods configured
 

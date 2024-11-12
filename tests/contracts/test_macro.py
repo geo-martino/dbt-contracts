@@ -1,9 +1,10 @@
 import re
 from collections.abc import Collection
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from random import randrange
-from typing import Iterable, Any
+from typing import Any
 
 import pytest
 from dbt.artifacts.resources.types import NodeType
@@ -15,7 +16,7 @@ from faker import Faker
 
 from dbt_contracts.contracts import MacroContract
 from dbt_contracts.contracts.macro import MacroArgumentContract
-from tests.contracts.testers import ParentContractTester, ChildContractTester
+from tests.contracts.testers.core import ParentContractTester, ChildContractTester
 
 fake = Faker()
 
@@ -51,7 +52,21 @@ class TestMacro(ParentContractTester):
         return dict(filter=filters, enforce=enforcements)
 
     @pytest.fixture
-    def manifest(self, available_items: Iterable[Macro]) -> Manifest:
+    def config_with_child(self, config: dict[str, Any]) -> dict[str, Any]:
+        filters = [
+            {"name": ".*[02468]$"},
+        ]
+
+        enforcements = [
+            "has_description", "has_type"
+        ]
+
+        config = deepcopy(config)
+        config[str(MacroArgumentContract.config_key)] = dict(filter=filters, enforce=enforcements)
+        return config
+
+    @pytest.fixture
+    def manifest(self, available_items: list[Macro]) -> Manifest:
         manifest = Manifest()
         manifest.metadata.project_name = fake.word()
 
@@ -59,7 +74,7 @@ class TestMacro(ParentContractTester):
         return manifest
 
     @pytest.fixture
-    def catalog(self, available_items: Iterable[Macro]) -> CatalogArtifact:
+    def catalog(self, available_items: list[Macro]) -> CatalogArtifact:
         return CatalogArtifact.from_results(
             generated_at=datetime.now(), nodes={}, sources={}, compile_results=None, errors=None
         )
@@ -75,7 +90,11 @@ class TestMacro(ParentContractTester):
         return MacroContract(manifest=manifest, catalog=catalog, filters=filters, enforcements=enforcements)
 
     @pytest.fixture
-    def available_items(self) -> Iterable[Macro]:
+    def child(self, manifest: Manifest, catalog: CatalogArtifact) -> MacroArgumentContract:
+        return MacroArgumentContract(manifest=manifest, catalog=catalog)
+
+    @pytest.fixture
+    def available_items(self) -> list[Macro]:
         return [
             self.generate_macro("macro1"),
             self.generate_macro("macro2"),
@@ -88,7 +107,7 @@ class TestMacro(ParentContractTester):
         ]
 
     @pytest.fixture
-    def filtered_items(self, contract: MacroContract, available_items: Iterable[Macro]) -> Iterable[Macro]:
+    def filtered_items(self, contract: MacroContract, available_items: list[Macro]) -> list[Macro]:
         for item in available_items:
             item.package_name = contract.manifest.metadata.project_name
 
@@ -99,7 +118,7 @@ class TestMacro(ParentContractTester):
         ]
 
     @pytest.fixture
-    def valid_items(self, contract: MacroContract, filtered_items: Iterable[Macro]) -> Iterable[Macro]:
+    def valid_items(self, contract: MacroContract, filtered_items: list[Macro]) -> list[Macro]:
         return filtered_items
 
     def test_filter_macros_with_invalid_package(
@@ -130,15 +149,8 @@ class TestMacroArgument(ChildContractTester):
         return argument
 
     @pytest.fixture
-    def parents(self) -> Iterable[Macro]:
-        return [
-            TestMacro.generate_macro("macro1"),
-            TestMacro.generate_macro("macro2"),
-            TestMacro.generate_macro("macro3"),
-            TestMacro.generate_macro("macro4"),
-            TestMacro.generate_macro("macro5"),
-            TestMacro.generate_macro("macro6"),
-        ]
+    def parent(self, manifest: Manifest, catalog: CatalogArtifact) -> MacroContract:
+        return MacroContract(manifest=manifest, catalog=catalog)
 
     @pytest.fixture
     def config(self) -> dict[str, Any]:
@@ -153,7 +165,7 @@ class TestMacroArgument(ChildContractTester):
         return dict(filter=filters, enforce=enforcements)
 
     @pytest.fixture
-    def manifest(self, available_items: Iterable[MacroArgument]) -> Manifest:
+    def manifest(self, available_items: list[MacroArgument]) -> Manifest:
         manifest = Manifest()
         manifest.metadata.project_name = fake.word()
 
@@ -161,15 +173,13 @@ class TestMacroArgument(ChildContractTester):
         return manifest
 
     @pytest.fixture
-    def catalog(self, available_items: Iterable[MacroArgument]) -> CatalogArtifact:
+    def catalog(self, available_items: list[MacroArgument]) -> CatalogArtifact:
         return CatalogArtifact.from_results(
             generated_at=datetime.now(), nodes={}, sources={}, compile_results=None, errors=None
         )
 
     @pytest.fixture
-    def contract(
-            self, manifest: Manifest, catalog: CatalogArtifact, parents: Iterable[Macro]
-    ) -> MacroArgumentContract:
+    def contract(self, manifest: Manifest, catalog: CatalogArtifact, parent: MacroContract) -> MacroArgumentContract:
         filters = [
             tuple((MacroArgumentContract.name, r".*[02468]$"))
         ]
@@ -177,20 +187,24 @@ class TestMacroArgument(ChildContractTester):
         enforcements = [
         ]
         return MacroArgumentContract(
-            manifest=manifest, catalog=catalog, filters=filters, enforcements=enforcements, parents=parents
+            manifest=manifest, catalog=catalog, filters=filters, enforcements=enforcements, parents=parent
         )
 
     @pytest.fixture
-    def available_items(self, parents: Iterable[Macro]) -> Iterable[tuple[MacroArgument, Macro]]:
+    def available_items(self) -> list[tuple[MacroArgument, Macro]]:
+        macros = [TestMacro.generate_macro(f"macro{i}") for i in range(1, 4)]
         return [
             (self.generate_macro_argument(macro, f"macro_argument{i}"), macro)
-            for macro in parents for i in range(1, 4)
+            for macro in macros for i in range(1, 4)
         ]
 
     @pytest.fixture
     def filtered_items(
-            self, contract: MacroArgumentContract, available_items: Iterable[tuple[MacroArgument, Macro]]
-    ) -> Iterable[tuple[MacroArgument, Macro]]:
+            self, contract: MacroArgumentContract, available_items: list[tuple[MacroArgument, Macro]]
+    ) -> list[tuple[MacroArgument, Macro]]:
+        for _, macro in available_items:
+            macro.package_name = contract.manifest.metadata.project_name
+
         return [
             (argument, macro) for argument, macro in available_items
             if not int(re.match(r".*(\d+)", argument.name).group(1)) % 2
@@ -198,6 +212,6 @@ class TestMacroArgument(ChildContractTester):
 
     @pytest.fixture
     def valid_items(
-            self, contract: MacroArgumentContract, filtered_items: Iterable[tuple[MacroArgument, Macro]]
-    ) -> Iterable[tuple[MacroArgument, Macro]]:
+            self, contract: MacroArgumentContract, filtered_items: list[tuple[MacroArgument, Macro]]
+    ) -> list[tuple[MacroArgument, Macro]]:
         return filtered_items
