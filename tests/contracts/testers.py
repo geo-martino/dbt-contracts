@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 import pytest
@@ -93,11 +93,13 @@ class ContractTester(metaclass=ABCMeta):
         contract._enforcements.append(tuple((enforce_method(self.mock_method, needs_catalog=True), {})))
         assert contract.needs_catalog
 
-    def test_call_methods_with_no_methods(self, contract: Contract, filtered_items: Iterable[CombinedT]):
+    @staticmethod
+    def test_call_methods_with_no_methods(contract: Contract, filtered_items: Iterable[CombinedT]):
         for item in filtered_items:
             assert contract._call_methods(item, ())  # defaults to True
 
-    def test_call_methods_with_no_args(self, contract: Contract, filtered_items: Iterable[CombinedT]):
+    @staticmethod
+    def test_call_methods_with_no_args(contract: Contract, filtered_items: Iterable[CombinedT]):
         @enforce_method
         def _test_call(*args, **kwargs) -> bool:
             assert len(args) == 1 + arg_offset
@@ -116,7 +118,8 @@ class ContractTester(metaclass=ABCMeta):
             arg_offset = len(item) if isinstance(item, tuple) else 1
             assert contract._call_methods(item, [tuple((_test_call, None))])
 
-    def test_call_methods_with_single_arg(self, contract: Contract, filtered_items: Iterable[CombinedT]):
+    @staticmethod
+    def test_call_methods_with_single_arg(contract: Contract, filtered_items: Iterable[CombinedT]):
         @enforce_method
         def _test_call(*args, **kwargs) -> bool:
             assert len(args) == 2 + arg_offset
@@ -144,7 +147,8 @@ class ContractTester(metaclass=ABCMeta):
             arg_offset = len(item) if isinstance(item, tuple) else 1
             assert contract._call_methods(item, [tuple((_test_call, expected))])
 
-    def test_call_methods_with_mapping_args(self, contract: Contract, filtered_items: Iterable[CombinedT]):
+    @staticmethod
+    def test_call_methods_with_mapping_args(contract: Contract, filtered_items: Iterable[CombinedT]):
         @enforce_method
         def _test_call(*args, **kwargs) -> bool:
             assert len(args) == 1 + arg_offset
@@ -166,7 +170,8 @@ class ContractTester(metaclass=ABCMeta):
             arg_offset = len(item) if isinstance(item, tuple) else 1
             assert contract._call_methods(item, [tuple((_test_call, expected))])
 
-    def test_call_methods_with_iterable_args(self, contract: Contract, filtered_items: Iterable[CombinedT]):
+    @staticmethod
+    def test_call_methods_with_iterable_args(contract: Contract, filtered_items: Iterable[CombinedT]):
         @enforce_method
         def _test_call(*args, **kwargs) -> bool:
             assert len(args) == 1 + arg_offset + len(expected)
@@ -188,7 +193,8 @@ class ContractTester(metaclass=ABCMeta):
             arg_offset = len(item) if isinstance(item, tuple) else 1
             assert contract._call_methods(item, [tuple((_test_call, expected))])
 
-    def test_add_result(self, contract: Contract, filtered_items: Iterable[CombinedT]):
+    @staticmethod
+    def test_add_result(contract: Contract, filtered_items: Iterable[CombinedT]):
         item = next(iter(filtered_items))
         parent = None
         if isinstance(item, tuple):
@@ -203,8 +209,8 @@ class ContractTester(metaclass=ABCMeta):
         assert any(result.result_name == expected_name for result in contract.results)
         assert any(result.message == expected_message for result in contract.results)
 
+    @staticmethod
     def test_filter_items(
-            self,
             contract: Contract,
             available_items: Iterable[CombinedT],
             filtered_items: Iterable[CombinedT],
@@ -218,8 +224,8 @@ class ContractTester(metaclass=ABCMeta):
         assert list(contract._filter_items(available_items)) == list(filtered_items)
         assert list(contract.items) == list(filtered_items)
 
+    @staticmethod
     def test_enforce_contract(
-            self,
             contract: Contract,
             filtered_items: Iterable[CombinedT],
             valid_items: Iterable[CombinedT],
@@ -235,13 +241,26 @@ class ContractTester(metaclass=ABCMeta):
         assert contract.run() == invalid_items
         assert contract() == invalid_items
 
-    def test_get_matching_catalog_table(
-            self, contract: Contract, catalog: CatalogArtifact, valid_items: Iterable[CombinedT]
-    ):
-        pass
+    def test_from_dict(self, contract: Contract, config: dict[str, Any], manifest: Manifest, catalog: CatalogArtifact):
+        def _get_key_args(conf: str | Mapping[str, Any]) -> tuple[str, Any]:
+            if isinstance(conf, Mapping):
+                return next(iter(conf.items()))
+            return conf, None
 
-    def test_filter_on_name(self, contract: Contract):
-        pass
+        contract = contract.from_dict(config, manifest=manifest, catalog=catalog)
+
+        assert all(func.is_filter for func in contract.filters)
+        assert all(func.is_enforcement for func in contract.filters)
+
+        test_map = {
+            "filter": contract.filters,
+            "enforce": contract.enforcements,
+        }
+        for key, methods in test_map.items():
+            for conf in config[key]:
+                name, args = _get_key_args(conf)
+                assert any(func.name == name for func, args in methods)
+                assert next(iter(args for _, args in methods)) == args
 
 
 class ChildContractTester(ContractTester, metaclass=ABCMeta):
@@ -260,8 +279,19 @@ class ChildContractTester(ContractTester, metaclass=ABCMeta):
     def available_items(self, parents: Iterable[ParentT]) -> Iterable[CombinedT]:
         raise NotImplementedError
 
+    def test_filter_on_name(self, contract: Contract):
+        pass
+
 
 class ParentContractTester(ContractTester, metaclass=ABCMeta):
-    pass
+
+    def test_filter_on_name(self, contract: Contract):
+        pass
 
 
+class CatalogContractTester(ContractTester, metaclass=ABCMeta):
+
+    def test_get_matching_catalog_table(
+            self, contract: Contract, catalog: CatalogArtifact, valid_items: Iterable[CombinedT]
+    ):
+        pass

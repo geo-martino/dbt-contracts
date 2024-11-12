@@ -48,7 +48,7 @@ class TestMacro(ParentContractTester):
             "has_description", "has_properties"
         ]
 
-        return dict(filters=filters, enforcements=enforcements)
+        return dict(filter=filters, enforce=enforcements)
 
     @pytest.fixture
     def manifest(self, available_items: Iterable[Macro]) -> Manifest:
@@ -150,7 +150,7 @@ class TestMacroArgument(ChildContractTester):
             "has_description"
         ]
 
-        return dict(filters=filters, enforcements=enforcements)
+        return dict(filter=filters, enforce=enforcements)
 
     @pytest.fixture
     def manifest(self, available_items: Iterable[MacroArgument]) -> Manifest:
