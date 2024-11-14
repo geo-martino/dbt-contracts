@@ -256,11 +256,6 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         return methods
 
     def __new__(cls, *_, **__):
-        # noinspection SpellCheckingInspection
-        cls.__filtermethods__ = []
-        # noinspection SpellCheckingInspection
-        cls.__enforcementmethods__ = []
-
         for name in dir(cls):
             method = getattr(cls, name, None)
             if method is None or not isinstance(method, ProcessorMethod):
