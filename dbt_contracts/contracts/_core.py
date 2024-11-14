@@ -256,6 +256,11 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         return methods
 
     def __new__(cls, *_, **__):
+        # noinspection SpellCheckingInspection
+        cls.__filtermethods__ = []
+        # noinspection SpellCheckingInspection
+        cls.__enforcementmethods__ = []
+
         for name in dir(cls):
             method = getattr(cls, name, None)
             if method is None or not isinstance(method, ProcessorMethod):
@@ -265,9 +270,7 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
                 cls.__filtermethods__.append(method.name)
             if method.is_enforcement and method.name not in cls.__enforcementmethods__:
                 cls.__enforcementmethods__.append(method.name)
-        print(cls.__name__)
-        print(cls.__filtermethods__)
-        print(cls.__enforcementmethods__)
+
         return super().__new__(cls)
 
     def __init__(
