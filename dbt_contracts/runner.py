@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 def _get_default_table_header(result: Result) -> str:
     path = result.path
     header_path = (
-        f"{Fore.LIGHTWHITE_EX.replace("m", ";1m")}->{Fore.RESET.replace("m", ";0m")} "
+        f"{Fore.LIGHTWHITE_EX.replace('m', ';1m')}->{Fore.RESET.replace('m', ';0m')} "
         f"{Fore.LIGHTBLUE_EX}{path}{Fore.RESET}"
     )
 
