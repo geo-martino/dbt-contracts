@@ -215,6 +215,8 @@ class Contract(Generic[T, ParentT], metaclass=ABCMeta):
         :param catalog: The dbt catalog.
         :return: The configured contract.
         """
+        print(cls.__filtermethods__)
+        print(cls.__enforcementmethods__)
         filters = cls._get_methods_from_config(
             config.get("filter", ()), expected=cls.__filtermethods__, kind="filters"
         )

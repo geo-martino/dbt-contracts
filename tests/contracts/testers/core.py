@@ -67,6 +67,12 @@ class ContractTester(metaclass=ABCMeta):
         assert any(result.result_name == name for result in contract.results)
         assert any(result.message == message for result in contract.results)
 
+    def test_method_name_store(self, contract: Contract):
+        assert contract.__filtermethods__
+        assert contract.__class__.__filtermethods__
+        assert contract.__enforcementmethods__
+        assert contract.__class__.__enforcementmethods__
+
     def test_manifest_properties(self, contract: Contract, manifest: Manifest):
         contract._manifest = None
         assert not contract.manifest_is_set
