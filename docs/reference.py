@@ -336,7 +336,7 @@ class ReferencePageBuilder:
     def build(self, contract: type[Contract], description: str | Iterable[str] = None) -> None:
         self.lines.clear()
 
-        contract.__new__(contract)
+        contract.__new__(contract)  # needed to populate contract methods lists
         key = str(contract.config_key)
         title = self.make_title(key)
         self.add_lines(f".. _{key}:")

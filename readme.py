@@ -20,7 +20,7 @@ def format_contract_title(contract: type[Contract], parent_key: str = "") -> str
 
 def format_contract_reference(contract: type[Contract], parent_key: str = "") -> list[str]:
     """Format the readme template for the contracts reference"""
-    contract.__new__(contract)  # needed to populate contract methods
+    contract.__new__(contract)  # needed to populate contract methods lists
 
     lines = []
 
