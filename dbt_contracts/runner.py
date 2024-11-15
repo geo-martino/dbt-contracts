@@ -195,7 +195,10 @@ class ContractRunner:
         :param config: The config to configure the runner with.
         :return: The configured runner.
         """
-        contracts = [cls._create_contract_from_config(key, config=conf) for key, conf in config.items()]
+        contracts = [
+            cls._create_contract_from_config(key, config=conf)
+            for key, contract_configs in config.items() for conf in contract_configs
+        ]
 
         obj = cls(contracts)
         obj.logger.debug(f"Configured {len(contracts)} sets of contracts from config")
