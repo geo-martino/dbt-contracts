@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from dbt.contracts.graph.nodes import ModelNode
 
 from dbt_contracts.contracts_old._comparisons import is_not_in_range
-from dbt_contracts.contracts_old._core import filter_method, enforce_method
+from dbt_contracts.contracts_old._core import enforce_method
 from dbt_contracts.contracts_old._node import CompiledNodeContract
 
 
@@ -24,16 +24,6 @@ class ModelContract(CompiledNodeContract[ModelNode]):
     def items(self) -> Iterable[ModelNode]:
         nodes = self.manifest.nodes.values()
         return self._filter_items(filter(lambda node: isinstance(node, ModelNode), nodes))
-
-    @filter_method
-    def is_materialized(self, node: ModelNode) -> bool:
-        """
-        Check whether the given `node` is configured to be materialized.
-
-        :param node: The node to check.
-        :return: True if the node is configured to be materialized, False otherwise.
-        """
-        return node.config.materialized != "ephemeral"
 
     @enforce_method
     def has_constraints(self, node: ModelNode, min_count: int = 1, max_count: int = None) -> bool:

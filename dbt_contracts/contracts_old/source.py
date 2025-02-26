@@ -6,7 +6,7 @@ import inspect
 from dbt.contracts.graph.nodes import SourceDefinition
 
 from dbt_contracts.contracts_old._comparisons import is_not_in_range
-from dbt_contracts.contracts_old._core import filter_method, enforce_method
+from dbt_contracts.contracts_old._core import enforce_method
 from dbt_contracts.contracts_old._node import NodeContract
 
 
@@ -22,16 +22,6 @@ class SourceContract(NodeContract[SourceDefinition]):
     @property
     def items(self):
         return self._filter_items(self.manifest.sources.values())
-
-    @filter_method
-    def is_enabled(self, source: SourceDefinition) -> bool:
-        """
-        Check whether the given `source` is enabled.
-
-        :param source: The source to check.
-        :return: True if the node is enabled, False otherwise.
-        """
-        return source.config.enabled
 
     @enforce_method
     def has_loader(self, source: SourceDefinition) -> bool:

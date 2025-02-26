@@ -12,12 +12,10 @@ from pathlib import Path
 from typing import Generic, Any, Self, TypeVar
 
 from dbt.artifacts.resources.base import BaseResource
-from dbt.artifacts.resources.v1.components import ParsedResource
 from dbt.artifacts.schemas.catalog import CatalogArtifact, CatalogTable
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import SourceDefinition
 
-from dbt_contracts.contracts_old._comparisons import match_patterns
 from dbt_contracts.result import RESULT_PROCESSOR_MAP, Result
 from dbt_contracts.types import T, ChildT, ParentT, CombinedT
 
@@ -86,23 +84,6 @@ class ProcessorMethod(ProcessorMethodT):
                 arg_map[key] = f"{val.__class__.__name__}({val.unique_id})"
 
         return arg_map
-
-
-def filter_method(
-        arg: ProcessorMethodT = None, needs_manifest: bool = True, needs_catalog: bool = False
-) -> ProcessorMethod | Callable[[ProcessorMethodT], ProcessorMethod]:
-    """
-    A decorator for filter methods.
-    Assigns the `is_filter` property to the method to identify it as a filter method.
-
-    :param arg: Usually the `func`. Need to allow decorator to be used with or without calling it directly.
-    :param needs_manifest: Tag this method as requiring a manifest to function.
-    :param needs_catalog: Tag this method as requiring a catalog to function.
-    :return: The wrapped method with the property assigned.
-    """
-    def _decorator(func: ProcessorMethodT) -> ProcessorMethod:
-        return ProcessorMethod(func, is_filter=True, needs_manifest=needs_manifest, needs_catalog=needs_catalog)
-    return _decorator(arg) if callable(arg) else _decorator
 
 
 def enforce_method(
@@ -432,34 +413,6 @@ class ChildContract(Contract[ChildT, ParentT], Generic[ChildT, ParentT], metacla
         super().__init__(manifest=manifest, catalog=catalog, filters=filters, enforcements=enforcements)
         self._parents = parents
 
-    ###########################################################################
-    ## Processor methods
-    ###########################################################################
-    @filter_method
-    def name(
-            self,
-            item: T,
-            _: ParentT,
-            *patterns: str,
-            include: Collection[str] | str = (),
-            exclude: Collection[str] | str = (),
-            match_all: bool = False,
-    ) -> bool:
-        """
-        Check whether a given `item` has a valid name.
-
-        :param item: The item to check.
-        :param _: The parent item that the given `item` belongs to if available. Ignored.
-        :param patterns: Patterns to match against for paths to include.
-        :param include: Patterns to match against for paths to include.
-        :param exclude: Patterns to match against for paths to exclude.
-        :param match_all: When True, all given patterns must match to be considered a match for either pattern type.
-        :return: True if the node has a valid path, False otherwise.
-        """
-        return match_patterns(
-            item.name, *patterns, include=include, exclude=exclude, match_all=match_all
-        )
-
 
 ChildContractT = TypeVar('ChildContractT', bound=ChildContract)
 
@@ -562,61 +515,6 @@ class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], 
             results.extend(self.child.run(enforcements=enforcements))
 
         return results
-
-    ###########################################################################
-    ## Processor methods
-    ###########################################################################
-    @filter_method
-    def name(
-            self,
-            item: T,
-            *patterns: str,
-            include: Collection[str] | str = (),
-            exclude: Collection[str] | str = (),
-            match_all: bool = False,
-    ) -> bool:
-        """
-        Check whether a given `item` has a valid name.
-
-        :param item: The item to check.
-        :param patterns: Patterns to match against for paths to include.
-        :param include: Patterns to match against for paths to include.
-        :param exclude: Patterns to match against for paths to exclude.
-        :param match_all: When True, all given patterns must match to be considered a match for either pattern type.
-        :return: True if the node has a valid path, False otherwise.
-        """
-        return match_patterns(
-            item.name, *patterns, include=include, exclude=exclude, match_all=match_all
-        )
-
-    @filter_method
-    def paths(
-            self,
-            item: T,
-            *patterns: str,
-            include: Collection[str] | str = (),
-            exclude: Collection[str] | str = (),
-            match_all: bool = False,
-    ) -> bool:
-        """
-        Check whether a given `item` has a valid path.
-        Paths must match patterns which are relative to directory of the dbt project.
-
-        :param item: The item to check.
-        :param patterns: Patterns to match against for paths to include.
-        :param include: Patterns to match against for paths to include.
-        :param exclude: Patterns to match against for paths to exclude.
-        :param match_all: When True, all given patterns must match to be considered a match for either pattern type.
-        :return: True if the node has a valid path, False otherwise.
-        """
-        paths = [item.original_file_path, item.path]
-        if isinstance(item, ParsedResource) and item.patch_path:
-            paths.append(item.patch_path.split("://")[1])
-
-        return any(
-            match_patterns(path, *patterns, include=include, exclude=exclude, match_all=match_all)
-            for path in paths
-        )
 
 
 class CatalogContract(Contract[ChildT, ParentT], Generic[ChildT, ParentT], metaclass=ABCMeta):

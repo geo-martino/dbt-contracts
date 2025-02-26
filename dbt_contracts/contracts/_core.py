@@ -6,7 +6,7 @@ from dbt.artifacts.resources.v1.macro import MacroArgument
 from pydantic import BaseModel
 
 
-class ResourceValidator[T: (BaseResource, ColumnInfo, MacroArgument)](BaseModel, metaclass=ABCMeta):
+class ResourceValidator[T: BaseResource | ColumnInfo | MacroArgument](BaseModel, metaclass=ABCMeta):
 
     @abstractmethod
     def validate(self, item: T) -> bool:
@@ -22,7 +22,7 @@ class Contract[T: BaseResource](BaseModel, metaclass=ABCMeta):
         raise NotImplementedError
 
 
-class ChildContract[C: (ColumnInfo, MacroArgument), P: BaseResource](BaseModel, metaclass=ABCMeta):
+class ChildContract[C: ColumnInfo | MacroArgument, P: BaseResource](BaseModel, metaclass=ABCMeta):
 
     @abstractmethod
     def run(self, child: C, parent: P) -> None:

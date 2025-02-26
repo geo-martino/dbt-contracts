@@ -90,9 +90,11 @@ class PatternMatcher(BaseModel):
         default=False,
     )
 
-    def _match(self, value: str | None) -> bool:
+    def _match(self, value: str | None) -> bool | None:
         if not value:
             return False
+        if not self.include and not self.exclude:
+            return True
 
         if self.exclude:
             if self.match_all and all(pattern == value or re.match(pattern, value) for pattern in self.exclude):
@@ -100,8 +102,6 @@ class PatternMatcher(BaseModel):
             elif any(pattern == value or re.match(pattern, value) for pattern in self.exclude):
                 return False
 
-        if not self.include:
-            return True
-        elif self.match_all:
+        if self.match_all:
             return all(pattern == value or re.match(pattern, value) for pattern in self.include)
         return any(pattern == value or re.match(pattern, value) for pattern in self.include)

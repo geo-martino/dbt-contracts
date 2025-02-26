@@ -9,7 +9,7 @@ from typing import Any, TypeVar, Generic
 from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
 from dbt.contracts.graph.nodes import Macro, SourceDefinition
 
-from dbt_contracts.contracts_old._core import Contract, enforce_method, filter_method
+from dbt_contracts.contracts_old._core import Contract, enforce_method
 from dbt_contracts.types import T, ParentT
 
 
@@ -68,22 +68,6 @@ TagT = TypeVar('TagT', ParsedResource, ColumnInfo)
 
 class TagContract(Contract[TagT, ParentT], Generic[TagT, ParentT], metaclass=ABCMeta):
     """Configures a contract for resources which have `tag` properties."""
-    @filter_method
-    def tags(self, resource: TagT, _: ParentT = None, *tags: str) -> bool:
-        """
-        Check whether a given `resource` has any matching tags to the given values.
-
-        :param resource: The resource to check.
-        :param _: The parent resource that the given `resource` belongs to if available. Ignored.
-        :param tags: The tags to match on.
-        :return: True if the node has matching meta, False otherwise.
-        """
-        for tag in tags:
-            if tag in resource.tags:
-                return True
-
-        return False
-
     @enforce_method
     def tags_have_required_values(self, resource: TagT, parent: ParentT = None, *tags: str) -> bool:
         """
@@ -126,24 +110,6 @@ MetaT = TypeVar('MetaT', ParsedResource, ColumnInfo)
 
 class MetaContract(Contract[MetaT, ParentT], Generic[MetaT, ParentT], metaclass=ABCMeta):
     """Configures a contract for resources which have `meta` properties."""
-    @filter_method
-    def meta(self, resource: MetaT, _: ParentT = None, **accepted_values: Collection[Any] | Any) -> bool:
-        """
-        Check whether a given `resource` has any matching meta to the accepted_values.
-
-        :param resource: The resource to check.
-        :param _: The parent resource that the given `resource` belongs to if available. Ignored.
-        :param accepted_values: A map of keys to accepted values of those keys.
-        :return: True if the node has matching meta, False otherwise.
-        """
-        for key, values in accepted_values.items():
-            if not isinstance(values, Collection) or isinstance(values, str):
-                values = [values]
-            if key in resource.meta and resource.meta[key] in values:
-                return True
-
-        return False
-
     @enforce_method
     def meta_has_required_keys(self, resource: MetaT, parent: ParentT = None, *keys: str) -> bool:
         """
