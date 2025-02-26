@@ -11,7 +11,7 @@ authors = [
 description = "Enforce standards for your dbt projects through automated checks and generators"
 readme = "README.md"
 license-files = { paths = ["LICENSE"] }
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -26,6 +26,7 @@ classifiers = [
 ]
 dependencies = [
     "dbt-core~=1.8",
+    "pydantic~=2.10",
 ]
 
 [project.optional-dependencies]

@@ -6,10 +6,10 @@ from typing import Any
 import pytest
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
-from dbt_contracts.contracts import ChildContract, ParentContract
+from dbt_contracts.contracts_old import ChildContract, ParentContract
 
 # noinspection PyProtectedMember
-from dbt_contracts.contracts._core import filter_method, enforce_method, Contract
+from dbt_contracts.contracts_old._core import filter_method, enforce_method, Contract
 from dbt_contracts.types import CombinedT, ChildT, ParentT
 
 

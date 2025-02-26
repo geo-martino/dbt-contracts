@@ -6,7 +6,7 @@ import re
 import docstring_parser
 
 from dbt_contracts import PROGRAM_OWNER_USER, PROGRAM_NAME, DOCUMENTATION_URL
-from dbt_contracts.contracts import CONTRACTS, Contract, ParentContract
+from dbt_contracts.contracts_old import CONTRACTS, Contract, ParentContract
 import docs.reference as docs
 
 SRC_FILENAME = "README.template.md"

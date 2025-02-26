@@ -10,10 +10,10 @@ from typing import TypeVar, Generic, Any
 
 from dbt.contracts.graph.nodes import TestNode, SourceDefinition, CompiledNode, BaseNode
 
-from dbt_contracts.contracts._comparisons import is_not_in_range
-from dbt_contracts.contracts._core import enforce_method, ParentContract, CatalogContract
-from dbt_contracts.contracts._properties import PatchContract, TagContract, MetaContract
-from dbt_contracts.contracts.column import ColumnContract
+from dbt_contracts.contracts_old._comparisons import is_not_in_range
+from dbt_contracts.contracts_old._core import enforce_method, ParentContract, CatalogContract
+from dbt_contracts.contracts_old._properties import PatchContract, TagContract, MetaContract
+from dbt_contracts.contracts_old.column import ColumnContract
 
 NodeT = TypeVar('NodeT', BaseNode, SourceDefinition)
 

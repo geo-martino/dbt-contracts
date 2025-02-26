@@ -13,9 +13,9 @@ import docstring_parser
 from dbt_common.dataclass_schema import dbtClassMixin
 from docstring_parser import DocstringParam
 
-from dbt_contracts.contracts import Contract, ParentContract, ProcessorMethod, CONTRACTS, CompiledNodeT, NodeT
-from dbt_contracts.contracts import PatchT, MetaT, TagT
-from dbt_contracts.contracts.column import ColumnParentT
+from dbt_contracts.contracts_old import Contract, ParentContract, ProcessorMethod, CONTRACTS, CompiledNodeT, NodeT
+from dbt_contracts.contracts_old import PatchT, MetaT, TagT
+from dbt_contracts.contracts_old.column import ColumnParentT
 from dbt_contracts.types import T, ChildT, ParentT
 
 HEADER_SECTION_CHARS = ["=", "-", "^", '"']

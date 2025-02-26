@@ -5,9 +5,9 @@ import inspect
 
 from dbt.contracts.graph.nodes import SourceDefinition
 
-from dbt_contracts.contracts._comparisons import is_not_in_range
-from dbt_contracts.contracts._core import filter_method, enforce_method
-from dbt_contracts.contracts._node import NodeContract
+from dbt_contracts.contracts_old._comparisons import is_not_in_range
+from dbt_contracts.contracts_old._core import filter_method, enforce_method
+from dbt_contracts.contracts_old._node import NodeContract
 
 
 class SourceContract(NodeContract[SourceDefinition]):

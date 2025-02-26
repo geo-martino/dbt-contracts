@@ -8,8 +8,8 @@ from collections.abc import Iterable
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import Macro
 
-from dbt_contracts.contracts._core import enforce_method, ParentContract, ChildContract
-from dbt_contracts.contracts._properties import PatchContract, DescriptionPropertyContract
+from dbt_contracts.contracts_old._core import enforce_method, ParentContract, ChildContract
+from dbt_contracts.contracts_old._properties import PatchContract, DescriptionPropertyContract
 
 
 class MacroArgumentContract(DescriptionPropertyContract[MacroArgument, Macro], ChildContract[MacroArgument, Macro]):

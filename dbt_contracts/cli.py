@@ -4,7 +4,7 @@ import os
 from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 
 from dbt_contracts import PROGRAM_NAME
-from dbt_contracts.contracts import CONTRACTS, ParentContract
+from dbt_contracts.contracts_old import CONTRACTS, ParentContract
 
 DEFAULT_CONFIG_FILE_NAME: str = "contracts.yml"
 DEFAULT_OUTPUT_FILE_NAME: str = "contracts_results"

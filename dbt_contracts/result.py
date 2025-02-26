@@ -21,7 +21,7 @@ class SafeLineLoader(yaml.SafeLoader):
 
     def construct_mapping(self, node, deep=False):
         """Construct mapping object and apply line and column numbers"""
-        mapping = super(SafeLineLoader, self).construct_mapping(node, deep=deep)
+        mapping = super().construct_mapping(node, deep=deep)
         # Add 1 so line/col numbering starts at 1
         mapping['__start_line__'] = node.start_mark.line + 1
         mapping['__start_col__'] = node.start_mark.column + 1

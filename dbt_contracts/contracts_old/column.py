@@ -11,9 +11,9 @@ from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
 from dbt.artifacts.schemas.catalog import CatalogTable
 from dbt.contracts.graph.nodes import TestNode, SourceDefinition
 
-from dbt_contracts.contracts._comparisons import match_strings, is_not_in_range
-from dbt_contracts.contracts._core import enforce_method, ChildContract, CatalogContract
-from dbt_contracts.contracts._properties import DescriptionPropertyContract, TagContract, MetaContract
+from dbt_contracts.contracts_old._comparisons import match_strings, is_not_in_range
+from dbt_contracts.contracts_old._core import enforce_method, ChildContract, CatalogContract
+from dbt_contracts.contracts_old._properties import DescriptionPropertyContract, TagContract, MetaContract
 
 ColumnParentT = TypeVar('ColumnParentT', ParsedResource, SourceDefinition)
 

@@ -6,9 +6,9 @@ from collections.abc import Iterable
 
 from dbt.contracts.graph.nodes import ModelNode
 
-from dbt_contracts.contracts._comparisons import is_not_in_range
-from dbt_contracts.contracts._core import filter_method, enforce_method
-from dbt_contracts.contracts._node import CompiledNodeContract
+from dbt_contracts.contracts_old._comparisons import is_not_in_range
+from dbt_contracts.contracts_old._core import filter_method, enforce_method
+from dbt_contracts.contracts_old._node import CompiledNodeContract
 
 
 class ModelContract(CompiledNodeContract[ModelNode]):

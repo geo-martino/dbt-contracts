@@ -14,8 +14,8 @@ from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import Macro
 from faker import Faker
 
-from dbt_contracts.contracts import MacroContract
-from dbt_contracts.contracts.macro import MacroArgumentContract
+from dbt_contracts.contracts_old import MacroContract
+from dbt_contracts.contracts_old.macro import MacroArgumentContract
 from tests.contracts.testers.core import ParentContractTester, ChildContractTester
 
 fake = Faker()

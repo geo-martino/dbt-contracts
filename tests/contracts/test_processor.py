@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 # noinspection PyProtectedMember
-from dbt_contracts.contracts._core import filter_method, enforce_method, ProcessorMethod
+from dbt_contracts.contracts_old._core import filter_method, enforce_method, ProcessorMethod
 
 
 class TestProcessorMethod:

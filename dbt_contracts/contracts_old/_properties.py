@@ -9,7 +9,7 @@ from typing import Any, TypeVar, Generic
 from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
 from dbt.contracts.graph.nodes import Macro, SourceDefinition
 
-from dbt_contracts.contracts._core import Contract, enforce_method, filter_method
+from dbt_contracts.contracts_old._core import Contract, enforce_method, filter_method
 from dbt_contracts.types import T, ParentT
 
 
