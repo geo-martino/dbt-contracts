@@ -1,134 +1,128 @@
-import dataclasses
 import os
 from abc import ABCMeta, abstractmethod
-from collections.abc import Mapping, MutableMapping, Iterable
-from dataclasses import dataclass
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Self, Generic, Any
+from typing import Any, Self
 
 import yaml
+from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ParsedResource, ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
-from dbt.contracts.graph.nodes import Macro, ModelNode, SourceDefinition
+from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 from dbt.flags import get_flags
-from dbt_common.dataclass_schema import dbtClassMixin
+from pydantic import BaseModel, PrivateAttr
+from yaml import MappingNode
 
-from dbt_contracts.types import T, ParentT
+from dbt_contracts.types import ItemT, ParentT
 
 
 class SafeLineLoader(yaml.SafeLoader):
     """YAML safe loader which applies line and column number information to every mapping read."""
 
-    def construct_mapping(self, node, deep=False):
+    def construct_mapping(self, node: MappingNode, deep: bool = False):
         """Construct mapping object and apply line and column numbers"""
         mapping = super().construct_mapping(node, deep=deep)
         # Add 1 so line/col numbering starts at 1
-        mapping['__start_line__'] = node.start_mark.line + 1
-        mapping['__start_col__'] = node.start_mark.column + 1
-        mapping['__end_line__'] = node.end_mark.line + 1
-        mapping['__end_col__'] = node.end_mark.column + 1
+        mapping["__start_line__"] = node.start_mark.line + 1
+        mapping["__start_col__"] = node.start_mark.column + 1
+        mapping["__end_line__"] = node.end_mark.line + 1
+        mapping["__end_col__"] = node.end_mark.column + 1
         return mapping
 
 
-@dataclass(kw_only=True)
-class Result(Generic[T], metaclass=ABCMeta):
-    """Store a result from contract execution."""
+class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
+    """Store information of the result from a contract execution."""
     name: str
     path: Path
     result_type: str
     result_level: str
     result_name: str
     message: str
-    patch_path: Path | None
-    patch_start_line: int | None
-    patch_start_col: int | None
-    patch_end_line: int | None
-    patch_end_col: int | None
-    extra: Mapping
-
-    # noinspection PyPropertyDefinition,PyNestedDecorators
-    @property
-    @classmethod
-    @abstractmethod
-    def resource_type(cls) -> type[T]:
-        """The resource type that this :py:class:`Result` can process."""
-        raise NotImplementedError
+    # patch attributes
+    patch_path: Path | None = None
+    patch_start_line: int | None = None
+    patch_start_col: int | None = None
+    patch_end_line: int | None = None
+    patch_end_col: int | None = None
+    # parent specific attributes
+    parent_id: str | None = None
+    parent_name: str | None = None
+    parent_type: str | None = None
+    index: int | None = None
 
     @classmethod
     def from_resource(
-            cls, item: T, patches: MutableMapping[Path, Mapping[str, Any]] = None, **kwargs
+            cls, item: I, parent: P = None, patches: MutableMapping[Path, Mapping[str, Any]] = None, **kwargs
     ) -> Self:
         """
         Create a new :py:class:`Result` from a given resource.
 
         :param item: The resource to log a result for.
+        :param parent: The parent item that the given child `item` belongs to if available.
         :param patches: A map of loaded patches with associated line/col identifiers.
-            When defined, will attempt to find the patch for the given item in this map before trying to load.
-            If a patch is loaded, will update this map with the loaded patch.
+            When defined, will attempt to find the patch for the given item in this map before trying to load from disk.
+            If a patch is not a found and is subsequently loaded by this method,
+            the loaded patch will be added to this map.
         :return: The :py:class:`Result` instance.
         """
-        field_names = [field.name for field in dataclasses.fields(cls)]
-        patch_object = cls._get_patch_object_from_item(item=item, patches=patches, **kwargs)
+        # noinspection PyUnresolvedReferences
+        field_names: set[str] = set(cls.model_fields.keys())
+        patch = cls._get_patch_object(item=parent or item, patches=patches)
+        patch_object = cls._extract_patch_object_for_item(patch, item=item, parent=parent) or {}
+
+        if parent is not None:
+            kwargs |= dict(
+                parent_id=parent.unique_id,
+                parent_name=parent.name,
+                parent_type=parent.resource_type.name.title(),
+            )
 
         return cls(
             name=item.name,
-            path=cls._get_path_from_item(item=item, **kwargs),
-            result_type=cls._get_result_type(item=item, **kwargs),
-            patch_path=cls._get_patch_path_from_item(item=item, **kwargs),
-            patch_start_line=patch_object["__start_line__"] if patch_object else None,
-            patch_start_col=patch_object["__start_col__"] if patch_object else None,
-            patch_end_line=patch_object["__end_line__"] if patch_object else None,
-            patch_end_col=patch_object["__end_col__"] if patch_object else None,
+            path=Path((parent if parent is not None else item).original_file_path),
+            result_type=cls._get_result_type(item=item, parent=parent),
+            patch_path=cls._get_patch_path(item=parent if parent is not None else item, to_absolute=False),
+            patch_start_line=patch_object.get("__start_line__"),
+            patch_start_col=patch_object.get("__start_col__"),
+            patch_end_line=patch_object.get("__end_line__"),
+            patch_end_col=patch_object.get("__end_col__"),
             **{key: val for key, val in kwargs.items() if key in field_names},
-            extra={
-                key: val for key, val in kwargs.items()
-                if key not in field_names and val is not None and not isinstance(val, dbtClassMixin)
-            },
         )
 
     @staticmethod
-    def _get_result_type(item: T, **__) -> str:
-        return item.resource_type.name.title()
+    def _get_result_type(item: I, parent: P = None) -> str:
+        result_type = item.resource_type.name.title()
+        if parent:
+            result_type = f"{parent.resource_type.name.title()} {result_type}"
+        return result_type
 
     @staticmethod
-    def _get_path_from_item(item: T, **__) -> Path | None:
-        return Path(item.original_file_path)
-
-    @staticmethod
-    def _get_patch_path_from_item(item: T, to_absolute: bool = False, **__) -> Path | None:
+    def _get_patch_path(item: I | P, to_absolute: bool = False) -> Path | None:
         patch_path = None
         if isinstance(item, ParsedResource) and item.patch_path:
             patch_path = Path(item.patch_path.split("://")[1])
-        elif (path := Path(item.original_file_path)).suffix in [".yml", ".yaml"]:
+        elif (path := Path(item.original_file_path)).suffix in {".yml", ".yaml"}:
             patch_path = path
 
         if patch_path is None or not to_absolute or patch_path.is_absolute():
             return patch_path
 
         flags = get_flags()
-        project_dir = getattr(flags, "PROJECT_DIR", None)
+        project_dir = getattr(flags, "PROJECT_DIR", None) or ""
 
-        if (path_in_project := Path(project_dir, patch_path)).exists():
+        if (path_in_project := Path(project_dir, patch_path)).is_file():
             patch_path = path_in_project
-        elif (path_in_cwd := Path(os.getcwd(), patch_path)).exists():
+        elif (path_in_cwd := Path(os.getcwd(), patch_path)).is_file():
             patch_path = path_in_cwd
-
         return patch_path
 
     @classmethod
-    def _read_patch_file(cls, path: Path) -> dict[str, Any]:
-        with path.open("r") as file:
-            patch = yaml.load(file, Loader=SafeLineLoader)
-
-        return patch
-
-    @classmethod
-    def _get_patch_object_from_item(
-            cls, item: T, patches: MutableMapping[Path, Mapping[str, Any]] = None, **kwargs
-    ) -> Mapping[str, Any] | None:
-        patch_path = cls._get_patch_path_from_item(item=item, to_absolute=True, **kwargs)
+    def _get_patch_object(
+            cls, item: I, patches: MutableMapping[Path, Mapping[str, Any]] = None
+    ) -> Mapping[str, Any]:
+        patch_path = cls._get_patch_path(item=item, to_absolute=True)
         if patch_path is None or not patch_path.is_file():
-            return None
+            return {}
 
         if patches is None:
             patch = cls._read_patch_file(patch_path)
@@ -138,33 +132,38 @@ class Result(Generic[T], metaclass=ABCMeta):
         else:
             patch = patches[patch_path]
 
-        return cls._extract_nested_patch_object(patch=patch, item=item, **kwargs)
+        return patch
+
+    @classmethod
+    def _read_patch_file(cls, path: Path) -> dict[str, Any]:
+        with path.open("r") as file:
+            patch = yaml.load(file, Loader=SafeLineLoader)
+        return patch
 
     @classmethod
     @abstractmethod
-    def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: T, **__) -> Mapping[str, Any] | None:
+    def _extract_patch_object_for_item(
+            cls, patch: Mapping[str, Any], item: ItemT, parent: ParentT = None
+    ) -> Mapping[str, Any] | None:
         raise NotImplementedError
 
-    def as_dict(self) -> dict[str, Any]:
-        """Format this result as a dictionary."""
-        return dataclasses.asdict(self)
-
-    def as_json(self) -> dict[str, Any]:
-        """Format this result as a dictionary suitable for dumping to JSON."""
-        return {k: self._as_json(v) for k, v in self.as_dict().items()}
-
-    def _as_json(self, value: Any) -> Any:
-        if value is None or isinstance(value, (str, int, float, bool)):
-            return value
-        if isinstance(value, MutableMapping):
-            return {k: self._as_json(v) for k, v in value.items()}
-        if isinstance(value, Iterable):
-            return [self._as_json(v) for v in value]
-
-        return str(value)
+    def as_github_annotation(self) -> Mapping[str, str]:
+        """
+        Format this result to a GitHub annotation. Raises an exception if the result does not
+        have all the required parameters set to build a valid GitHub annotation.
+        """
+        if not self.can_format_to_github_annotation:
+            raise Exception("Cannot format this result to a GitHub annotation.")
+        return self._as_github_annotation()
 
     @property
-    def _github_annotation(self) -> Mapping[str, str | int | list[str] | dict[str, str]]:
+    def can_format_to_github_annotation(self) -> bool:
+        """Can this result be formatted as a valid GitHub annotation."""
+        required_keys = {"path", "start_line", "end_line", "annotation_level", "message"}
+        annotation = self._as_github_annotation()
+        return all(annotation.get(key) is not None for key in required_keys)
+
+    def _as_github_annotation(self) -> Mapping[str, str | int | list[str] | dict[str, str]]:
         """
         See annotations spec in the `output` param 'Update a check run':
         https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run
@@ -184,44 +183,21 @@ class Result(Generic[T], metaclass=ABCMeta):
             },
         }
 
-    @property
-    def can_format_to_github_annotation(self) -> bool:
-        """Can this result be formatted as a valid GitHub annotation."""
-        required_keys = ["path", "start_line", "end_line", "annotation_level", "message"]
-        return all(key in self._github_annotation for key in required_keys)
 
-    def as_github_annotation(self) -> Mapping[str, str]:
-        """
-        Format this result to a GitHub annotation. Raises an exception if the result does not
-        have all the required parameters set to build a valid GitHub annotation.
-        """
-        if not self.can_format_to_github_annotation:
-            raise Exception("Cannot format this result to a GitHub annotation.")
-        return self._github_annotation
-
-
-class ResultModel(Result[ModelNode]):
-    # noinspection PyPropertyDefinition,PyNestedDecorators
+class ModelResult(Result[ModelNode, None]):
     @classmethod
-    @property
-    def resource_type(cls) -> type[T]:
-        return ModelNode
-
-    @classmethod
-    def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: ModelNode, **__):
+    def _extract_patch_object_for_item(
+            cls, patch: Mapping[str, Any], item: ModelNode, parent: None = None
+    ) -> Mapping[str, Any] | None:
         models = (model for model in patch.get("models", ()) if model.get("name", "") == item.name)
         return next(models, None)
 
 
-class ResultSource(Result[SourceDefinition]):
-    # noinspection PyPropertyDefinition,PyNestedDecorators
+class SourceResult(Result[SourceDefinition, None]):
     @classmethod
-    @property
-    def resource_type(cls) -> type[T]:
-        return SourceDefinition
-
-    @classmethod
-    def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: SourceDefinition, **__):
+    def _extract_patch_object_for_item(
+            cls, patch: Mapping[str, Any], item: SourceDefinition, parent: None = None
+    ) -> Mapping[str, Any] | None:
         sources = (
             table
             for source in patch.get("sources", ()) if source.get("name", "") == item.source_name
@@ -230,126 +206,74 @@ class ResultSource(Result[SourceDefinition]):
         return next(sources, None)
 
 
-class ResultMacro(Result[Macro]):
-    # noinspection PyPropertyDefinition,PyNestedDecorators
+_COLUMN_PARENT_RESULT_MAP: Mapping[type[BaseResource], type[Result[ParentT, None]]] = {
+    ModelNode: ModelResult, SourceDefinition: SourceResult
+}
+
+
+class ColumnResult[P: ParentT](Result[ColumnInfo, P]):
     @classmethod
-    @property
-    def resource_type(cls) -> type[T]:
-        return Macro
-
-    @classmethod
-    def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: Macro, **__):
-        macros = (macro for macro in patch.get("macros", ()) if macro.get("name", "") == item.name)
-        return next(macros, None)
-
-
-@dataclass(kw_only=True)
-class ResultChild(Result[T], Generic[T, ParentT], metaclass=ABCMeta):
-    parent_id: str
-    parent_name: str
-    parent_type: str
-    index: int
-
-    # noinspection PyMethodOverriding
-    @classmethod
-    def from_resource(cls, item: T, parent: ParentT, **kwargs) -> Self:
-        return super().from_resource(
-            item=item,
-            parent=parent,
-            parent_id=parent.unique_id,
-            parent_name=parent.name,
-            parent_type=str(parent.resource_type),
-            **kwargs
-        )
-
-    @staticmethod
-    def _get_result_type(item: T, parent: ParentT = None, **__) -> str:
-        return f"{parent.resource_type.name.title()} {item.resource_type.name.title()}"
-
-    # noinspection PyMethodOverriding
-    @classmethod
-    def _get_path_from_item(cls, item: T, parent: ParentT, **__) -> Path | None:
-        return super()._get_path_from_item(parent)
-
-    # noinspection PyMethodOverriding
-    @classmethod
-    def _get_patch_path_from_item(cls, item: T, parent: ParentT, **__) -> Path | None:
-        return super()._get_patch_path_from_item(parent)
-
-    # noinspection PyMethodOverriding
-    @classmethod
-    @abstractmethod
-    def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: T, parent: ParentT, **__):
-        raise NotImplementedError
-
-    @property
-    def _github_annotation(self) -> Mapping[str, str]:
-        annotation = super()._github_annotation
-        details: dict[str, str] = annotation["raw_details"]
-        details["parent_name"] = self.parent_name
-        details["parent_type"] = self.parent_type
-        return annotation
-
-
-class ResultColumn(ResultChild[ColumnInfo, ParentT]):
-    # noinspection PyPropertyDefinition,PyNestedDecorators
-    @classmethod
-    @property
-    def resource_type(cls) -> type[T]:
-        return ColumnInfo
-
-    @classmethod
-    def from_resource(cls, item: ColumnInfo, parent: ParentT, **kwargs) -> Self:
-        index = list(parent.columns.keys()).index(item.name)
-        return super().from_resource(item=item, parent=parent, index=index, **kwargs)
-
-    @staticmethod
-    def _get_result_type(item: T, parent: ParentT = None, **__) -> str:
-        return f"{parent.resource_type.name.title()} Column"
-
-    @classmethod
-    def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: ColumnInfo, parent: ParentT, **__):
-        # noinspection PyProtectedMember
-        result_processor = RESULT_PROCESSOR_MAP.get(type(parent))
+    def _extract_patch_object_for_item(
+            cls, patch: Mapping[str, Any], item: ColumnInfo, parent: P = None
+    ) -> Mapping[str, Any] | None:
+        result_processor = _COLUMN_PARENT_RESULT_MAP.get(type(parent))
         if result_processor is None:
             return
 
         # noinspection PyProtectedMember
-        parent_patch = result_processor._extract_nested_patch_object(patch=patch, item=parent)
+        parent_patch = result_processor._extract_patch_object_for_item(patch=patch, item=parent)
+        print(parent_patch, item.name)
         if parent_patch is None:
             return
 
         columns = (column for column in parent_patch.get("columns", ()) if column.get("name", "") == item.name)
         return next(columns, None)
 
-
-class ResultMacroArgument(ResultChild[MacroArgument, Macro]):
-    # noinspection PyPropertyDefinition,PyNestedDecorators
     @classmethod
-    @property
-    def resource_type(cls) -> type[T]:
-        return MacroArgument
+    def _get_result_type(cls, item: ColumnInfo, parent: P = None) -> str:
+        return f"{parent.resource_type.name.title()} Column"
 
     @classmethod
-    def from_resource(cls, item: MacroArgument, parent: Macro, **kwargs) -> Self:
-        index = parent.arguments.index(item)
+    def from_resource(
+            cls, item: ColumnInfo, parent: P = None, patches: MutableMapping[Path, Mapping[str, Any]] = None, **kwargs
+    ) -> Self:
+        index = list(parent.columns.keys()).index(item.name)
         return super().from_resource(item=item, parent=parent, index=index, **kwargs)
 
-    @staticmethod
-    def _get_result_type(*_, **__) -> str:
-        return "Macro Argument"
 
+class MacroResult(Result[Macro, None]):
     @classmethod
-    def _extract_nested_patch_object(cls, patch: Mapping[str, Any], item: MacroArgument, parent: Macro, **__):
+    def _extract_patch_object_for_item(
+            cls, patch: Mapping[str, Any], item: Macro, parent: None = None
+    ) -> Mapping[str, Any] | None:
+        macros = (macro for macro in patch.get("macros", ()) if macro.get("name", "") == item.name)
+        return next(macros, None)
+
+
+class MacroArgumentResult(Result[MacroArgument, Macro]):
+    @classmethod
+    def _extract_patch_object_for_item(
+            cls, patch: Mapping[str, Any], item: MacroArgument, parent: Macro = None
+    ) -> Mapping[str, Any] | None:
         # noinspection PyProtectedMember
-        macro = ResultMacro._extract_nested_patch_object(patch=patch, item=parent)
+        macro = MacroResult._extract_patch_object_for_item(patch=patch, item=parent)
         if macro is None:
             return
 
         arguments = (argument for argument in macro.get("arguments", ()) if argument.get("name", "") == item.name)
         return next(arguments, None)
 
+    @classmethod
+    def _get_result_type(cls, item: MacroArgument, parent: Macro = None) -> str:
+        return "Macro Argument"
 
-RESULT_PROCESSORS: list[type[Result]] = [ResultModel, ResultSource, ResultMacro, ResultColumn, ResultMacroArgument]
-# noinspection PyTypeChecker
-RESULT_PROCESSOR_MAP: Mapping[type[T], type[Result]] = {cls.resource_type: cls for cls in RESULT_PROCESSORS}
+    @classmethod
+    def from_resource(
+            cls,
+            item: MacroArgument,
+            parent: Macro = None,
+            patches: MutableMapping[Path, Mapping[str, Any]] = None,
+            **kwargs
+    ) -> Self:
+        index = parent.arguments.index(item)
+        return super().from_resource(item=item, parent=parent, index=index, **kwargs)

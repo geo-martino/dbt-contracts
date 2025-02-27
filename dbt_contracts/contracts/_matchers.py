@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, BeforeValidator, model_validator
 
 
 def to_tuple(value: Any) -> tuple:
+    """Convert the given value to a tuple"""
     if value is None:
         return tuple()
     elif isinstance(value, tuple):

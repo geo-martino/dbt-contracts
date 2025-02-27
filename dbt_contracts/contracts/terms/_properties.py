@@ -4,13 +4,13 @@ from typing import Annotated
 from dbt.contracts.graph.nodes import SourceDefinition
 from pydantic import BeforeValidator, Field, field_validator
 
-from dbt_contracts.contracts._core import ContractTerm
+from dbt_contracts.contracts._core import ContractTerm, ContractContext
 from dbt_contracts.contracts._matchers import to_tuple
 from dbt_contracts.types import ParentT, PropertiesT, DescriptionT, TagT, MetaT
 
 
 class HasProperties[I: PropertiesT](ContractTerm[I, None]):
-    def run(self, item: I, parent: None = None) -> bool:
+    def run(self, item: I, context: ContractContext, parent: None = None) -> bool:
         if isinstance(item, SourceDefinition):  # sources always have properties files defined
             return True
 
@@ -23,7 +23,7 @@ class HasProperties[I: PropertiesT](ContractTerm[I, None]):
 
 
 class HasDescription[I: DescriptionT, P: ParentT](ContractTerm[I, P]):
-    def run(self, item: I, parent: P = None) -> bool:
+    def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         missing_description = not item.description
         # if missing_description:
         #     name = inspect.currentframe().f_code.co_name
@@ -38,7 +38,7 @@ class HasRequiredTags[I: TagT, P: ParentT](ContractTerm[I, P]):
         default=tuple(),
     )
 
-    def run(self, item: I, parent: P = None) -> bool:
+    def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         missing_tags = set(self.tags) - set(item.tags)
         # if missing_tags:
         #     name = inspect.currentframe().f_code.co_name
@@ -54,7 +54,7 @@ class HasAllowedTags[I: TagT, P: ParentT](ContractTerm[I, P]):
         default=tuple(),
     )
 
-    def run(self, item: I, parent: P = None) -> bool:
+    def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         invalid_tags = set(item.tags) - set(self.tags)
         # if invalid_tags:
         #     name = inspect.currentframe().f_code.co_name
@@ -70,7 +70,7 @@ class HasRequiredMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
         default=tuple(),
     )
 
-    def run(self, item: I, parent: P = None) -> bool:
+    def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         missing_keys = set(self.keys) - set(item.meta.keys())
         # if missing_keys:
         #     name = inspect.currentframe().f_code.co_name
@@ -86,7 +86,7 @@ class HasAllowedMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
         default=tuple(),
     )
 
-    def run(self, item: I, parent: P = None) -> bool:
+    def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         invalid_keys = set(item.meta.keys()) - set(self.keys)
         # if invalid_keys:
         #     name = inspect.currentframe().f_code.co_name
@@ -106,6 +106,7 @@ class HasAllowedMetaValues[I: MetaT, P: ParentT](ContractTerm[I, P]):
     @field_validator("meta", mode="before")
     @classmethod
     def make_meta_values_tuple(cls, meta: dict[str, str | Sequence[str]]) -> dict[str, tuple[str]]:
+        """Convert all meta values to tuples"""
         meta = meta.copy()
 
         for key, val in meta.items():
@@ -113,9 +114,10 @@ class HasAllowedMetaValues[I: MetaT, P: ParentT](ContractTerm[I, P]):
                 meta[key] = (val,)
             else:
                 meta[key] = tuple(val)
+        # noinspection PyTypeChecker
         return meta
 
-    def run(self, item: I, parent: P = None) -> bool:
+    def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         invalid_meta: dict[str, str] = {}
         expected_meta: dict[str, Collection[str]] = {}
 

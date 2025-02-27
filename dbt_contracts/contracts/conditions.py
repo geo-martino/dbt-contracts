@@ -46,6 +46,7 @@ class MetaCondition(ContractCondition[MetaT]):
     @field_validator("meta", mode="before")
     @classmethod
     def make_meta_values_tuple(cls, meta: dict[str, str | Sequence[str]]) -> dict[str, tuple[str]]:
+        """Convert all meta values to tuples"""
         meta = meta.copy()
 
         for key, val in meta.items():
@@ -53,6 +54,7 @@ class MetaCondition(ContractCondition[MetaT]):
                 meta[key] = (val,)
             else:
                 meta[key] = tuple(val)
+        # noinspection PyTypeChecker
         return meta
 
     def validate(self, item: ParsedResource | ColumnInfo) -> bool:
