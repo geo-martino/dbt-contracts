@@ -1,5 +1,5 @@
 import re
-from collections.abc import Collection, Sequence
+from collections.abc import Sequence
 from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, Field, BeforeValidator, model_validator

@@ -1,13 +1,15 @@
 """
 Generic types to use for all contracts.
 """
-from typing import TypeVar
-
 from dbt.artifacts.resources.base import BaseResource
-from dbt.artifacts.resources.v1.components import ColumnInfo
+from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
 from dbt.artifacts.resources.v1.macro import MacroArgument
+from dbt.contracts.graph.nodes import SourceDefinition, Macro
 
-T = TypeVar('T', BaseResource, ColumnInfo, MacroArgument)
-ChildT = TypeVar('ChildT', ColumnInfo, MacroArgument)
-ParentT = TypeVar('ParentT', BaseResource, None)
-CombinedT = T | tuple[ChildT, ParentT]
+ChildT = ColumnInfo | MacroArgument
+ParentT = BaseResource | None
+ItemT = ChildT | ParentT
+
+PropertiesT = ParsedResource | SourceDefinition | Macro
+TagT = ParsedResource | ColumnInfo
+MetaT = ParsedResource | ColumnInfo

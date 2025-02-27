@@ -7,16 +7,17 @@ from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import SourceDefinition
 from pydantic import BeforeValidator, Field, field_validator
 
-from dbt_contracts.contracts._core import ResourceValidator
+from dbt_contracts.contracts._core import ContractCondition
 from dbt_contracts.contracts._matchers import PatternMatcher, to_tuple
+from dbt_contracts.types import ItemT, TagT, MetaT
 
 
-class NameValidator(ResourceValidator[BaseResource | ColumnInfo | MacroArgument], PatternMatcher):
+class NameCondition(ContractCondition[ItemT], PatternMatcher):
     def validate(self, item: (BaseResource, ColumnInfo, MacroArgument)) -> bool:
         return self._match(item.name)
 
 
-class PathValidator(ResourceValidator[BaseResource], PatternMatcher):
+class PathCondition(ContractCondition[BaseResource], PatternMatcher):
     def validate(self, item: BaseResource) -> bool:
         paths = [item.original_file_path, item.path]
         if isinstance(item, ParsedResource) and item.patch_path:
@@ -25,7 +26,7 @@ class PathValidator(ResourceValidator[BaseResource], PatternMatcher):
         return any(map(self._match, paths))
 
 
-class TagValidator(ResourceValidator[ParsedResource | ColumnInfo]):
+class TagCondition(ContractCondition[TagT]):
     tags: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The tags to match on",
         default=tuple(),
@@ -35,10 +36,10 @@ class TagValidator(ResourceValidator[ParsedResource | ColumnInfo]):
         return not self.tags or any(tag in self.tags for tag in item.tags)
 
 
-class MetaValidator(ResourceValidator[ParsedResource | ColumnInfo]):
+class MetaCondition(ContractCondition[MetaT]):
     meta: dict[str, Sequence[str]] = Field(
-        description="A map of the accepted values for each meta key",
-        default=dict(),
+        description="The mapping of meta keys to their allowed values",
+        default_factory=dict,
     )
 
     # noinspection PyNestedDecorators
@@ -64,11 +65,11 @@ class MetaValidator(ResourceValidator[ParsedResource | ColumnInfo]):
         return not self.meta or any(map(_match, self.meta))
 
 
-class IsMaterializedValidator(ResourceValidator[ParsedResource]):
+class IsMaterializedCondition(ContractCondition[ParsedResource]):
     def validate(self, item: ParsedResource) -> bool:
         return item.config.materialized != "ephemeral"
 
 
-class IsEnabledValidator(ResourceValidator[SourceDefinition]):
+class IsEnabledCondition(ContractCondition[SourceDefinition]):
     def validate(self, item: SourceDefinition) -> bool:
         return item.config.enabled
