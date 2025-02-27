@@ -8,7 +8,7 @@ from faker import Faker
 # noinspection PyProtectedMember
 from dbt_contracts.contracts.terms._properties import HasProperties, HasDescription, HasRequiredTags, HasAllowedTags, \
     HasRequiredMetaKeys, HasAllowedMetaKeys, HasAllowedMetaValues
-from dbt_contracts.types import ItemT, PropertiesT, TagT, MetaT
+from dbt_contracts.types import PropertiesT, DescriptionT, TagT, MetaT
 
 
 @pytest.mark.parametrize("item", ["model", "source", "macro"])
@@ -25,9 +25,9 @@ def test_has_properties(item: str, faker: Faker, request: FixtureRequest):
         assert not HasProperties().run(item)
 
 
-@pytest.mark.parametrize("item", ["model", "column"])
+@pytest.mark.parametrize("item", ["model", "source", "column", "macro", "argument"])
 def test_has_description(item: str, faker: Faker, request: FixtureRequest):
-    item: ItemT = request.getfixturevalue(item)
+    item: DescriptionT = request.getfixturevalue(item)
 
     item.description = faker.sentence()
     assert HasDescription().run(item)

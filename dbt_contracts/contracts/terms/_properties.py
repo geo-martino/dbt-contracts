@@ -1,14 +1,12 @@
-import inspect
 from collections.abc import Sequence, Collection
 from typing import Annotated
 
-from dbt.artifacts.resources.v1.components import ParsedResource
-from dbt.contracts.graph.nodes import Macro, SourceDefinition
+from dbt.contracts.graph.nodes import SourceDefinition
 from pydantic import BeforeValidator, Field, field_validator
 
 from dbt_contracts.contracts._core import ContractTerm
 from dbt_contracts.contracts._matchers import to_tuple
-from dbt_contracts.types import ItemT, ParentT, PropertiesT, TagT
+from dbt_contracts.types import ParentT, PropertiesT, DescriptionT, TagT, MetaT
 
 
 class HasProperties[I: PropertiesT](ContractTerm[I, None]):
@@ -24,7 +22,7 @@ class HasProperties[I: PropertiesT](ContractTerm[I, None]):
         return not missing_properties
 
 
-class HasDescription[I: ItemT, P: ParentT](ContractTerm[I, P]):
+class HasDescription[I: DescriptionT, P: ParentT](ContractTerm[I, P]):
     def run(self, item: I, parent: P = None) -> bool:
         missing_description = not item.description
         # if missing_description:
@@ -66,7 +64,7 @@ class HasAllowedTags[I: TagT, P: ParentT](ContractTerm[I, P]):
         return len(invalid_tags) == 0
 
 
-class HasRequiredMetaKeys[I: TagT, P: ParentT](ContractTerm[I, P]):
+class HasRequiredMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
     keys: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The required meta keys",
         default=tuple(),
@@ -82,7 +80,7 @@ class HasRequiredMetaKeys[I: TagT, P: ParentT](ContractTerm[I, P]):
         return not missing_keys
 
 
-class HasAllowedMetaKeys[I: TagT, P: ParentT](ContractTerm[I, P]):
+class HasAllowedMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
     keys: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The allowed meta keys",
         default=tuple(),
@@ -98,7 +96,7 @@ class HasAllowedMetaKeys[I: TagT, P: ParentT](ContractTerm[I, P]):
         return len(invalid_keys) == 0
 
 
-class HasAllowedMetaValues[I: TagT, P: ParentT](ContractTerm[I, P]):
+class HasAllowedMetaValues[I: MetaT, P: ParentT](ContractTerm[I, P]):
     meta: dict[str, Sequence[str]] = Field(
         description="The mapping of meta keys to their allowed values",
         default_factory=dict,
