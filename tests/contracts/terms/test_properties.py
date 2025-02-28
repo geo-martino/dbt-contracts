@@ -1,4 +1,5 @@
 from random import sample
+from unittest import mock
 
 import pytest
 from _pytest.fixtures import FixtureRequest
@@ -34,7 +35,9 @@ def test_has_description(item: str, context: ContractContext, faker: Faker, requ
     assert HasDescription().run(item, context=context)
 
     item.description = ""
-    assert not HasDescription().run(item, context=context)
+    with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        assert not HasDescription().run(item, context=context)
+        mock_add_result.assert_called_once()
 
 
 @pytest.mark.parametrize("item", ["model", "column"])
@@ -43,7 +46,9 @@ def test_has_required_tags(item: str, context: ContractContext, faker: Faker, re
 
     item.tags = faker.words(10)
     assert HasRequiredTags(tags=sample(item.tags, k=5)).run(item, context=context)
-    assert not HasRequiredTags(tags=faker.words(10) + sample(item.tags, k=5)).run(item, context=context)
+    with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        assert not HasRequiredTags(tags=faker.words(10) + sample(item.tags, k=5)).run(item, context=context)
+        mock_add_result.assert_called_once()
 
     item.tags.clear()
     assert HasRequiredTags().run(item, context=context)
@@ -55,7 +60,11 @@ def test_has_allowed_tags(item: str, context: ContractContext, faker: Faker, req
     item: TagT = request.getfixturevalue(item)
 
     item.tags = faker.words(10)
-    assert not HasAllowedTags(tags=sample(item.tags, k=5)).run(item, context=context)
+
+    with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        assert not HasAllowedTags(tags=sample(item.tags, k=5)).run(item, context=context)
+        mock_add_result.assert_called_once()
+
     assert not HasAllowedTags(tags=faker.words(10)).run(item, context=context)
     assert HasAllowedTags(tags=faker.words(10) + item.tags).run(item, context=context)
 
@@ -70,7 +79,9 @@ def test_has_required_meta_keys(item: str, context: ContractContext, faker: Fake
 
     item.meta = {key: faker.word() for key in faker.words(10)}
     assert HasRequiredMetaKeys(keys=sample(list(item.meta), k=5)).run(item, context=context)
-    assert not HasRequiredMetaKeys(keys=faker.words(10) + sample(list(item.meta), k=5)).run(item, context=context)
+    with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        assert not HasRequiredMetaKeys(keys=faker.words(10) + sample(list(item.meta), k=5)).run(item, context=context)
+        mock_add_result.assert_called_once()
 
     item.meta.clear()
     assert HasRequiredMetaKeys().run(item, context=context)
@@ -82,7 +93,10 @@ def test_has_allowed_meta_keys(item: str, context: ContractContext, faker: Faker
     item: MetaT = request.getfixturevalue(item)
 
     item.meta = {key: faker.word() for key in faker.words(10)}
-    assert not HasAllowedMetaKeys(keys=sample(list(item.meta), k=5)).run(item, context=context)
+    with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        assert not HasAllowedMetaKeys(keys=sample(list(item.meta), k=5)).run(item, context=context)
+        mock_add_result.assert_called_once()
+
     assert not HasAllowedMetaKeys(keys=faker.words(10)).run(item, context=context)
     assert HasAllowedMetaKeys(keys=faker.words(10) + list(item.meta)).run(item, context=context)
 
@@ -98,7 +112,9 @@ def test_has_allowed_meta_values(item: str, context: ContractContext, faker: Fak
     item.meta = {key: faker.word() for key in faker.words(10)}
 
     allowed_meta_values = {key: faker.words(5) for key, val in sample(list(item.meta.items()), k=5)}
-    assert not HasAllowedMetaValues(meta=allowed_meta_values).run(item, context=context)
+    with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        assert not HasAllowedMetaValues(meta=allowed_meta_values).run(item, context=context)
+        mock_add_result.assert_called_once()
 
     allowed_meta_values = {key: faker.words(5) + [val] for key, val in sample(list(item.meta.items()), k=5)}
     assert HasAllowedMetaValues(meta=allowed_meta_values).run(item, context=context)

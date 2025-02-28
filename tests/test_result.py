@@ -79,8 +79,8 @@ class TestResult:
         with path.open("w") as file:
             yaml.dump(expected, file)
 
+        patches = {}
         with mock.patch.object(Result, "_read_patch_file", return_value=expected) as read_patch_file:
-            patches = {}
             assert Result._get_patch_object(model, patches=patches) == expected
             read_patch_file.assert_called_once_with(path)
             assert patches == {path: expected}  # loaded patch is stored

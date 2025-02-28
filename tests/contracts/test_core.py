@@ -28,8 +28,6 @@ def test_add_result_on_item(context: ContractContext, model: ModelNode):
 
 
 def test_add_result_on_item_with_parent(context: ContractContext, model: ModelNode, column: ColumnInfo):
-    model.columns |= {column.name: column}
-
     expected_name = "test_name"
     expected_message = "this test has failed"
     context.add_result(item=column, parent=model, name=expected_name, message=expected_message)

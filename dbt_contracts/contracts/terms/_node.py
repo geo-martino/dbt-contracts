@@ -15,6 +15,12 @@ from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.types import NodeT
 
 
+def _get_matching_catalog_table(item: NodeT, catalog: CatalogArtifact) -> CatalogTable | None:
+    if isinstance(item, SourceDefinition):
+        return catalog.sources.get(item.unique_id)
+    return catalog.nodes.get(item.unique_id)
+
+
 def _get_tests(node: NodeT, manifest: Manifest) -> Iterable[TestNode]:
     def _filter_nodes(test: Any) -> bool:
         return isinstance(test, TestNode) and all((
@@ -25,14 +31,19 @@ def _get_tests(node: NodeT, manifest: Manifest) -> Iterable[TestNode]:
     return filter(_filter_nodes, manifest.nodes.values())
 
 
-def _get_matching_catalog_table(resource: BaseResource, catalog: CatalogArtifact) -> CatalogTable | None:
-    if isinstance(resource, SourceDefinition):
-        return catalog.sources.get(resource.unique_id)
-    return catalog.nodes.get(resource.unique_id)
-
-
 class NodeContractTerm[T: NodeT](ContractTerm[T, None], metaclass=ABCMeta):
     pass
+
+
+class Exists[T: NodeT](NodeContractTerm[T]):
+    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+        table = _get_matching_catalog_table(item, catalog=context.catalog)
+        if table is None:
+            test_name = inspect.currentframe().f_code.co_name
+            message = f"The {item.resource_type.lower()} cannot be found in the database"
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
+
+        return table is not None
 
 
 class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
@@ -52,17 +63,6 @@ class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
             context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return not too_small and not too_large
-
-
-class Exists[T: NodeT](NodeContractTerm[T]):
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
-        table = _get_matching_catalog_table(item, catalog=context.catalog)
-        if table is None:
-            test_name = inspect.currentframe().f_code.co_name
-            message = f"The {item.resource_type.lower()} cannot be found in the database"
-            context.add_result(name=test_name, message=message, item=item, parent=parent)
-
-        return table is not None
 
 
 class HasAllColumns[T: NodeT](NodeContractTerm[T]):
@@ -95,11 +95,11 @@ class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
 
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         test_name = inspect.currentframe().f_code.co_name
-        node_columns = {column.name: column.data_type for column in item.columns.values()}
+        node_column_types = {column.name: column.data_type for column in item.columns.values()}
 
         missing_columns = set()
         if self.columns:
-            missing_columns = set(self.columns) - set(node_columns)
+            missing_columns = set(self.columns) - set(node_column_types)
         if missing_columns:
             message = (
                 f"{item.resource_type.title()} does not have all expected columns. "
@@ -110,8 +110,8 @@ class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
         unexpected_types = {}
         if isinstance(self.columns, Mapping):
             unexpected_types = {
-                name: (node_columns[name], data_type) for name, data_type in self.columns.items()
-                if name in node_columns and node_columns[name] != data_type
+                name: (node_column_types[name], data_type) for name, data_type in self.columns.items()
+                if name in node_column_types and node_column_types[name] != data_type
             }
         if unexpected_types:
             message = f"{item.resource_type.title()} has unexpected column types."
