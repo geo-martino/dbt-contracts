@@ -2,9 +2,10 @@ import os
 from abc import ABCMeta, abstractmethod
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, ClassVar
 
 import yaml
+from dbt.adapters.utils import classproperty
 from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ParsedResource, ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
@@ -33,7 +34,7 @@ class SafeLineLoader(yaml.SafeLoader):
 class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
     """Store information of the result from a contract execution."""
     name: str
-    path: Path
+    path: Path | None
     result_type: str
     result_level: str
     result_name: str
@@ -49,6 +50,8 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
     parent_name: str | None = None
     parent_type: str | None = None
     index: int | None = None
+
+    resource_type: ClassVar[type[ItemT]]
 
     @classmethod
     def from_resource(
@@ -77,9 +80,13 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
                 parent_type=parent.resource_type.name.title(),
             )
 
+        path = None
+        if isinstance(path_item := parent if parent is not None else item, BaseResource):
+            path = Path(path_item.original_file_path)
+
         return cls(
             name=item.name,
-            path=Path((parent if parent is not None else item).original_file_path),
+            path=path,
             result_type=cls._get_result_type(item=item, parent=parent),
             patch_path=cls._get_patch_path(item=parent if parent is not None else item, to_absolute=False),
             patch_start_line=patch_object.get("__start_line__"),
@@ -101,7 +108,7 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
         patch_path = None
         if isinstance(item, ParsedResource) and item.patch_path:
             patch_path = Path(item.patch_path.split("://")[1])
-        elif (path := Path(item.original_file_path)).suffix in {".yml", ".yaml"}:
+        elif isinstance(item, BaseResource) and (path := Path(item.original_file_path)).suffix in {".yml", ".yaml"}:
             patch_path = path
 
         if patch_path is None or not to_absolute or patch_path.is_absolute():
@@ -185,6 +192,8 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
 
 
 class ModelResult(Result[ModelNode, None]):
+    resource_type = ModelNode
+
     @classmethod
     def _extract_patch_object_for_item(
             cls, patch: Mapping[str, Any], item: ModelNode, parent: None = None
@@ -194,6 +203,8 @@ class ModelResult(Result[ModelNode, None]):
 
 
 class SourceResult(Result[SourceDefinition, None]):
+    resource_type = SourceDefinition
+
     @classmethod
     def _extract_patch_object_for_item(
             cls, patch: Mapping[str, Any], item: SourceDefinition, parent: None = None
@@ -206,23 +217,19 @@ class SourceResult(Result[SourceDefinition, None]):
         return next(sources, None)
 
 
-_COLUMN_PARENT_RESULT_MAP: Mapping[type[BaseResource], type[Result[ParentT, None]]] = {
-    ModelNode: ModelResult, SourceDefinition: SourceResult
-}
-
-
 class ColumnResult[P: ParentT](Result[ColumnInfo, P]):
+    resource_type = ColumnInfo
+
     @classmethod
     def _extract_patch_object_for_item(
             cls, patch: Mapping[str, Any], item: ColumnInfo, parent: P = None
     ) -> Mapping[str, Any] | None:
-        result_processor = _COLUMN_PARENT_RESULT_MAP.get(type(parent))
+        result_processor = RESULT_PROCESSOR_MAP.get(type(parent))
         if result_processor is None:
             return
 
         # noinspection PyProtectedMember
         parent_patch = result_processor._extract_patch_object_for_item(patch=patch, item=parent)
-        print(parent_patch, item.name)
         if parent_patch is None:
             return
 
@@ -231,17 +238,22 @@ class ColumnResult[P: ParentT](Result[ColumnInfo, P]):
 
     @classmethod
     def _get_result_type(cls, item: ColumnInfo, parent: P = None) -> str:
-        return f"{parent.resource_type.name.title()} Column"
+        result_type = "Column"
+        if parent is not None:
+            result_type = f"{parent.resource_type.name.title()} {result_type}"
+        return result_type
 
     @classmethod
     def from_resource(
             cls, item: ColumnInfo, parent: P = None, patches: MutableMapping[Path, Mapping[str, Any]] = None, **kwargs
     ) -> Self:
-        index = list(parent.columns.keys()).index(item.name)
+        index = list(parent.columns.keys()).index(item.name) if parent is not None else None
         return super().from_resource(item=item, parent=parent, index=index, **kwargs)
 
 
 class MacroResult(Result[Macro, None]):
+    resource_type = Macro
+
     @classmethod
     def _extract_patch_object_for_item(
             cls, patch: Mapping[str, Any], item: Macro, parent: None = None
@@ -251,6 +263,8 @@ class MacroResult(Result[Macro, None]):
 
 
 class MacroArgumentResult(Result[MacroArgument, Macro]):
+    resource_type = MacroArgument
+
     @classmethod
     def _extract_patch_object_for_item(
             cls, patch: Mapping[str, Any], item: MacroArgument, parent: Macro = None
@@ -275,5 +289,9 @@ class MacroArgumentResult(Result[MacroArgument, Macro]):
             patches: MutableMapping[Path, Mapping[str, Any]] = None,
             **kwargs
     ) -> Self:
-        index = parent.arguments.index(item)
+        index = parent.arguments.index(item) if parent is not None else None
         return super().from_resource(item=item, parent=parent, index=index, **kwargs)
+
+
+RESULT_PROCESSORS: list[type[Result]] = [ModelResult, SourceResult, MacroResult, ColumnResult, MacroArgumentResult]
+RESULT_PROCESSOR_MAP: Mapping[type[ItemT], type[Result]] = {cls.resource_type: cls for cls in RESULT_PROCESSORS}

@@ -1,3 +1,4 @@
+import inspect
 from abc import ABCMeta
 from collections.abc import Iterable, Sequence, Mapping
 from typing import Any
@@ -42,13 +43,13 @@ class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
         count = len(tuple(_get_tests(item, manifest=context.manifest)))
         too_small, too_large = self._match(count)
 
-        # if too_small or too_large:
-        #     test_name = inspect.currentframe().f_code.co_name
-        #     quantifier = 'few' if too_small else 'many'
-        #     expected = self.min_count if too_small else self.max_count
-        #     message = f"Too {quantifier} tests found: {count}. Expected: {expected}."
-        #
-        #     self._add_result(item, name=test_name, message=message)
+        if too_small or too_large:
+            test_name = inspect.currentframe().f_code.co_name
+            quantifier = 'few' if too_small else 'many'
+            expected = self.min_count if too_small else self.max_count
+            message = f"Too {quantifier} tests found: {count}. Expected: {expected}."
+
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return not too_small and not too_large
 
@@ -56,10 +57,10 @@ class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
 class Exists[T: NodeT](NodeContractTerm[T]):
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         table = _get_matching_catalog_table(item, catalog=context.catalog)
-        # if table is None:
-        #     test_name = inspect.currentframe().f_code.co_name
-        #     message = f"The {item.resource_type.lower()} cannot be found in the database"
-        #     self._add_result(item, name=test_name, message=message)
+        if table is None:
+            test_name = inspect.currentframe().f_code.co_name
+            message = f"The {item.resource_type.lower()} cannot be found in the database"
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return table is not None
 
@@ -74,13 +75,13 @@ class HasAllColumns[T: NodeT](NodeContractTerm[T]):
         expected_columns = {column.name for column in table.columns.values()}
 
         missing_columns = expected_columns - actual_columns
-        # if missing_columns:
-        #     test_name = inspect.currentframe().f_code.co_name
-        #     message = (
-        #         f"{item.resource_type.title()} config does not contain all columns. "
-        #         f"Missing {', '.join(missing_columns)}"
-        #     )
-        #     self._add_result(item, name=test_name, message=message)
+        if missing_columns:
+            test_name = inspect.currentframe().f_code.co_name
+            message = (
+                f"{item.resource_type.title()} config does not contain all columns. "
+                f"Missing {', '.join(missing_columns)}"
+            )
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return not missing_columns
 
@@ -93,18 +94,18 @@ class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
     )
 
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
-        # test_name = inspect.currentframe().f_code.co_name
+        test_name = inspect.currentframe().f_code.co_name
         node_columns = {column.name: column.data_type for column in item.columns.values()}
 
         missing_columns = set()
         if self.columns:
             missing_columns = set(self.columns) - set(node_columns)
-        # if missing_columns:
-        #     message = (
-        #         f"{item.resource_type.title()} does not have all expected columns. "
-        #         f"Missing: {', '.join(missing_columns)}"
-        #     )
-        #     self._add_result(item, name=test_name, message=message)
+        if missing_columns:
+            message = (
+                f"{item.resource_type.title()} does not have all expected columns. "
+                f"Missing: {', '.join(missing_columns)}"
+            )
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         unexpected_types = {}
         if isinstance(self.columns, Mapping):
@@ -112,12 +113,12 @@ class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
                 name: (node_columns[name], data_type) for name, data_type in self.columns.items()
                 if name in node_columns and node_columns[name] != data_type
             }
-        # if unexpected_types:
-        #     message = f"{item.resource_type.title()} has unexpected column types."
-        #     for name, (actual, expected) in unexpected_types.items():
-        #         message += f"\n- {actual!r} should be {expected!r}"
-        #
-        #     self._add_result(item, name=test_name, message=message)
+        if unexpected_types:
+            message = f"{item.resource_type.title()} has unexpected column types."
+            for name, (actual, expected) in unexpected_types.items():
+                message += f"\n- {actual!r} should be {expected!r}"
+
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return not missing_columns and not unexpected_types
 
@@ -129,9 +130,9 @@ class HasMatchingDescription[T: NodeT](NodeContractTerm[T], StringMatcher):
             return False
 
         unmatched_description = not self._match(item.description, table.metadata.comment)
-        # if unmatched_description:
-        #     test_name = inspect.currentframe().f_code.co_name
-        #     message = f"Description does not match remote entity: {item.description!r} != {table.metadata.comment!r}"
-        #     self._add_result(item, name=test_name, message=message)
+        if unmatched_description:
+            test_name = inspect.currentframe().f_code.co_name
+            message = f"Description does not match remote entity: {item.description!r} != {table.metadata.comment!r}"
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return not unmatched_description

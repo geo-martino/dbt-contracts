@@ -1,9 +1,12 @@
 from abc import ABCMeta, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
+from dbt_contracts.result import Result, RESULT_PROCESSOR_MAP
 from pydantic import BaseModel
 
 from dbt_contracts.types import ItemT, ParentT
@@ -19,11 +22,37 @@ class ContractContext:
     catalog: CatalogArtifact
 
     @property
-    def log(self) -> dict[str, Any]:
-        return self._log
+    def results(self) -> list[Result]:
+        return self._results
 
     def __post_init__(self) -> None:
-        self._log = {}
+        self._results = []
+        self._patches: dict[Path, Mapping[str, Any]] = {}
+
+    def add_result(self, name: str, message: str, item: ItemT, parent: ParentT = None, **kwargs) -> None:
+        """
+        Create and add a new :py:class:`.Result` to the current list
+
+        :param name: The name to give to the generated result.
+        :param message: The result message.
+        :param item: The item that produced the result.
+        :param parent: The parent of the item that produced the result if available.
+        :param kwargs: Other result kwargs to pass to the result
+        """
+        result_processor = RESULT_PROCESSOR_MAP.get(type(item))
+        if result_processor is None:
+            raise Exception(f"Unexpected item to create result for: {type(item)}")
+
+        result = result_processor.from_resource(
+            item=item,
+            parent=parent,
+            result_name=name,
+            result_level="warning",
+            message=message,
+            patches=self._patches,
+            **kwargs
+        )
+        self.results.append(result)
 
 
 class ContractTerm[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):

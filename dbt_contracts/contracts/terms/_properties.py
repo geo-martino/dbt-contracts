@@ -1,3 +1,4 @@
+import inspect
 from collections.abc import Sequence, Collection
 from typing import Annotated
 
@@ -15,9 +16,10 @@ class HasProperties[I: PropertiesT](ContractTerm[I, None]):
             return True
 
         missing_properties = item.patch_path is None
-        # if missing_properties:
-        #     name = inspect.currentframe().f_code.co_name
-        #     self._add_result(item, parent=parent, name=name, message="No properties file found")
+        if missing_properties:
+            test_name = inspect.currentframe().f_code.co_name
+            message = "No properties file found"
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return not missing_properties
 
@@ -25,9 +27,10 @@ class HasProperties[I: PropertiesT](ContractTerm[I, None]):
 class HasDescription[I: DescriptionT, P: ParentT](ContractTerm[I, P]):
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         missing_description = not item.description
-        # if missing_description:
-        #     name = inspect.currentframe().f_code.co_name
-        #     self._add_result(item, parent=parent, name=name, message="Missing description")
+        if missing_description:
+            test_name = inspect.currentframe().f_code.co_name
+            message = "Missing description"
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return not missing_description
 
@@ -40,10 +43,10 @@ class HasRequiredTags[I: TagT, P: ParentT](ContractTerm[I, P]):
 
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         missing_tags = set(self.tags) - set(item.tags)
-        # if missing_tags:
-        #     name = inspect.currentframe().f_code.co_name
-        #     message = f"Missing required tags: {', '.join(missing_tags)}"
-        #     self._add_result(item, parent=parent, name=name, message=message)
+        if missing_tags:
+            test_name = inspect.currentframe().f_code.co_name
+            message = f"Missing required tags: {', '.join(missing_tags)}"
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return not missing_tags
 
@@ -56,10 +59,10 @@ class HasAllowedTags[I: TagT, P: ParentT](ContractTerm[I, P]):
 
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         invalid_tags = set(item.tags) - set(self.tags)
-        # if invalid_tags:
-        #     name = inspect.currentframe().f_code.co_name
-        #     message = f"Contains invalid tags: {', '.join(invalid_tags)}"
-        #     self._add_result(item, parent=parent, name=name, message=message)
+        if invalid_tags:
+            test_name = inspect.currentframe().f_code.co_name
+            message = f"Contains invalid tags: {', '.join(invalid_tags)}"
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return len(invalid_tags) == 0
 
@@ -72,10 +75,10 @@ class HasRequiredMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
 
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         missing_keys = set(self.keys) - set(item.meta.keys())
-        # if missing_keys:
-        #     name = inspect.currentframe().f_code.co_name
-        #     message = f"Missing required keys: {', '.join(missing_keys)}"
-        #     self._add_result(item, parent=parent, name=name, message=message)
+        if missing_keys:
+            test_name = inspect.currentframe().f_code.co_name
+            message = f"Missing required keys: {', '.join(missing_keys)}"
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return not missing_keys
 
@@ -88,10 +91,10 @@ class HasAllowedMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
 
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         invalid_keys = set(item.meta.keys()) - set(self.keys)
-        # if invalid_keys:
-        #     name = inspect.currentframe().f_code.co_name
-        #     message = f"Contains invalid keys: {', '.join(invalid_keys)}"
-        #     self._add_result(item, parent=parent, name=name, message=message)
+        if invalid_keys:
+            test_name = inspect.currentframe().f_code.co_name
+            message = f"Contains invalid keys: {', '.join(invalid_keys)}"
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return len(invalid_keys) == 0
 
@@ -128,9 +131,9 @@ class HasAllowedMetaValues[I: MetaT, P: ParentT](ContractTerm[I, P]):
                 invalid_meta[key] = item.meta[key]
                 expected_meta[key] = values
 
-        # if invalid_meta:
-        #     name = inspect.currentframe().f_code.co_name
-        #     message = f"Contains invalid meta values: {invalid_meta} | Accepted values: {expected_meta}"
-        #     self._add_result(item, parent=parent, name=name, message=message)
+        if invalid_meta:
+            test_name = inspect.currentframe().f_code.co_name
+            message = f"Contains invalid meta values: {invalid_meta} | Accepted values: {expected_meta}"
+            context.add_result(name=test_name, message=message, item=item, parent=parent)
 
         return not invalid_meta

@@ -1,5 +1,4 @@
 import os
-import shutil
 from pathlib import Path
 from typing import Mapping, Any
 from unittest import mock
@@ -13,12 +12,16 @@ from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import ModelNode, Macro, SourceDefinition
 from dbt.flags import GLOBAL_FLAGS
 
-from dbt_contracts.result import Result, SafeLineLoader, ModelResult, SourceResult, ColumnResult, MacroResult, \
-    MacroArgumentResult
+from dbt_contracts.result import Result, ModelResult, SourceResult, ColumnResult, MacroResult, MacroArgumentResult
 from dbt_contracts.types import ItemT, ParentT
 
 
 class ResultMock(Result):
+
+    @classmethod
+    def resource_type(cls) -> type[ModelNode]:
+        return ModelNode
+
     @classmethod
     def _extract_patch_object_for_item(
             cls, patch: Mapping[str, Any], item: ItemT, parent: ParentT = None
