@@ -117,3 +117,5 @@ def test_has_matching_description(item: str, context: ContractContext, faker: Fa
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
         assert not HasMatchingDescription().run(item, context=context)
         mock_add_result.assert_called_once()
+
+

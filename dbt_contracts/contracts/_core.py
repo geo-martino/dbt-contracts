@@ -1,3 +1,4 @@
+import re
 from abc import ABCMeta, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -62,6 +63,11 @@ class ContractTerm[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
     May also process an item while also taking into account its parent item
     e.g. a Column (child item) within a Model (parent item)
     """
+
+    @property
+    def _term_name(self) -> str:
+        class_name = self.__class__.__name__
+        return re.sub(r"([a-z])([A-Z])", r"\1_\2", class_name).lower()
 
     @abstractmethod
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
