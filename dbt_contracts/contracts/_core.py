@@ -6,9 +6,9 @@ from typing import Any
 
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
-from dbt_contracts.result import Result, RESULT_PROCESSOR_MAP
 from pydantic import BaseModel
 
+from dbt_contracts.result import Result, RESULT_PROCESSOR_MAP
 from dbt_contracts.types import ItemT, ParentT
 
 

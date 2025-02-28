@@ -3,7 +3,6 @@ from abc import ABCMeta
 from collections.abc import Iterable, Sequence, Mapping
 from typing import Any
 
-from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import TestNode, SourceDefinition

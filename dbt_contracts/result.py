@@ -5,13 +5,12 @@ from pathlib import Path
 from typing import Any, Self, ClassVar
 
 import yaml
-from dbt.adapters.utils import classproperty
 from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ParsedResource, ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 from dbt.flags import get_flags
-from pydantic import BaseModel, PrivateAttr
+from pydantic import BaseModel
 from yaml import MappingNode
 
 from dbt_contracts.types import ItemT, ParentT

@@ -290,7 +290,6 @@ class TestMacroResult:
         assert MacroResult._extract_patch_object_for_item(patch, item=macro) == patch["macros"][1]
 
 
-
 class TestMacroArgumentResult:
     @pytest.fixture
     def patch(self) -> dict[str, Any]:
