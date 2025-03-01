@@ -246,7 +246,11 @@ class ColumnResult[P: ParentT](Result[ColumnInfo, P]):
     def from_resource(
             cls, item: ColumnInfo, parent: P = None, patches: MutableMapping[Path, Mapping[str, Any]] = None, **kwargs
     ) -> Self:
-        index = list(parent.columns.keys()).index(item.name) if parent is not None else None
+        try:
+            index = list(parent.columns.keys()).index(item.name) if parent is not None else None
+        except ValueError:
+            index = None
+
         return super().from_resource(item=item, parent=parent, index=index, **kwargs)
 
 

@@ -19,8 +19,8 @@ class ContractContext:
     Context for a contract to run within.
     Stores artifacts for the loaded DBT project and handles logging of results.
     """
-    manifest: Manifest
-    catalog: CatalogArtifact
+    manifest: Manifest | None = None
+    catalog: CatalogArtifact | None = None
 
     @property
     def results(self) -> list[Result]:

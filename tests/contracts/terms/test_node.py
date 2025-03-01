@@ -1,3 +1,4 @@
+from copy import deepcopy
 from random import sample
 from unittest import mock
 
@@ -7,6 +8,7 @@ from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import TestNode, CompiledNode
+from dbt_common.contracts.metadata import CatalogTable
 from faker import Faker
 
 from dbt_contracts.contracts import ContractContext
@@ -17,50 +19,45 @@ from dbt_contracts.contracts.terms._node import get_matching_catalog_table, _get
     HasNoHardcodedRefs
 
 
-def test_get_matching_catalog_table(node: CompiledNode, catalog: CatalogArtifact):
+def test_get_matching_catalog_table(node: CompiledNode, simple_resource: BaseResource, catalog: CatalogArtifact):
     table = get_matching_catalog_table(item=node, catalog=catalog)
     assert table is not None
     assert table.metadata.name == node.name
 
-
-def test_get_no_matching_catalog_table(simple_resource: BaseResource, catalog: CatalogArtifact):
     assert get_matching_catalog_table(item=simple_resource, catalog=catalog) is None
 
 
-def test_get_tests(node: CompiledNode, manifest: Manifest):
+def test_get_tests(node: CompiledNode, simple_resource: BaseResource, manifest: Manifest):
     tests = list(_get_tests(item=node, manifest=manifest))
     assert tests
     assert all(isinstance(test, TestNode) for test in tests)
     assert all(test.attached_node == node.unique_id for test in tests)
 
-
-def test_get_no_tests(simple_resource: BaseResource, manifest: Manifest):
     assert not list(_get_tests(item=simple_resource, manifest=manifest))
 
 
-def test_exists(node: CompiledNode, context: ContractContext):
+def test_exists(node: CompiledNode, simple_resource: BaseResource, context: ContractContext):
+    assert get_matching_catalog_table(item=node, catalog=context.catalog) is not None
     assert Exists().run(node, context=context)
 
-
-def test_does_not_exist(simple_resource: BaseResource, context: ContractContext):
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
         assert not Exists().run(simple_resource, context=context)
         mock_add_result.assert_called_once()
 
 
-def test_has_tests(node: CompiledNode, context: ContractContext):
+def test_has_tests(node: CompiledNode, simple_resource: BaseResource, context: ContractContext):
+    assert 0 < len(list(_get_tests(item=node, manifest=context.manifest))) < 10
     assert HasTests().run(node, context=context)
     assert not HasTests(min_count=10).run(node, context=context)
 
-
-def test_has_no_tests(simple_resource: BaseResource, context: ContractContext):
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
         assert not HasTests().run(simple_resource, context=context)
         mock_add_result.assert_called_once()
 
 
 # noinspection PyTestUnpassedFixture
-def test_has_all_columns(node: CompiledNode, context: ContractContext):
+def test_has_all_columns(node: CompiledNode, node_table: CatalogTable, context: ContractContext):
+    assert set(node.columns.keys()) == set(node_table.columns.keys())
     assert HasAllColumns().run(node, context=context)  # fixtures are set up to match
 
     node.columns.clear()
@@ -71,7 +68,7 @@ def test_has_all_columns(node: CompiledNode, context: ContractContext):
 
 # noinspection PyTestUnpassedFixture
 def test_has_expected_column_names(node: CompiledNode, context: ContractContext, faker: Faker):
-    assert HasExpectedColumns().run(node, context=context)
+    assert HasExpectedColumns().run(node, context=context)  # no expectations set
     assert HasExpectedColumns(columns=sample(list(node.columns), k=2)).run(node, context=context)
 
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
@@ -90,7 +87,8 @@ def test_has_expected_column_types(node: CompiledNode, context: ContractContext)
         mock_add_result.assert_called_once()
 
 
-def test_has_matching_description(node: CompiledNode, context: ContractContext, faker: Faker):
+def test_has_matching_description(node: CompiledNode, node_table: CatalogTable, context: ContractContext, faker: Faker):
+    assert node.description == node_table.metadata.comment
     assert HasMatchingDescription().run(node, context=context)  # fixtures are set up to match
 
     node.description = faker.sentence()
@@ -102,7 +100,7 @@ def test_has_matching_description(node: CompiledNode, context: ContractContext, 
 # noinspection PyTestUnpassedFixture
 @pytest.fixture(params=["model"])
 def compiled_node(request: FixtureRequest) -> CompiledNode:
-    return request.getfixturevalue(request.param)
+    return deepcopy(request.getfixturevalue(request.param))
 
 
 # noinspection PyTestUnpassedFixture
@@ -149,6 +147,7 @@ def test_add_result_for_invalid_dependencies(compiled_node: CompiledNode, contex
 
 
 def test_has_valid_ref_dependencies(compiled_node: CompiledNode, context: ContractContext):
+    assert not compiled_node.depends_on_nodes
     assert HasValidRefDependencies().run(compiled_node, context=context)
 
     upstream_deps = sample([node for node in context.manifest.nodes if node.startswith("model")], k=3)
@@ -163,6 +162,7 @@ def test_has_valid_ref_dependencies(compiled_node: CompiledNode, context: Contra
 
 
 def test_has_valid_source_dependencies(compiled_node: CompiledNode, context: ContractContext):
+    assert not compiled_node.depends_on_nodes
     assert HasValidSourceDependencies().run(compiled_node, context=context)
 
     upstream_deps = sample(list(context.manifest.sources), k=3)
@@ -177,6 +177,7 @@ def test_has_valid_source_dependencies(compiled_node: CompiledNode, context: Con
 
 
 def test_has_valid_macro_dependencies(compiled_node: CompiledNode, context: ContractContext):
+    assert not compiled_node.depends_on_macros
     assert HasValidMacroDependencies().run(compiled_node, context=context)
 
     upstream_deps = sample(list(context.manifest.macros), k=3)

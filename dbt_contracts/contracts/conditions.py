@@ -1,4 +1,5 @@
-from collections.abc import Sequence, Collection
+from collections.abc import Sequence, Collection, Mapping
+from copy import copy
 from typing import Annotated
 
 from dbt.artifacts.resources import BaseResource
@@ -36,7 +37,7 @@ class TagCondition(ContractCondition[TagT]):
 
 
 class MetaCondition(ContractCondition[MetaT]):
-    meta: dict[str, Sequence[str]] = Field(
+    meta: Mapping[str, Sequence[str]] = Field(
         description="The mapping of meta keys to their allowed values",
         default_factory=dict,
     )
@@ -44,9 +45,9 @@ class MetaCondition(ContractCondition[MetaT]):
     # noinspection PyNestedDecorators
     @field_validator("meta", mode="before")
     @classmethod
-    def make_meta_values_tuple(cls, meta: dict[str, str | Sequence[str]]) -> dict[str, tuple[str]]:
+    def make_meta_values_tuple(cls, meta: Mapping[str, str | Sequence[str]]) -> dict[str, tuple[str]]:
         """Convert all meta values to tuples"""
-        meta = meta.copy()
+        meta = dict(copy(meta))
 
         for key, val in meta.items():
             if not isinstance(val, Collection) or isinstance(val, str):

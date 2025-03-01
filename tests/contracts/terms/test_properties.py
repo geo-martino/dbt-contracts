@@ -60,7 +60,6 @@ def test_has_allowed_tags(item: str, context: ContractContext, faker: Faker, req
     item: TagT = request.getfixturevalue(item)
 
     item.tags = faker.words(10)
-
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
         assert not HasAllowedTags(tags=sample(item.tags, k=5)).run(item, context=context)
         mock_add_result.assert_called_once()
@@ -110,7 +109,6 @@ def test_has_allowed_meta_values(item: str, context: ContractContext, faker: Fak
     item: MetaT = request.getfixturevalue(item)
 
     item.meta = {key: faker.word() for key in faker.words(10)}
-
     allowed_meta_values = {key: faker.words(5) for key, val in sample(list(item.meta.items()), k=5)}
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
         assert not HasAllowedMetaValues(meta=allowed_meta_values).run(item, context=context)

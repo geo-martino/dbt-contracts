@@ -47,11 +47,9 @@ def manifest(
 @pytest.fixture(scope="session")
 def catalog(models: list[ModelNode], sources: list[SourceDefinition]) -> CatalogArtifact:
     def _generate_catalog_table(node: ParsedResource | SourceDefinition) -> CatalogTable:
-        data_types = ("varchar", "int", "timestamp", "boolean")
-
-        metadata = TableMetadata(type="table", schema=node.schema, name=node.name)
+        metadata = TableMetadata(type="table", schema=node.schema, name=node.name, comment=node.description)
         columns = {
-            column.name: ColumnMetadata(type=choice(data_types), index=idx, name=column.name)
+            column.name: ColumnMetadata(type=column.data_type, index=idx, name=column.name, comment=column.description)
             for idx, column in enumerate(node.columns.values())
         }
         return CatalogTable(metadata=metadata, columns=columns, stats={})
@@ -83,7 +81,7 @@ def node(request: FixtureRequest) -> CompiledNode:
 
 @pytest.fixture
 def node_column(node: CompiledNode) -> ColumnInfo:
-    return deepcopy(choice(list(node.columns.values())))
+    return choice(list(node.columns.values()))
 
 
 @pytest.fixture
@@ -113,6 +111,7 @@ def models(faker: Faker, columns: list[ColumnInfo]) -> list[ModelNode]:
             tags=faker.words(),
             meta={key: faker.word() for key in faker.words()},
             columns={column.name: column for column in sample(columns, k=faker.random_int(3, 8))},
+            description=faker.sentence(),
         )
 
     return [_generate() for _ in range(faker.random_int(10, 20))]
@@ -142,6 +141,7 @@ def sources(faker: Faker, columns: list[ColumnInfo]) -> list[SourceDefinition]:
             source_description=faker.sentence(),
             loader=faker.word(),
             columns={column.name: column for column in sample(columns, k=faker.random_int(3, 8))},
+            description=faker.sentence(),
         )
 
     return [_generate() for _ in range(faker.random_int(10, 20))]
@@ -162,6 +162,7 @@ def columns(faker: Faker) -> list[ColumnInfo]:
             data_type=choice(data_types),
             tags=faker.words(),
             meta={key: faker.word() for key in faker.words()},
+            description=faker.sentence(),
         )
 
     return [generate() for _ in range(faker.random_int(20, 30))]

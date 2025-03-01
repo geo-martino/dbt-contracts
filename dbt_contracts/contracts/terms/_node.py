@@ -16,6 +16,13 @@ from dbt_contracts.types import NodeT
 
 
 def get_matching_catalog_table(item: NodeT, catalog: CatalogArtifact) -> CatalogTable | None:
+    """
+    Check whether the given `item` exists in the database.
+
+    :param item: The resource to match.
+    :param catalog: The catalog of tables.
+    :return: The matching catalog table.
+    """
     if isinstance(item, SourceDefinition):
         return catalog.sources.get(item.unique_id)
     return catalog.nodes.get(item.unique_id)
@@ -72,6 +79,14 @@ class HasAllColumns[T: NodeT](NodeContractTerm[T]):
             message = (
                 f"{item.resource_type.title()} config does not contain all columns. "
                 f"Missing {', '.join(missing_columns)}"
+            )
+            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+
+        extra_columns = actual_columns - expected_columns
+        if extra_columns:
+            message = (
+                f"{item.resource_type.title()} config contains too many columns. "
+                f"Extra {', '.join(missing_columns)}"
             )
             context.add_result(name=self._term_name, message=message, item=item, parent=parent)
 
