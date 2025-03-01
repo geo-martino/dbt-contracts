@@ -11,35 +11,31 @@ from faker import Faker
 
 from dbt_contracts.contracts import ContractContext
 # noinspection PyProtectedMember
-from dbt_contracts.contracts.terms._node import _get_matching_catalog_table, _get_tests, Exists, HasTests, \
+from dbt_contracts.contracts.terms._node import get_matching_catalog_table, _get_tests, Exists, HasTests, \
     HasAllColumns, HasExpectedColumns, HasMatchingDescription, HasContract, HasValidUpstreamDependencies, \
     HasValidRefDependencies, HasValidSourceDependencies, HasValidMacroDependencies, HasNoFinalSemiColon, \
     HasNoHardcodedRefs
 
 
-@pytest.fixture(params=["model", "source"])
-def node(request: FixtureRequest) -> CompiledNode:
-    return request.getfixturevalue(request.param)
-
-
 def test_get_matching_catalog_table(node: CompiledNode, catalog: CatalogArtifact):
-    table = _get_matching_catalog_table(item=node, catalog=catalog)
+    table = get_matching_catalog_table(item=node, catalog=catalog)
     assert table is not None
     assert table.metadata.name == node.name
 
 
 def test_get_no_matching_catalog_table(simple_resource: BaseResource, catalog: CatalogArtifact):
-    assert _get_matching_catalog_table(item=simple_resource, catalog=catalog) is None
+    assert get_matching_catalog_table(item=simple_resource, catalog=catalog) is None
 
 
-def test_get_tests(node: CompiledNode, manifest: Manifest, catalog: CatalogArtifact):
-    tests = list(_get_tests(node=node, manifest=manifest))
+def test_get_tests(node: CompiledNode, manifest: Manifest):
+    tests = list(_get_tests(item=node, manifest=manifest))
     assert tests
     assert all(isinstance(test, TestNode) for test in tests)
+    assert all(test.attached_node == node.unique_id for test in tests)
 
 
 def test_get_no_tests(simple_resource: BaseResource, manifest: Manifest):
-    assert not list(_get_tests(node=simple_resource, manifest=manifest))
+    assert not list(_get_tests(item=simple_resource, manifest=manifest))
 
 
 def test_exists(node: CompiledNode, context: ContractContext):

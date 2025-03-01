@@ -3,13 +3,14 @@ from pathlib import Path
 from random import choice, sample
 
 import pytest
+from _pytest.fixtures import FixtureRequest
 from dbt.artifacts.resources import FileHash, BaseResource
 from dbt.artifacts.resources.types import NodeType
 from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.artifacts.schemas.catalog import CatalogArtifact, CatalogMetadata
 from dbt.contracts.graph.manifest import Manifest
-from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro, TestNode, GenericTestNode
+from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro, TestNode, GenericTestNode, CompiledNode
 from dbt_common.contracts.metadata import CatalogTable, TableMetadata, ColumnMetadata
 
 from faker import Faker
@@ -75,6 +76,23 @@ def simple_resource(faker: Faker) -> BaseResource:
     )
 
 
+@pytest.fixture(params=["model", "source"])
+def node(request: FixtureRequest) -> CompiledNode:
+    return request.getfixturevalue(request.param)
+
+
+@pytest.fixture
+def node_column(node: CompiledNode) -> ColumnInfo:
+    return deepcopy(choice(list(node.columns.values())))
+
+
+@pytest.fixture
+def node_table(node: CompiledNode, catalog: CatalogArtifact) -> CatalogTable:
+    if isinstance(node, SourceDefinition):
+        return catalog.sources[node.unique_id]
+    return catalog.nodes[node.unique_id]
+
+
 @pytest.fixture(scope="session")
 def models(faker: Faker, columns: list[ColumnInfo]) -> list[ModelNode]:
     def _generate() -> ModelNode:
@@ -84,7 +102,7 @@ def models(faker: Faker, columns: list[ColumnInfo]) -> list[ModelNode]:
             path=path,
             original_file_path=str(Path("models", path)),
             package_name=faker.word(),
-            unique_id=".".join(("models", *Path(path).parts)),
+            unique_id=".".join(("models", *Path(path).with_suffix("").parts)),
             resource_type=NodeType.Model,
             alias=faker.word(),
             fqn=faker.words(3),
@@ -102,9 +120,7 @@ def models(faker: Faker, columns: list[ColumnInfo]) -> list[ModelNode]:
 
 @pytest.fixture
 def model(models: list[ModelNode], column: ColumnInfo) -> ModelNode:
-    model = deepcopy(choice(models))
-    model.columns[column.name] = column
-    return model
+    return deepcopy(choice(models))
 
 
 @pytest.fixture(scope="session")
@@ -116,7 +132,7 @@ def sources(faker: Faker, columns: list[ColumnInfo]) -> list[SourceDefinition]:
             path=path,
             original_file_path=str(Path("models", path)),
             package_name=faker.word(),
-            unique_id=".".join(("source", *Path(path).parts)),
+            unique_id=".".join(("source", *Path(path).with_suffix("").parts)),
             resource_type=NodeType.Source,
             fqn=faker.words(3),
             database=faker.word(),
@@ -133,9 +149,7 @@ def sources(faker: Faker, columns: list[ColumnInfo]) -> list[SourceDefinition]:
 
 @pytest.fixture
 def source(sources: list[SourceDefinition], column: ColumnInfo) -> SourceDefinition:
-    source = deepcopy(choice(sources))
-    source.columns[column.name] = column
-    return source
+    return deepcopy(choice(sources))
 
 
 @pytest.fixture(scope="session")
@@ -159,12 +173,7 @@ def column(columns: list[ColumnInfo]) -> ColumnInfo:
 
 
 @pytest.fixture(scope="session")
-def tests(
-        models: list[ModelNode],
-        sources: list[SourceDefinition],
-        columns: list[ColumnInfo],
-        faker: Faker
-) -> list[TestNode]:
+def tests(models: list[ModelNode], sources: list[SourceDefinition], faker: Faker) -> list[TestNode]:
     def generate(item: BaseResource, column: ColumnInfo = None) -> TestNode:
         path = faker.file_path(extension=choice(("yml", "yaml", "py")), absolute=False)
         test = GenericTestNode(
@@ -172,7 +181,7 @@ def tests(
             path=path,
             original_file_path=str(Path("tests", path)),
             package_name=faker.word(),
-            unique_id=".".join(("test", *Path(path).parts)),
+            unique_id=".".join(("test", *Path(path).with_suffix("").parts)),
             resource_type=NodeType.Test,
             attached_node=item.unique_id,
             alias=faker.word(),
@@ -182,7 +191,7 @@ def tests(
             schema=faker.word(),
         )
         if column is not None:
-            test.column_name = item.name
+            test.column_name = column.name
 
         return test
 
@@ -206,7 +215,7 @@ def macros(faker: Faker, arguments: list[MacroArgument]) -> list[Macro]:
             original_file_path=str(Path("macros", path)),
             package_name=faker.word(),
             resource_type=NodeType.Macro,
-            unique_id=".".join(("macro", *Path(path).parts)),
+            unique_id=".".join(("macro", *Path(path).with_suffix("").parts)),
             macro_sql="SELECT * FROM table",
             arguments=sample(arguments, k=faker.random_int(3, 8)),
         )

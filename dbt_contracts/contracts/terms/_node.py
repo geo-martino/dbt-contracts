@@ -15,16 +15,16 @@ from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.types import NodeT
 
 
-def _get_matching_catalog_table(item: NodeT, catalog: CatalogArtifact) -> CatalogTable | None:
+def get_matching_catalog_table(item: NodeT, catalog: CatalogArtifact) -> CatalogTable | None:
     if isinstance(item, SourceDefinition):
         return catalog.sources.get(item.unique_id)
     return catalog.nodes.get(item.unique_id)
 
 
-def _get_tests(node: NodeT, manifest: Manifest) -> Iterable[TestNode]:
+def _get_tests(item: NodeT, manifest: Manifest) -> Iterable[TestNode]:
     def _filter_nodes(test: Any) -> bool:
         return isinstance(test, TestNode) and all((
-            test.attached_node == node.unique_id,
+            test.attached_node == item.unique_id,
             test.column_name is None,
         ))
 
@@ -37,7 +37,7 @@ class NodeContractTerm[T: NodeT](ContractTerm[T, None], metaclass=ABCMeta):
 
 class Exists[T: NodeT](NodeContractTerm[T]):
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
-        table = _get_matching_catalog_table(item, catalog=context.catalog)
+        table = get_matching_catalog_table(item, catalog=context.catalog)
         if table is None:
             message = f"The {item.resource_type.lower()} cannot be found in the database"
             context.add_result(name=self._term_name, message=message, item=item, parent=parent)
@@ -60,7 +60,7 @@ class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
 
 class HasAllColumns[T: NodeT](NodeContractTerm[T]):
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
-        table = _get_matching_catalog_table(item, catalog=context.catalog)
+        table = get_matching_catalog_table(item, catalog=context.catalog)
         if not table:
             return False
 
@@ -116,7 +116,7 @@ class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
 
 class HasMatchingDescription[T: NodeT](NodeContractTerm[T], StringMatcher):
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
-        table = _get_matching_catalog_table(item, catalog=context.catalog)
+        table = get_matching_catalog_table(item, catalog=context.catalog)
         if not table:
             return False
 
