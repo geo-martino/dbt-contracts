@@ -4,8 +4,8 @@ from dbt_contracts.contracts import ContractContext, RangeMatcher
 from dbt_contracts.contracts.terms._node import NodeContractTerm
 
 
-class HasConstraints[T: ModelNode](NodeContractTerm[T], RangeMatcher):
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+class HasConstraints(NodeContractTerm[ModelNode], RangeMatcher):
+    def run(self, item: ModelNode, context: ContractContext, parent: None = None) -> bool:
         count = len(item.constraints)
         log_message = self._match(count=count, kind="constraints")
 
