@@ -51,16 +51,11 @@ class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
             raise Exception("Must provide a manifest to run this operation")
 
         count = len(tuple(_get_tests(item, manifest=context.manifest)))
-        too_small, too_large = self._match(count)
+        log_message = self._match(count=count, kind="tests")
 
-        if too_small or too_large:
-            quantifier = 'few' if too_small else 'many'
-            expected = self.min_count if too_small else self.max_count
-            message = f"Too {quantifier} tests found: {count}. Expected: {expected}."
-
-            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
-
-        return not too_small and not too_large
+        if log_message:
+            context.add_result(name=self._term_name, message=log_message, item=item, parent=parent)
+        return not log_message
 
 
 class HasAllColumns[T: NodeT](NodeContractTerm[T]):
@@ -283,7 +278,6 @@ class HasNoHardcodedRefs[T: CompiledNode](NodeContractTerm[T]):
             elif cte := self._get_cte(prev_token, curr_token, next_token):
                 ctes.add(cte)
 
-        print(refs, ctes)
         hardcoded_refs = refs - ctes
         if hardcoded_refs:
             message = f"Script has hardcoded refs: {', '.join(hardcoded_refs)}"

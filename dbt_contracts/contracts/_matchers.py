@@ -35,10 +35,15 @@ class RangeMatcher(BaseModel):
             raise Exception(f"Maximum count must be >= minimum count. Got {self.max_count} > {self.min_count}")
         return self
 
-    def _match(self, count: int) -> tuple[bool, bool]:
+    def _match(self, count: int, kind: str) -> str | None:
         too_small = count < self.min_count
         too_large = self.max_count is not None and count > self.max_count
-        return too_small, too_large
+        if not too_small and not too_large:
+            return
+
+        quantifier = 'few' if too_small else 'many'
+        expected = self.min_count if too_small else self.max_count
+        return f"Too {quantifier} {kind} found: {count}. Expected: {expected}."
 
 
 class StringMatcher(BaseModel):
