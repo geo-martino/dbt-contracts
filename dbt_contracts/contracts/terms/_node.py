@@ -1,10 +1,12 @@
+import re
 from abc import ABCMeta
-from collections.abc import Iterable, Sequence, Mapping
-from typing import Any
+from collections.abc import Iterable, Sequence, Mapping, Collection, Generator
+from pathlib import Path
+from typing import Any, ClassVar
 
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
-from dbt.contracts.graph.nodes import TestNode, SourceDefinition
+from dbt.contracts.graph.nodes import TestNode, SourceDefinition, CompiledNode
 from dbt_common.contracts.metadata import CatalogTable
 from pydantic import Field
 
@@ -129,3 +131,162 @@ class HasMatchingDescription[T: NodeT](NodeContractTerm[T], StringMatcher):
             context.add_result(name=self._term_name, message=message, item=item, parent=parent)
 
         return not unmatched_description
+
+
+class HasContract[T: CompiledNode](NodeContractTerm[T]):
+    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+        missing_contract = not item.contract.enforced
+        if missing_contract:
+            message = "Contract not enforced"
+            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+
+        # node must have all columns defined for contract to be valid
+        missing_columns = not HasAllColumns().run(item, parent=parent, context=context)
+
+        missing_data_types = any(not column.data_type for column in item.columns.values())
+        if missing_data_types:
+            message = "To enforce a contract, all data types must be declared"
+            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+
+        return not any((missing_contract, missing_columns, missing_data_types))
+
+
+class HasValidUpstreamDependencies[T: CompiledNode](NodeContractTerm[T], metaclass=ABCMeta):
+    @staticmethod
+    def _add_result_for_invalid_dependencies(
+            item: T, kind: str, context: ContractContext, missing: Collection
+    ) -> bool:
+        if missing:
+            kind = kind.rstrip("s")
+            message = (
+                f"{item.resource_type.title()} has missing upstream {kind} dependencies declared: "
+                f"{', '.join(missing)}"
+            )
+            context.add_result(name=f"has_valid_{kind}_dependencies", message=message, item=item)
+
+        return not missing
+
+
+class HasValidRefDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
+    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+        upstream_dependencies = {ref for ref in item.depends_on_nodes if ref.startswith("model")}
+        missing_dependencies = upstream_dependencies - set(context.manifest.nodes.keys())
+
+        return self._add_result_for_invalid_dependencies(
+            item, kind="ref", context=context, missing=missing_dependencies
+        )
+
+
+class HasValidSourceDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
+    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+        upstream_dependencies = {ref for ref in item.depends_on_nodes if ref.startswith("source")}
+        missing_dependencies = upstream_dependencies - set(context.manifest.sources.keys())
+
+        return self._add_result_for_invalid_dependencies(
+            item, kind="source", context=context, missing=missing_dependencies
+        )
+
+
+class HasValidMacroDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
+    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+        upstream_dependencies = set(item.depends_on_macros)
+        missing_dependencies = upstream_dependencies - set(context.manifest.macros.keys())
+
+        return self._add_result_for_invalid_dependencies(
+            item, kind="macro", context=context, missing=missing_dependencies
+        )
+
+
+class HasNoFinalSemiColon[T: CompiledNode](NodeContractTerm[T]):
+    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+        # ignore non-SQL models
+        if Path(item.path).suffix.casefold() != ".sql":
+            return True
+
+        has_final_semicolon = item.raw_code.strip().endswith(";")
+        if has_final_semicolon:
+            message = "Script has a final semicolon"
+            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+
+        return not has_final_semicolon
+
+
+class HasNoHardcodedRefs[T: CompiledNode](NodeContractTerm[T]):
+    comments_pattern: ClassVar[str] = r"(?<=(\/\*|\{#))((.|[\r\n])+?)(?=(\*+\/|#\}))|[ \t]*--.*"
+
+    cte_keywords: ClassVar[frozenset[str]] = frozenset({"with"})
+    cte_pattern: ClassVar[str] = r"^[\w\d_-]+$"
+
+    ref_keywords: ClassVar[frozenset[str]] = frozenset({"from", "join"})
+    ref_ignore: ClassVar[frozenset[str]] = frozenset({"values"})
+
+    @classmethod
+    def _remove_comments(cls, script: str) -> str:
+        return re.sub(cls.comments_pattern, "", script)
+
+    @classmethod
+    def _add_spacing(cls, script: str) -> str:
+        script = re.sub(r"\{\s*\{", "{{ ", script)
+        script = re.sub(r"}\s*}", " }}", script)
+        script = re.sub(r"([()])", r" \1 ", script)
+        return script
+
+    @classmethod
+    def _iter_script_tokens(cls, script: str) -> Generator[tuple[str, str, str]]:
+        sql = script.split(";")[0]
+        sql = cls._remove_comments(sql)
+        sql = cls._add_spacing(sql)
+        tokens = iter(sql.split())
+
+        prev_token = None
+        curr_token = next(tokens, None)
+        if curr_token is not None:
+            curr_token = curr_token.casefold()
+
+        while (next_token := next(tokens, None)) is not None:
+            next_token = next_token.casefold()
+            yield prev_token, curr_token, next_token
+            prev_token = curr_token
+            curr_token = next_token
+
+        yield prev_token, curr_token, None
+
+    def _get_ref(self, prev_token: str, curr_token: str) -> str | None:
+        if prev_token not in self.ref_keywords:
+            return
+        if curr_token in self.ref_ignore:
+            return
+        if any(curr_token.startswith(char) for char in {"{", "("}):
+            return
+        return curr_token.strip(",")
+
+    def _get_cte(self, prev_token: str, curr_token: str, next_token: str) -> str | None:
+        if prev_token in self.cte_keywords and re.match(self.cte_pattern, curr_token, re.I):
+            return curr_token
+
+        if curr_token == "as" and next_token.startswith("(") and re.match(self.cte_pattern, prev_token, re.I):
+            return prev_token
+
+    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+        # ignore non-SQL models
+        if Path(item.path).suffix.casefold() != ".sql":
+            return True
+
+        refs = set()
+        ctes = set()
+        for prev_token, curr_token, next_token in self._iter_script_tokens(item.raw_code):
+            if not prev_token or not next_token:
+                continue
+
+            if ref := self._get_ref(curr_token, next_token):
+                refs.add(ref)
+            elif cte := self._get_cte(prev_token, curr_token, next_token):
+                ctes.add(cte)
+
+        print(refs, ctes)
+        hardcoded_refs = refs - ctes
+        if hardcoded_refs:
+            message = f"Script has hardcoded refs: {', '.join(hardcoded_refs)}"
+            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+
+        return not hardcoded_refs

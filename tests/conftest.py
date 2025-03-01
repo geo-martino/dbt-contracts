@@ -1,4 +1,5 @@
 from copy import deepcopy
+from pathlib import Path
 from random import choice, sample
 
 import pytest
@@ -63,10 +64,11 @@ def catalog(models: list[ModelNode], sources: list[SourceDefinition]) -> Catalog
 
 @pytest.fixture
 def simple_resource(faker: Faker) -> BaseResource:
+    path = faker.file_path(extension=choice(("yml", "yaml", "py")), absolute=False)
     return BaseResource(
         name="_".join(faker.words()),
-        path=faker.file_path(absolute=False),
-        original_file_path=faker.file_path(extension=choice(("yml", "yaml", "py")), absolute=False),
+        path=path,
+        original_file_path=str(Path("models", path)),
         package_name=faker.word(),
         unique_id=faker.uuid4(str),
         resource_type=NodeType.Model,
@@ -76,12 +78,13 @@ def simple_resource(faker: Faker) -> BaseResource:
 @pytest.fixture(scope="session")
 def models(faker: Faker, columns: list[ColumnInfo]) -> list[ModelNode]:
     def _generate() -> ModelNode:
+        path = faker.file_path(extension=choice(("sql", "py")), absolute=False)
         return ModelNode(
             name="_".join(faker.words()),
-            path=faker.file_path(absolute=False),
-            original_file_path=faker.file_path(extension=choice(("yml", "yaml", "py")), absolute=False),
+            path=path,
+            original_file_path=str(Path("models", path)),
             package_name=faker.word(),
-            unique_id=faker.uuid4(str),
+            unique_id=".".join(("models", *Path(path).parts)),
             resource_type=NodeType.Model,
             alias=faker.word(),
             fqn=faker.words(3),
@@ -107,12 +110,13 @@ def model(models: list[ModelNode], column: ColumnInfo) -> ModelNode:
 @pytest.fixture(scope="session")
 def sources(faker: Faker, columns: list[ColumnInfo]) -> list[SourceDefinition]:
     def _generate() -> SourceDefinition:
+        path = faker.file_path(extension=choice(("yml", "yaml")), absolute=False)
         return SourceDefinition(
             name="_".join(faker.words()),
-            path=faker.file_path(absolute=False),
-            original_file_path=faker.file_path(extension=choice(("yml", "yaml")), absolute=False),
+            path=path,
+            original_file_path=str(Path("models", path)),
             package_name=faker.word(),
-            unique_id=faker.uuid4(str),
+            unique_id=".".join(("source", *Path(path).parts)),
             resource_type=NodeType.Source,
             fqn=faker.words(3),
             database=faker.word(),
@@ -162,12 +166,13 @@ def tests(
         faker: Faker
 ) -> list[TestNode]:
     def generate(item: BaseResource, column: ColumnInfo = None) -> TestNode:
+        path = faker.file_path(extension=choice(("yml", "yaml", "py")), absolute=False)
         test = GenericTestNode(
             name="_".join(faker.words()),
-            path=faker.file_path(absolute=False),
-            original_file_path=faker.file_path(extension=choice(("yml", "yaml", "py")), absolute=False),
+            path=path,
+            original_file_path=str(Path("tests", path)),
             package_name=faker.word(),
-            unique_id=faker.uuid4(str),
+            unique_id=".".join(("test", *Path(path).parts)),
             resource_type=NodeType.Test,
             attached_node=item.unique_id,
             alias=faker.word(),
@@ -194,14 +199,15 @@ def tests(
 @pytest.fixture(scope="session")
 def macros(faker: Faker, arguments: list[MacroArgument]) -> list[Macro]:
     def generate() -> Macro:
+        path = faker.file_path(extension="sql", absolute=False)
         return Macro(
             name="_".join(faker.words()),
-            macro_sql="SELECT * FROM table",
-            original_file_path=faker.file_path(extension="sql", absolute=False),
-            path=faker.file_path(extension="sql"),
+            path=path,
+            original_file_path=str(Path("macros", path)),
             package_name=faker.word(),
             resource_type=NodeType.Macro,
-            unique_id=faker.uuid4(str),
+            unique_id=".".join(("macro", *Path(path).parts)),
+            macro_sql="SELECT * FROM table",
             arguments=sample(arguments, k=faker.random_int(3, 8)),
         )
 
