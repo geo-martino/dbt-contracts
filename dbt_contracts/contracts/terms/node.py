@@ -8,7 +8,7 @@ from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import TestNode, CompiledNode
 from pydantic import Field
 
-from dbt_contracts.contracts import ContractTerm
+from dbt_contracts.contracts._core import ContractTerm
 from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.matchers import RangeMatcher, StringMatcher
 from dbt_contracts.contracts.utils import get_matching_catalog_table
