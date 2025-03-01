@@ -7,8 +7,7 @@ from dbt.contracts.graph.nodes import SourceDefinition
 from faker import Faker
 
 from dbt_contracts.contracts import ContractContext
-# noinspection PyProtectedMember
-from dbt_contracts.contracts.terms._properties import HasProperties, HasDescription, HasRequiredTags, HasAllowedTags, \
+from dbt_contracts.contracts.terms.properties import HasProperties, HasDescription, HasRequiredTags, HasAllowedTags, \
     HasRequiredMetaKeys, HasAllowedMetaKeys, HasAllowedMetaValues
 from dbt_contracts.types import PropertiesT, DescriptionT, TagT, MetaT
 

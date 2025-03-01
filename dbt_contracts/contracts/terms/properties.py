@@ -6,7 +6,7 @@ from dbt.contracts.graph.nodes import SourceDefinition
 from pydantic import BeforeValidator, Field, field_validator
 
 from dbt_contracts.contracts._core import ContractTerm, ContractContext
-from dbt_contracts.contracts._matchers import to_tuple
+from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.types import ParentT, PropertiesT, DescriptionT, TagT, MetaT
 
 

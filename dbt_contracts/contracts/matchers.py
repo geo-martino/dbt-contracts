@@ -1,19 +1,10 @@
 import re
 from collections.abc import Sequence
-from typing import Annotated, Any, Self
+from typing import Annotated, Self
 
 from pydantic import BaseModel, Field, BeforeValidator, model_validator
 
-
-def to_tuple(value: Any) -> tuple:
-    """Convert the given value to a tuple"""
-    if value is None:
-        return tuple()
-    elif isinstance(value, tuple):
-        return value
-    elif isinstance(value, str):
-        value = (value,)
-    return tuple(value)
+from dbt_contracts.contracts.utils import to_tuple
 
 
 class RangeMatcher(BaseModel):

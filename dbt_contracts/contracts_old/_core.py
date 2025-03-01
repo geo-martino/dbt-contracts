@@ -515,24 +515,3 @@ class ParentContract(Contract[ParentT, None], Generic[ParentT, ChildContractT], 
             results.extend(self.child.run(enforcements=enforcements))
 
         return results
-
-
-class CatalogContract(Contract[ChildT, ParentT], Generic[ChildT, ParentT], metaclass=ABCMeta):
-    def get_matching_catalog_table(self, resource: ChildT, test_name: str | None = None) -> CatalogTable | None:
-        """
-        Check whether the given `resource` exists in the database.
-
-        :param resource: The resource to match.
-        :param test_name: The name of the test which called this method.
-        :return: The matching catalog table.
-        """
-        if isinstance(resource, SourceDefinition):
-            table = self.catalog.sources.get(resource.unique_id)
-        else:
-            table = self.catalog.nodes.get(resource.unique_id)
-
-        if table is None and test_name:
-            message = f"Could not run test: The {resource.resource_type.lower()} cannot be found in the database"
-            self._add_result(item=resource, parent=resource, name=test_name, message=message)
-
-        return table

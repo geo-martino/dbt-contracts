@@ -11,10 +11,9 @@ from distlib.manifest import Manifest
 from faker import Faker
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.utils import get_matching_catalog_table
-# noinspection PyProtectedMember
 from dbt_contracts.contracts.terms.column import ColumnContractTerm, Exists, HasTests, HasExpectedName, HasDataType, \
     HasMatchingDescription, HasMatchingDataType, HasMatchingIndex
+from dbt_contracts.contracts.utils import get_matching_catalog_table
 from dbt_contracts.types import NodeT
 
 

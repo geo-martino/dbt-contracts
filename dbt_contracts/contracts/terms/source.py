@@ -1,7 +1,8 @@
 from dbt.contracts.graph.nodes import SourceDefinition
 
-from dbt_contracts.contracts import ContractContext, RangeMatcher
-from dbt_contracts.contracts.terms._node import NodeContractTerm
+from dbt_contracts.contracts import ContractContext
+from dbt_contracts.contracts.matchers import RangeMatcher
+from dbt_contracts.contracts.terms.node import NodeContractTerm
 
 
 class HasLoader(NodeContractTerm[SourceDefinition]):

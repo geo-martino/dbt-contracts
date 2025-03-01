@@ -11,8 +11,7 @@ from dbt_common.contracts.metadata import CatalogTable
 from faker import Faker
 
 from dbt_contracts.contracts import ContractContext
-# noinspection PyProtectedMember
-from dbt_contracts.contracts.terms._node import Exists, HasTests, HasAllColumns, HasExpectedColumns, \
+from dbt_contracts.contracts.terms.node import Exists, HasTests, HasAllColumns, HasExpectedColumns, \
     HasMatchingDescription, HasContract, HasValidUpstreamDependencies, HasValidRefDependencies, \
     HasValidSourceDependencies, HasValidMacroDependencies, HasNoFinalSemiColon, HasNoHardcodedRefs
 from dbt_contracts.contracts.utils import get_matching_catalog_table

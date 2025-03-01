@@ -1,6 +1,6 @@
 import pytest
 
-from dbt_contracts.contracts import RangeMatcher, StringMatcher, PatternMatcher
+from dbt_contracts.contracts.matchers import RangeMatcher, StringMatcher, PatternMatcher
 
 
 class TestRangeMatcher:
