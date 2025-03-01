@@ -3,7 +3,7 @@ from dbt.contracts.graph.nodes import ModelNode
 
 from dbt_contracts.result import Result
 
-from dbt_contracts.contracts._core import ContractContext
+from dbt_contracts.contracts import ContractContext
 from dbt_contracts.types import ItemT, ParentT
 
 

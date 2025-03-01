@@ -5,25 +5,14 @@ from copy import copy
 from typing import Any
 
 from dbt.artifacts.resources.v1.components import ColumnInfo
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import TestNode
 from dbt_common.contracts.metadata import CatalogTable
 from pydantic import Field, field_validator
 
-from dbt_contracts.contracts import ContractContext, ContractTerm, StringMatcher, PatternMatcher, RangeMatcher
-from dbt_contracts.contracts.terms._node import get_matching_catalog_table
+from dbt_contracts.contracts import ContractContext, ContractTerm, StringMatcher, RangeMatcher
+from dbt_contracts.contracts.utils import get_matching_catalog_table
 from dbt_contracts.types import NodeT
-
-
-def _get_tests(column: ColumnInfo, node: NodeT, manifest: Manifest) -> Iterable[TestNode]:
-    def _filter_nodes(test: Any) -> bool:
-        return isinstance(test, TestNode) and all((
-            test.attached_node == node.unique_id,
-            test.column_name == column.name,
-        ))
-
-    return filter(_filter_nodes, manifest.nodes.values())
 
 
 class ColumnContractTerm[T: NodeT](ContractTerm[ColumnInfo, T], metaclass=ABCMeta):
@@ -60,11 +49,21 @@ class Exists[T: NodeT](ColumnContractTerm[T]):
 
 
 class HasTests[T: NodeT](ColumnContractTerm[T], RangeMatcher):
+    @staticmethod
+    def _get_tests(column: ColumnInfo, node: NodeT, manifest: Manifest) -> Iterable[TestNode]:
+        def _filter_nodes(test: Any) -> bool:
+            return isinstance(test, TestNode) and all((
+                test.attached_node == node.unique_id,
+                test.column_name == column.name,
+            ))
+
+        return filter(_filter_nodes, manifest.nodes.values())
+
     def run(self, item: ColumnInfo, context: ContractContext, parent: T = None) -> bool:
         if not self._validate_node(column=item, node=parent, context=context):
             return False
 
-        count = len(tuple(_get_tests(column=item, node=parent, manifest=context.manifest)))
+        count = len(tuple(self._get_tests(column=item, node=parent, manifest=context.manifest)))
         log_message = self._match(count=count, kind="tests")
 
         if log_message:

@@ -12,11 +12,11 @@ class TestRangeMatcher:
             RangeMatcher(min_count=12, max_count=2)
 
     def test_match(self):
-        assert RangeMatcher(min_count=1, max_count=10)._match(5) == (False, False)
-        assert RangeMatcher(min_count=5, max_count=5)._match(5) == (False, False)
-        assert RangeMatcher(min_count=4, max_count=6)._match(5) == (False, False)
-        assert RangeMatcher(min_count=6, max_count=6)._match(5) == (True, False)
-        assert RangeMatcher(min_count=2, max_count=4)._match(5) == (False, True)
+        assert RangeMatcher(min_count=1, max_count=10)._match(5, kind="test") is None
+        assert RangeMatcher(min_count=5, max_count=5)._match(5, kind="test") is None
+        assert RangeMatcher(min_count=4, max_count=6)._match(5, kind="test") is None
+        assert RangeMatcher(min_count=6, max_count=6)._match(5, kind="test") is not None
+        assert RangeMatcher(min_count=2, max_count=4)._match(5, kind="test") is not None
 
 
 # noinspection SpellCheckingInspection

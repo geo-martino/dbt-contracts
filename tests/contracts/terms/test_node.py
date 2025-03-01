@@ -5,7 +5,6 @@ from unittest import mock
 import pytest
 from _pytest.fixtures import FixtureRequest
 from dbt.artifacts.resources import BaseResource
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import TestNode, CompiledNode
 from dbt_common.contracts.metadata import CatalogTable
@@ -13,27 +12,10 @@ from faker import Faker
 
 from dbt_contracts.contracts import ContractContext
 # noinspection PyProtectedMember
-from dbt_contracts.contracts.terms._node import get_matching_catalog_table, _get_tests, Exists, HasTests, \
-    HasAllColumns, HasExpectedColumns, HasMatchingDescription, HasContract, HasValidUpstreamDependencies, \
-    HasValidRefDependencies, HasValidSourceDependencies, HasValidMacroDependencies, HasNoFinalSemiColon, \
-    HasNoHardcodedRefs
-
-
-def test_get_matching_catalog_table(node: CompiledNode, simple_resource: BaseResource, catalog: CatalogArtifact):
-    table = get_matching_catalog_table(item=node, catalog=catalog)
-    assert table is not None
-    assert table.metadata.name == node.name
-
-    assert get_matching_catalog_table(item=simple_resource, catalog=catalog) is None
-
-
-def test_get_tests(node: CompiledNode, simple_resource: BaseResource, manifest: Manifest):
-    tests = list(_get_tests(item=node, manifest=manifest))
-    assert tests
-    assert all(isinstance(test, TestNode) for test in tests)
-    assert all(test.attached_node == node.unique_id for test in tests)
-
-    assert not list(_get_tests(item=simple_resource, manifest=manifest))
+from dbt_contracts.contracts.terms._node import Exists, HasTests, HasAllColumns, HasExpectedColumns, \
+    HasMatchingDescription, HasContract, HasValidUpstreamDependencies, HasValidRefDependencies, \
+    HasValidSourceDependencies, HasValidMacroDependencies, HasNoFinalSemiColon, HasNoHardcodedRefs
+from dbt_contracts.contracts.utils import get_matching_catalog_table
 
 
 def test_exists(node: CompiledNode, simple_resource: BaseResource, context: ContractContext):
@@ -45,8 +27,17 @@ def test_exists(node: CompiledNode, simple_resource: BaseResource, context: Cont
         mock_add_result.assert_called_once()
 
 
+def test_get_tests(node: CompiledNode, simple_resource: BaseResource, manifest: Manifest):
+    tests = list(HasTests._get_tests(item=node, manifest=manifest))
+    assert tests
+    assert all(isinstance(test, TestNode) for test in tests)
+    assert all(test.attached_node == node.unique_id for test in tests)
+
+    assert not list(HasTests._get_tests(item=simple_resource, manifest=manifest))
+
+
 def test_has_tests(node: CompiledNode, simple_resource: BaseResource, context: ContractContext):
-    assert 0 < len(list(_get_tests(item=node, manifest=context.manifest))) < 10
+    assert 0 < len(list(HasTests._get_tests(item=node, manifest=context.manifest))) < 10
     assert HasTests().run(node, context=context)
     assert not HasTests(min_count=10).run(node, context=context)
 

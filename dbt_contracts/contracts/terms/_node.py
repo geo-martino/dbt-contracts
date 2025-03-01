@@ -4,38 +4,14 @@ from collections.abc import Iterable, Sequence, Mapping, Collection, Generator
 from pathlib import Path
 from typing import Any, ClassVar
 
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
-from dbt.contracts.graph.nodes import TestNode, SourceDefinition, CompiledNode
-from dbt_common.contracts.metadata import CatalogTable
+from dbt.contracts.graph.nodes import TestNode, CompiledNode
 from pydantic import Field
 
 from dbt_contracts.contracts import ContractTerm, RangeMatcher, StringMatcher
 from dbt_contracts.contracts._core import ContractContext
+from dbt_contracts.contracts.utils import get_matching_catalog_table
 from dbt_contracts.types import NodeT
-
-
-def get_matching_catalog_table(item: NodeT, catalog: CatalogArtifact) -> CatalogTable | None:
-    """
-    Check whether the given `item` exists in the database.
-
-    :param item: The resource to match.
-    :param catalog: The catalog of tables.
-    :return: The matching catalog table.
-    """
-    if isinstance(item, SourceDefinition):
-        return catalog.sources.get(item.unique_id)
-    return catalog.nodes.get(item.unique_id)
-
-
-def _get_tests(item: NodeT, manifest: Manifest) -> Iterable[TestNode]:
-    def _filter_nodes(test: Any) -> bool:
-        return isinstance(test, TestNode) and all((
-            test.attached_node == item.unique_id,
-            test.column_name is None,
-        ))
-
-    return filter(_filter_nodes, manifest.nodes.values())
 
 
 class NodeContractTerm[T: NodeT](ContractTerm[T, None], metaclass=ABCMeta):
@@ -53,11 +29,22 @@ class Exists[T: NodeT](NodeContractTerm[T]):
 
 
 class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
+
+    @staticmethod
+    def _get_tests(item: NodeT, manifest: Manifest) -> Iterable[TestNode]:
+        def _filter_nodes(test: Any) -> bool:
+            return isinstance(test, TestNode) and all((
+                test.attached_node == item.unique_id,
+                test.column_name is None,
+            ))
+
+        return filter(_filter_nodes, manifest.nodes.values())
+
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         if context.manifest is None:
             raise Exception("Must provide a manifest to run this operation")
 
-        count = len(tuple(_get_tests(item, manifest=context.manifest)))
+        count = len(tuple(self._get_tests(item, manifest=context.manifest)))
         log_message = self._match(count=count, kind="tests")
 
         if log_message:

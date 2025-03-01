@@ -11,21 +11,11 @@ from distlib.manifest import Manifest
 from faker import Faker
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.terms._node import get_matching_catalog_table
+from dbt_contracts.contracts.utils import get_matching_catalog_table
 # noinspection PyProtectedMember
-from dbt_contracts.contracts.terms.column import _get_tests, ColumnContractTerm, \
-    Exists, HasTests, HasExpectedName, HasDataType, HasMatchingDescription, HasMatchingDataType, HasMatchingIndex
+from dbt_contracts.contracts.terms.column import ColumnContractTerm, Exists, HasTests, HasExpectedName, HasDataType, \
+    HasMatchingDescription, HasMatchingDataType, HasMatchingIndex
 from dbt_contracts.types import NodeT
-
-
-# noinspection PyTestUnpassedFixture
-def test_get_tests(node: NodeT, node_column: ColumnInfo, simple_resource: BaseResource, manifest: Manifest):
-    tests = list(_get_tests(column=node_column, node=node, manifest=manifest))
-    assert tests
-    assert all(isinstance(test, TestNode) for test in tests)
-    assert all(test.attached_node == node.unique_id and test.column_name == node_column.name for test in tests)
-
-    assert not list(_get_tests(column=node_column, node=simple_resource, manifest=manifest))
 
 
 # noinspection PyTestUnpassedFixture
@@ -38,7 +28,9 @@ def test_validate_node(node: NodeT, node_column: ColumnInfo, context: ContractCo
         mock_add_result.assert_called_once()
 
 
-def test_get_and_validate_table(node: NodeT, node_column: ColumnInfo, node_table: CatalogTable, context: ContractContext):
+def test_get_and_validate_table(
+        node: NodeT, node_column: ColumnInfo, node_table: CatalogTable, context: ContractContext
+):
     assert Exists()._get_and_validate_table(node=node, column=node_column, context=context) == node_table
 
 
@@ -93,8 +85,18 @@ def test_exists(node: CompiledNode, node_column: ColumnInfo, context: ContractCo
         mock_add_result.assert_called_once()
 
 
+# noinspection PyTestUnpassedFixture
+def test_get_tests(node: NodeT, node_column: ColumnInfo, simple_resource: BaseResource, manifest: Manifest):
+    tests = list(HasTests._get_tests(column=node_column, node=node, manifest=manifest))
+    assert tests
+    assert all(isinstance(test, TestNode) for test in tests)
+    assert all(test.attached_node == node.unique_id and test.column_name == node_column.name for test in tests)
+
+    assert not list(HasTests._get_tests(column=node_column, node=simple_resource, manifest=manifest))
+
+
 def test_has_tests(node: CompiledNode, node_column: ColumnInfo, context: ContractContext):
-    assert 0 < len(list(_get_tests(column=node_column, node=node, manifest=context.manifest))) < 10
+    assert 0 < len(list(HasTests._get_tests(column=node_column, node=node, manifest=context.manifest))) < 10
     assert HasTests().run(node_column, parent=node, context=context)
 
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:

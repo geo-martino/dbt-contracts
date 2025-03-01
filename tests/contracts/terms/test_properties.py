@@ -6,7 +6,7 @@ from _pytest.fixtures import FixtureRequest
 from dbt.contracts.graph.nodes import SourceDefinition
 from faker import Faker
 
-from dbt_contracts.contracts._core import ContractContext
+from dbt_contracts.contracts import ContractContext
 # noinspection PyProtectedMember
 from dbt_contracts.contracts.terms._properties import HasProperties, HasDescription, HasRequiredTags, HasAllowedTags, \
     HasRequiredMetaKeys, HasAllowedMetaKeys, HasAllowedMetaValues
