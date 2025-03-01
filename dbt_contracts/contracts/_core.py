@@ -183,4 +183,3 @@ class ChildContract[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
         for item in self.items:
             if all(condition.validate(item) for condition in self.conditions):
                 yield item
-

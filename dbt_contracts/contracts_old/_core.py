@@ -12,9 +12,8 @@ from pathlib import Path
 from typing import Generic, Any, Self, TypeVar
 
 from dbt.artifacts.resources.base import BaseResource
-from dbt.artifacts.schemas.catalog import CatalogArtifact, CatalogTable
+from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
-from dbt.contracts.graph.nodes import SourceDefinition
 
 from dbt_contracts.result import RESULT_PROCESSOR_MAP, Result
 from dbt_contracts.types import T, ChildT, ParentT, CombinedT
