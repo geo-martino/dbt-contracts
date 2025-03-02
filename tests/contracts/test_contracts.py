@@ -83,7 +83,9 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
                 k=min(len(contract.__supported_terms__), 3)
             ),
         }
-        new_contract: Contract[I] = contract.__class__.from_dict(config, manifest=contract.manifest, catalog=contract.catalog)
+        new_contract: Contract[I] = contract.__class__.from_dict(
+            config, manifest=contract.manifest, catalog=contract.catalog
+        )
 
         assert new_contract.manifest == contract.manifest
         assert new_contract.catalog == contract.catalog

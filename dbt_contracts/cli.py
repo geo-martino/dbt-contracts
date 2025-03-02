@@ -5,7 +5,7 @@ from pathlib import Path
 from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 
 from dbt_contracts import PROGRAM_NAME
-from dbt_contracts.contracts_old import CONTRACTS, ParentContract
+from dbt_contracts.contracts import CONTRACT_CLASSES, ParentContract
 from dbt_contracts.dbt_cli import get_config, clean_paths, install_dependencies
 from dbt_contracts.runner import ContractRunner
 
@@ -123,10 +123,10 @@ contract = CORE_PARSER.add_argument(
     nargs="?",
     default=None,
     choices=[
-        str(contract.config_key) for contract in CONTRACTS
+        str(contract.__config_key__) for contract in CONTRACT_CLASSES
     ] + [
-        f"{contract.config_key}.{contract.child_type.config_key}"
-        for contract in CONTRACTS if issubclass(contract, ParentContract)
+        f"{contract.__config_key__}.{contract.__child_contract__.__config_key__}"
+        for contract in CONTRACT_CLASSES if issubclass(contract, ParentContract)
     ],
     type=str,
 )
@@ -151,28 +151,28 @@ files = CORE_PARSER.add_argument(
 
 def main():
     """Main entry point for the CLI"""
-    config = get_config()
+    conf = get_config()
 
-    if config.args.config is None and config.args.project_dir:
-        config.args.config = config.args.project_dir
-    if config.args.output is None:
-        config.args.output = Path(config.project_root, config.target_path)
+    if conf.args.config is None and conf.args.project_dir:
+        conf.args.config = conf.args.project_dir
+    if conf.args.output is None:
+        conf.args.output = Path(conf.project_root, conf.target_path)
 
-    if config.args.clean:
+    if conf.args.clean:
         clean_paths()
-    if config.args.deps:
+    if conf.args.deps:
         install_dependencies()
 
-    runner = ContractRunner.from_config(config)
-    if config.args.files:
-        runner.paths = config.args.files
+    runner = ContractRunner.from_config(conf)
+    if conf.args.files:
+        runner.paths = conf.args.files
 
-    results = runner.run(contract_key=config.args.contract, enforcements=config.args.enforce)
+    results = runner.run(contract_key=conf.args.contract, enforcements=conf.args.enforce)
 
-    if config.args.format:
-        runner.write_results(results, format_type=config.args.format, output=config.args.output)
+    if conf.args.format:
+        runner.write_results(results, format_type=conf.args.format, output=conf.args.output)
 
-    if not config.args.no_fail and results:
+    if not conf.args.no_fail and results:
         raise Exception(f"Found {len(results)} contract violations.")
 
 
