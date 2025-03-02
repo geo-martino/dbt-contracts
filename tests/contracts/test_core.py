@@ -1,3 +1,4 @@
+import pytest
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.nodes import ModelNode
 
@@ -5,6 +6,16 @@ from dbt_contracts.contracts.result import Result
 
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.types import ItemT, ParentT
+
+
+def test_context_init():
+    context = ContractContext()
+    assert len(context.results) == 0
+    assert len(context.patches) == 0
+
+    with pytest.raises(TypeError):  # cannot manually set results
+        # noinspection PyArgumentList
+        ContractContext(results=None)
 
 
 def assert_result(results: list[Result], name: str, message: str, item: ItemT, parent: ParentT = None):

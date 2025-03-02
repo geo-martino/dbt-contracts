@@ -46,6 +46,10 @@ def test_meta_validation(item: str, faker: Faker, request: FixtureRequest):
 
     key, value = choice(list(item.meta.items()))
     meta[key].append(value)
+    assert not MetaCondition(meta=meta).validate(item)
+
+    for key, value in item.meta.items():
+        meta[key].append(value)
     assert MetaCondition(meta=meta).validate(item)
 
 

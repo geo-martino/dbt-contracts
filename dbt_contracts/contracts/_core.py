@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import re
 from abc import ABCMeta, abstractmethod
-from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +22,7 @@ class ContractContext:
     """
     manifest: Manifest | None = None
     catalog: CatalogArtifact | None = None
+    patches: dict[Path, dict[str, Any]] = field(default_factory=dict)
 
     @property
     def results(self) -> list[Result]:
@@ -30,7 +30,6 @@ class ContractContext:
 
     def __post_init__(self) -> None:
         self._results = []
-        self._patches: dict[Path, Mapping[str, Any]] = {}
 
     def add_result(self, name: str, message: str, item: ItemT, parent: ParentT = None, **kwargs) -> None:
         """
@@ -52,7 +51,7 @@ class ContractContext:
             result_name=name,
             result_level="warning",
             message=message,
-            patches=self._patches,
+            patches=self.patches,
             **kwargs
         )
         self.results.append(result)

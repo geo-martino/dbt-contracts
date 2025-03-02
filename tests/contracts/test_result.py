@@ -1,12 +1,12 @@
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping, Any
+from typing import Any
 from unittest import mock
 
 import pytest
 import yaml
 from _pytest.fixtures import FixtureRequest
-from _pytest.monkeypatch import MonkeyPatch
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import ModelNode, Macro, SourceDefinition
@@ -258,12 +258,14 @@ class TestColumnResult:
         assert ColumnResult._get_result_type(item=column, parent=parent) == f"{expected} Column"
 
     def test_from_resource_gets_index(self, source: SourceDefinition, column: ColumnInfo):
+        assert column.name not in ("col1", "col2", "col3")
         source.columns = {
             "col1": ColumnInfo(name="col1", tags=["tag1"]),
             "col2": ColumnInfo(name="col2", tags=["tag2"]),
             "col3": ColumnInfo(name="col3", tags=["tag3"]),
             column.name: column,
         }
+
         result = ColumnResult.from_resource(
             item=column, parent=source, result_level="ERROR", result_name="Failure", message="Something bad happened"
         )
@@ -316,12 +318,14 @@ class TestMacroArgumentResult:
         assert MacroArgumentResult._get_result_type(item=argument, parent=parent) == "Macro Argument"
 
     def test_from_resource_gets_index(self, macro: Macro, argument: MacroArgument):
+        assert argument.name not in ("arg1", "arg2", "arg3")
         macro.arguments = [
             MacroArgument(name="arg1"),
             MacroArgument(name="arg2"),
             argument,
             MacroArgument(name="arg3"),
         ]
+
         result = MacroArgumentResult.from_resource(
             item=argument, parent=macro, result_level="ERROR", result_name="Failure", message="Something bad happened"
         )

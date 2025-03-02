@@ -54,7 +54,7 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
 
     @classmethod
     def from_resource(
-            cls, item: I, parent: P = None, patches: MutableMapping[Path, Mapping[str, Any]] = None, **kwargs
+            cls, item: I, parent: P = None, patches: MutableMapping[Path, dict[str, Any]] = None, **kwargs
     ) -> Self:
         """
         Create a new :py:class:`Result` from a given resource.
@@ -124,8 +124,8 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
 
     @classmethod
     def _get_patch_object(
-            cls, item: I, patches: MutableMapping[Path, Mapping[str, Any]] = None
-    ) -> Mapping[str, Any]:
+            cls, item: I, patches: MutableMapping[Path, dict[str, Any]] = None
+    ) -> dict[str, Any]:
         patch_path = cls._get_patch_path(item=item, to_absolute=True)
         if patch_path is None or not patch_path.is_file():
             return {}

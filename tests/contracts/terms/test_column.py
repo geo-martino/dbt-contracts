@@ -171,7 +171,7 @@ def test_has_matching_description(
 def test_has_matching_data_type(
         node: CompiledNode, node_column: ColumnInfo, node_table: CatalogTable, faker: Faker, context: ContractContext
 ):
-    assert node_column.data_type == node_table.columns[node_column.name].type
+    node_column.data_type = node_table.columns[node_column.name].type
     assert HasMatchingDataType().run(node_column, parent=node, context=context)
 
     node_column.data_type = "_".join(faker.words())

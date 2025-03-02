@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from collections.abc import Generator, Collection
-from typing import Iterable, Sequence
+from collections.abc import Generator, Collection, Iterable
 
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
@@ -14,7 +13,7 @@ from dbt_contracts.contracts._core import ContractContext, ContractTerm, Contrac
 from dbt_contracts.types import ItemT, ParentT
 
 
-class Contract[I: ItemT](metaclass=ABCMeta):
+class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
     """
     Composes the terms and conditions that make a contract for specific types of dbt objects within a manifest.
     """
@@ -25,14 +24,13 @@ class Contract[I: ItemT](metaclass=ABCMeta):
         raise NotImplementedError
 
     @property
+    @abstractmethod
     def filtered_items(self) -> Generator[I]:
         """
         Get all the items that this contract can process from the manifest
         filtered according to the given conditions.
         """
-        for item in self.items:
-            if all(condition.validate(item) for condition in self.conditions):
-                yield item
+        raise NotImplementedError
 
     @property
     def context(self) -> ContractContext:
@@ -58,37 +56,39 @@ class Contract[I: ItemT](metaclass=ABCMeta):
 
 
 class ParentContract[I: ParentT](Contract[I], metaclass=ABCMeta):
+    @property
+    def filtered_items(self) -> Generator[I]:
+        for item in self.items:
+            if not self.conditions or all(condition.validate(item) for condition in self.conditions):
+                yield item
+
     @abstractmethod
     def create_child_contract(
-            self, conditions: Sequence[ContractCondition], terms: Sequence[ContractTerm]
+            self, conditions: Collection[ContractCondition], terms: Collection[ContractTerm]
     ) -> ChildContract[I] | None:
         """Create a child contract from this parent contract if available"""
         raise NotImplementedError
 
 
-class ChildContract[I: ItemT, P: ParentT](Contract[I], metaclass=ABCMeta):
+class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMeta):
     """
     Composes the terms and conditions that make a contract for specific types of dbt child objects within a manifest.
     """
     @property
     @abstractmethod
-    def items(self) -> Iterable[I]:
+    def items(self) -> Iterable[tuple[I, P]]:
         """Get all the items that this contract can process from the manifest."""
         raise NotImplementedError
 
     @property
-    def filtered_items(self) -> Generator[I]:
-        """
-        Get all the items that this contract can process from the manifest
-        filtered according to the given conditions.
-        """
-        for item in self.items:
-            if all(condition.validate(item) for condition in self.conditions):
-                yield item
+    def filtered_items(self) -> Generator[tuple[I, P]]:
+        for item, parent in self.items:
+            if not self.conditions or all(condition.validate(item) for condition in self.conditions):
+                yield item, parent
 
     def __init__(
             self,
-            parent: Contract[ParentT],
+            parent: ParentContract[ParentT],
             conditions: Collection[ContractCondition] = (),
             terms: Collection[ContractTerm] = (),
     ):
@@ -100,24 +100,24 @@ class ChildContract[I: ItemT, P: ParentT](Contract[I], metaclass=ABCMeta):
 
 class ModelContract(ParentContract[ModelNode]):
     @property
-    def items(self) -> Iterable[tuple[ModelNode, None]]:
-        return ((node, None) for node in self.manifest.nodes.values() if isinstance(node, ModelNode))
+    def items(self) -> Iterable[ModelNode]:
+        return (node for node in self.manifest.nodes.values() if isinstance(node, ModelNode))
 
     def create_child_contract(
-            self, conditions: Sequence[ContractCondition], terms: Sequence[ContractTerm]
+            self, conditions: Collection[ContractCondition], terms: Collection[ContractTerm]
     ) -> ColumnContract[ModelNode]:
-        return ColumnContract[ModelNode](parent_contract=self, conditions=conditions, terms=terms)
+        return ColumnContract[ModelNode](parent=self, conditions=conditions, terms=terms)
 
 
 class SourceContract(ParentContract[SourceDefinition]):
     @property
-    def items(self) -> Iterable[tuple[SourceDefinition, None]]:
-        return ((source, None) for source in self.manifest.sources.values())
+    def items(self) -> Iterable[SourceDefinition]:
+        return iter(self.manifest.sources.values())
 
     def create_child_contract(
-            self, conditions: Sequence[ContractCondition], terms: Sequence[ContractTerm]
+            self, conditions: Collection[ContractCondition], terms: Collection[ContractTerm]
     ) -> ColumnContract[SourceDefinition]:
-        return ColumnContract[SourceDefinition](parent_contract=self, conditions=conditions, terms=terms)
+        return ColumnContract[SourceDefinition](parent=self, conditions=conditions, terms=terms)
 
 
 class ColumnContract[T: ParentT](ChildContract[ColumnInfo, T]):
@@ -130,14 +130,14 @@ class ColumnContract[T: ParentT](ChildContract[ColumnInfo, T]):
 
 class MacroContract(ParentContract[Macro]):
     @property
-    def items(self) -> Iterable[tuple[Macro, None]]:
+    def items(self) -> Iterable[Macro]:
         return (
-            (macro, None) for macro in self.manifest.macros.values()
+            macro for macro in self.manifest.macros.values()
             if macro.package_name == self.manifest.metadata.project_name
         )
 
     def create_child_contract(
-            self, conditions: Sequence[ContractCondition], terms: Sequence[ContractTerm]
+            self, conditions: Collection[ContractCondition], terms: Collection[ContractTerm]
     ) -> MacroArgumentContract:
         return MacroArgumentContract(parent=self, conditions=conditions, terms=terms)
 

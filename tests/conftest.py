@@ -170,7 +170,7 @@ def columns(faker: Faker) -> list[ColumnInfo]:
 
 @pytest.fixture
 def column(columns: list[ColumnInfo]) -> ColumnInfo:
-    return deepcopy(choice(columns))
+    return deepcopy(choice([col for col in columns if col.name not in ("col1", "col2", "col3")]))
 
 
 @pytest.fixture(scope="session")
@@ -241,4 +241,4 @@ def arguments(faker: Faker) -> list[MacroArgument]:
 
 @pytest.fixture
 def argument(arguments: list[MacroArgument]) -> MacroArgument:
-    return deepcopy(choice(arguments))
+    return deepcopy(choice([arg for arg in arguments if arg.name not in ("arg1", "arg2", "arg3")]))

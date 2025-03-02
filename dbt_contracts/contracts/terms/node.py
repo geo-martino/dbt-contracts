@@ -15,7 +15,7 @@ from dbt_contracts.contracts.utils import get_matching_catalog_table
 from dbt_contracts.types import NodeT
 
 
-class NodeContractTerm[T: NodeT, N: None](ContractTerm[T, None], metaclass=ABCMeta):
+class NodeContractTerm[T: NodeT](ContractTerm[T, None], metaclass=ABCMeta):
     pass
 
 

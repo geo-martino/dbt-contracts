@@ -65,7 +65,7 @@ class MetaCondition(ContractCondition[MetaT]):
                 values = [values]
             return key in item.meta and item.meta[key] in values
 
-        return not self.meta or any(map(_match, self.meta))
+        return not self.meta or all(map(_match, self.meta))
 
 
 class IsMaterializedCondition(ContractCondition[ParsedResource]):
