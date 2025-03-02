@@ -89,21 +89,24 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
         raise NotImplementedError
 
 
-class ParentContract[I: ParentT](Contract[I], metaclass=ABCMeta):
+class ParentContract[I: ItemT, P: ParentT](Contract[P], metaclass=ABCMeta):
+    __child_contract__: type[ChildContract[I: ItemT, P: ParentT]]
+
     @property
-    def filtered_items(self) -> Iterable[I]:
+    def filtered_items(self) -> Iterable[P]:
         for item in self.items:
             if not self.conditions or all(condition.run(item) for condition in self.conditions):
                 yield item
 
-    @abstractmethod
     def create_child_contract(
             self, conditions: Collection[ContractCondition] = (), terms: Collection[ContractTerm] = ()
-    ) -> ChildContract[I] | None:
-        """Create a child contract from this parent contract if available"""
-        raise NotImplementedError
+    ) -> ChildContract[I: ItemT, P: ParentT] | None:
+        """Create a child contract from this parent contract."""
+        if self.__child_contract__ is None:
+            return
+        return self.__child_contract__(parent=self, conditions=conditions, terms=terms)
 
-    def validate(self) -> list[I]:
+    def validate(self) -> list[P]:
         if not self.terms:
             print("go")
             return list(self.filtered_items)
@@ -131,7 +134,7 @@ class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMe
 
     def __init__(
             self,
-            parent: ParentContract[P],
+            parent: ParentContract[I, P],
             conditions: Collection[ContractCondition] = (),
             terms: Collection[ContractTerm] = (),
     ):
@@ -147,76 +150,6 @@ class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMe
             (item, parent) for item, parent in self.filtered_items
             if all(term.run(item, parent=parent, context=self.context) for term in self.terms)
         ]
-
-
-class ModelContract(ParentContract[ModelNode]):
-
-    __supported_terms__ = frozenset({
-        properties.HasProperties,
-        properties.HasDescription,
-        properties.HasRequiredTags,
-        properties.HasAllowedTags,
-        properties.HasRequiredMetaKeys,
-        properties.HasAllowedMetaKeys,
-        properties.HasAllowedMetaValues,
-        node.Exists,
-        node.HasTests,
-        node.HasAllColumns,
-        node.HasExpectedColumns,
-        node.HasMatchingDescription,
-        node.HasContract,
-        node.HasValidRefDependencies,
-        node.HasValidSourceDependencies,
-        node.HasValidMacroDependencies,
-        node.HasNoFinalSemiColon,
-        node.HasNoHardcodedRefs,
-        model.HasConstraints,
-    })
-    __supported_conditions__ = frozenset({
-        NameCondition, PathCondition, TagCondition, MetaCondition
-    })
-
-    @property
-    def items(self) -> Iterable[ModelNode]:
-        return (n for n in self.manifest.nodes.values() if isinstance(n, ModelNode))
-
-    def create_child_contract(
-            self, conditions: Collection[ContractCondition] = (), terms: Collection[ContractTerm] = ()
-    ) -> ColumnContract[ModelNode]:
-        return ColumnContract[ModelNode](parent=self, conditions=conditions, terms=terms)
-
-
-class SourceContract(ParentContract[SourceDefinition]):
-
-    __supported_terms__ = frozenset({
-        properties.HasProperties,
-        properties.HasDescription,
-        properties.HasRequiredTags,
-        properties.HasAllowedTags,
-        properties.HasRequiredMetaKeys,
-        properties.HasAllowedMetaKeys,
-        properties.HasAllowedMetaValues,
-        node.Exists,
-        node.HasTests,
-        node.HasAllColumns,
-        node.HasExpectedColumns,
-        node.HasMatchingDescription,
-        source.HasLoader,
-        source.HasFreshness,
-        source.HasDownstreamDependencies,
-    })
-    __supported_conditions__ = frozenset({
-        NameCondition, PathCondition, TagCondition, MetaCondition
-    })
-
-    @property
-    def items(self) -> Iterable[SourceDefinition]:
-        return iter(self.manifest.sources.values())
-
-    def create_child_contract(
-            self, conditions: Collection[ContractCondition] = (), terms: Collection[ContractTerm] = ()
-    ) -> ColumnContract[SourceDefinition]:
-        return ColumnContract[SourceDefinition](parent=self, conditions=conditions, terms=terms)
 
 
 class ColumnContract[T: NodeT](ChildContract[ColumnInfo, T]):
@@ -248,29 +181,6 @@ class ColumnContract[T: NodeT](ChildContract[ColumnInfo, T]):
         )
 
 
-class MacroContract(ParentContract[Macro]):
-
-    __supported_terms__ = frozenset({
-        properties.HasProperties,
-        properties.HasDescription,
-    })
-    __supported_conditions__ = frozenset({
-        NameCondition, PathCondition
-    })
-
-    @property
-    def items(self) -> Iterable[Macro]:
-        return (
-            mac for mac in self.manifest.macros.values()
-            if mac.package_name == self.manifest.metadata.project_name
-        )
-
-    def create_child_contract(
-            self, conditions: Collection[ContractCondition] = (), terms: Collection[ContractTerm] = ()
-    ) -> MacroArgumentContract:
-        return MacroArgumentContract(parent=self, conditions=conditions, terms=terms)
-
-
 class MacroArgumentContract(ChildContract[MacroArgument, Macro]):
 
     __supported_terms__ = frozenset({
@@ -287,4 +197,85 @@ class MacroArgumentContract(ChildContract[MacroArgument, Macro]):
             (arg, mac) for mac in self.parent.filtered_items
             if mac.package_name == self.manifest.metadata.project_name
             for arg in mac.arguments
+        )
+
+
+class ModelContract(ParentContract[ColumnInfo, ModelNode]):
+
+    __child_contract__ = ColumnContract
+    __supported_terms__ = frozenset({
+        properties.HasProperties,
+        properties.HasDescription,
+        properties.HasRequiredTags,
+        properties.HasAllowedTags,
+        properties.HasRequiredMetaKeys,
+        properties.HasAllowedMetaKeys,
+        properties.HasAllowedMetaValues,
+        node.Exists,
+        node.HasTests,
+        node.HasAllColumns,
+        node.HasExpectedColumns,
+        node.HasMatchingDescription,
+        node.HasContract,
+        node.HasValidRefDependencies,
+        node.HasValidSourceDependencies,
+        node.HasValidMacroDependencies,
+        node.HasNoFinalSemiColon,
+        node.HasNoHardcodedRefs,
+        model.HasConstraints,
+    })
+    __supported_conditions__ = frozenset({
+        NameCondition, PathCondition, TagCondition, MetaCondition
+    })
+
+    @property
+    def items(self) -> Iterable[ModelNode]:
+        return (n for n in self.manifest.nodes.values() if isinstance(n, ModelNode))
+
+
+class SourceContract(ParentContract[ColumnInfo, SourceDefinition]):
+
+    __child_contract__ = ColumnContract
+    __supported_terms__ = frozenset({
+        properties.HasProperties,
+        properties.HasDescription,
+        properties.HasRequiredTags,
+        properties.HasAllowedTags,
+        properties.HasRequiredMetaKeys,
+        properties.HasAllowedMetaKeys,
+        properties.HasAllowedMetaValues,
+        node.Exists,
+        node.HasTests,
+        node.HasAllColumns,
+        node.HasExpectedColumns,
+        node.HasMatchingDescription,
+        source.HasLoader,
+        source.HasFreshness,
+        source.HasDownstreamDependencies,
+    })
+    __supported_conditions__ = frozenset({
+        NameCondition, PathCondition, TagCondition, MetaCondition
+    })
+
+    @property
+    def items(self) -> Iterable[SourceDefinition]:
+        return iter(self.manifest.sources.values())
+
+
+class MacroContract(ParentContract[MacroArgument, Macro]):
+
+    __child_contract__ = MacroArgumentContract
+    __supported_terms__ = frozenset({
+        properties.HasProperties,
+        properties.HasDescription,
+    })
+    __supported_conditions__ = frozenset({
+        NameCondition, PathCondition
+    })
+
+    @property
+    def items(self) -> Iterable[Macro]:
+        return (
+            mac for mac in self.manifest.macros.values()
+            if mac.package_name == self.manifest.metadata.project_name
         )

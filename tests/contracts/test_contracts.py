@@ -72,10 +72,10 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
         assert sorted(result, key=self._items_sort_key) == sorted(filtered_items, key=self._items_sort_key)
 
 
-class ParentContractTester[I: ParentT](ContractTester[I]):
+class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
     """Base class for testing parent contracts."""
     @abstractmethod
-    def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> ParentContract[I]:
+    def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> ParentContract[I, P]:
         raise NotImplementedError
 
     @abstractmethod
@@ -88,12 +88,12 @@ class ParentContractTester[I: ParentT](ContractTester[I]):
         """Fixture for child terms."""
         raise NotImplementedError
 
-    def _items_sort_key(self, item: I) -> Any:
+    def _items_sort_key(self, item: P) -> Any:
         return item.unique_id
 
     @staticmethod
     def test_create_child_contract(
-            contract: ParentContract[I],
+            contract: ParentContract[I, P],
             child_conditions: Collection[ContractCondition],
             child_terms: Collection[ContractTerm]
     ):
@@ -103,7 +103,7 @@ class ParentContractTester[I: ParentT](ContractTester[I]):
         assert child.terms == child_terms
 
     @staticmethod
-    def test_validate_terms(contract: ParentContract[I]):
+    def test_validate_terms(contract: ParentContract[I, P]):
         assert contract.validate_terms(contract.terms)
 
         invalid_classes = [
@@ -117,7 +117,7 @@ class ParentContractTester[I: ParentT](ContractTester[I]):
         assert not contract.validate_terms(list(contract.terms) + [invalid_cls()])
 
     @staticmethod
-    def test_validate_conditions(contract: ParentContract[I]):
+    def test_validate_conditions(contract: ParentContract[I, P]):
         assert contract.validate_conditions(contract.conditions)
 
         invalid_classes = [
@@ -133,7 +133,7 @@ class ParentContractTester[I: ParentT](ContractTester[I]):
 
 class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
     @abstractmethod
-    def items(self, parent: ParentContract[I], **kwargs) -> list[tuple[I, P]]:
+    def items(self, parent: ParentContract[I, P], **kwargs) -> list[tuple[I, P]]:
         raise NotImplementedError
 
     @abstractmethod
@@ -146,11 +146,13 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
 
     # noinspection PyMethodOverriding
     @abstractmethod
-    def contract(self, manifest: Manifest, catalog: CatalogArtifact, parent: ParentContract[I]) -> ChildContract[I, P]:
+    def contract(
+            self, manifest: Manifest, catalog: CatalogArtifact, parent: ParentContract[I, P]
+    ) -> ChildContract[I, P]:
         raise NotImplementedError
 
     @abstractmethod
-    def parent(self, manifest: Manifest, catalog: CatalogArtifact) -> ParentContract[I]:
+    def parent(self, manifest: Manifest, catalog: CatalogArtifact) -> ParentContract[I, P]:
         """Fixture for parent contract."""
         raise NotImplementedError
 
@@ -158,7 +160,7 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
         return item[1].unique_id, item[0].name
 
     @staticmethod
-    def test_validate_terms(contract: ChildContract[I, P], parent: ParentContract[I]):
+    def test_validate_terms(contract: ChildContract[I, P], parent: ParentContract[I, P]):
         assert contract.validate_terms(contract.terms)
 
         invalid_classes = [
@@ -172,7 +174,7 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
         assert not contract.validate_terms(list(contract.terms) + [invalid_cls()])
 
     @staticmethod
-    def test_validate_conditions(contract: ParentContract[I], parent: ParentContract[I]):
+    def test_validate_conditions(contract: ChildContract[I, P], parent: ParentContract[I, P]):
         assert contract.validate_conditions(contract.conditions)
 
         invalid_classes = [
@@ -186,7 +188,7 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
         assert not contract.validate_conditions(list(contract.conditions) + [invalid_cls()])
 
 
-class TestModelContract(ParentContractTester[ModelNode]):
+class TestModelContract(ParentContractTester[ColumnInfo, ModelNode]):
     @pytest.fixture(scope="class")
     def items(self, models: list[ModelNode]) -> list[ModelNode]:
         return models
@@ -233,7 +235,7 @@ class TestModelContract(ParentContractTester[ModelNode]):
         ]
 
 
-class TestSourceContract(ParentContractTester[SourceDefinition]):
+class TestSourceContract(ParentContractTester[ColumnInfo, SourceDefinition]):
     @pytest.fixture(scope="class")
     def items(self, sources: list[SourceDefinition]) -> list[SourceDefinition]:
         return sources
@@ -320,7 +322,7 @@ class TestColumnContract(ChildContractTester[ColumnInfo, ModelNode]):
         return ModelContract(manifest=manifest, catalog=catalog)
 
 
-class TestMacroContract(ParentContractTester[Macro]):
+class TestMacroContract(ParentContractTester[MacroArgument, Macro]):
     @pytest.fixture(scope="class")
     def items(self, macros: list[Macro], manifest: Manifest) -> list[Macro]:
         for item in macros:
