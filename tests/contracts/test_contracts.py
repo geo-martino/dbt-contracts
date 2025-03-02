@@ -13,7 +13,7 @@ from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 from dbt_contracts.contracts import Contract, ParentContract, ContractTerm, ContractCondition, ChildContract, \
     ModelContract, SourceContract, ColumnContract, MacroContract, MacroArgumentContract
 from dbt_contracts.contracts.conditions import NameCondition, TagCondition
-from dbt_contracts.contracts.terms import node, properties, model, source, column, macro
+from dbt_contracts.contracts.terms import properties, source, column, macro
 from dbt_contracts.types import ItemT, ParentT
 
 
@@ -54,14 +54,16 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
             filtered_items, key=self._items_sort_key
         )
 
-    def test_validate_items(self, contract: Contract[I], valid_items: list[I]):
+    def test_validate_items(self, contract: Contract[I], filtered_items: list[I], valid_items: list[I]):
         result = contract.validate()
         assert sorted(result, key=self._items_sort_key) == sorted(valid_items, key=self._items_sort_key)
+
+        if len(filtered_items) < len(valid_items):
+            assert contract.context.results
 
     def test_validate_items_on_no_terms(self, contract: Contract[I], filtered_items: list[I]):
         contract.terms = []
         result = contract.validate()
-        assert len(filtered_items) == len(list(contract.filtered_items))
         assert sorted(result, key=self._items_sort_key) == sorted(filtered_items, key=self._items_sort_key)
 
 
@@ -92,6 +94,34 @@ class ParentContractTester[I: ParentT](ContractTester[I]):
         assert child.conditions == child_conditions
         assert child.terms == child_terms
 
+    @staticmethod
+    def test_validate_terms(contract: ParentContract[I]):
+        assert contract.validate_terms(contract.terms)
+
+        invalid_classes = [
+            cls for cls in contract.create_child_contract().__supported_terms__
+            if cls not in contract.__supported_terms__
+        ]
+        if not invalid_classes:
+            return
+
+        invalid_cls = choice(invalid_classes)
+        assert not contract.validate_terms(list(contract.terms) + [invalid_cls()])
+
+    @staticmethod
+    def test_validate_conditions(contract: ParentContract[I]):
+        assert contract.validate_conditions(contract.conditions)
+
+        invalid_classes = [
+            cls for cls in contract.create_child_contract().__supported_conditions__
+            if cls not in contract.__supported_conditions__
+        ]
+        if not invalid_classes:
+            return
+
+        invalid_cls = choice(invalid_classes)
+        assert not contract.validate_conditions(list(contract.conditions) + [invalid_cls()])
+
 
 class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
     @abstractmethod
@@ -117,6 +147,34 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
 
     def _items_sort_key(self, item: tuple[I, P]) -> Any:
         return item[1].unique_id, item[0].name
+
+    @staticmethod
+    def test_validate_terms(contract: ChildContract[I, P], parent: ParentContract[I]):
+        assert contract.validate_terms(contract.terms)
+
+        invalid_classes = [
+            cls for cls in parent.__supported_terms__
+            if cls not in contract.__supported_terms__
+        ]
+        if not invalid_classes:
+            return
+
+        invalid_cls = choice(invalid_classes)
+        assert not contract.validate_terms(list(contract.terms) + [invalid_cls()])
+
+    @staticmethod
+    def test_validate_conditions(contract: ParentContract[I], parent: ParentContract[I]):
+        assert contract.validate_conditions(contract.conditions)
+
+        invalid_classes = [
+            cls for cls in parent.__supported_conditions__
+            if cls not in contract.__supported_conditions__
+        ]
+        if not invalid_classes:
+            return
+
+        invalid_cls = choice(invalid_classes)
+        assert not contract.validate_conditions(list(contract.conditions) + [invalid_cls()])
 
 
 class TestModelContract(ParentContractTester[ModelNode]):

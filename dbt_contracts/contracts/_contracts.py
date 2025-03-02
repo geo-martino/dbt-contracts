@@ -11,6 +11,8 @@ from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 
 from dbt_contracts.contracts._core import ContractContext, ContractTerm, ContractCondition
+from dbt_contracts.contracts.conditions import NameCondition, PathCondition, TagCondition, MetaCondition
+from dbt_contracts.contracts.terms import properties, node, model, source, column, macro
 from dbt_contracts.types import ItemT, ParentT, NodeT
 
 
@@ -18,6 +20,9 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
     """
     Composes the terms and conditions that make a contract for specific types of dbt objects within a manifest.
     """
+    __supported_terms__: frozenset[type[ContractTerm]]
+    __supported_conditions__: frozenset[type[ContractTerm]]
+
     @property
     @abstractmethod
     def items(self) -> Iterable[I]:
@@ -55,6 +60,18 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
         #: The terms to apply to items when validating items
         self.terms = terms
 
+    @classmethod
+    def validate_terms(cls, terms: Collection[ContractTerm]) -> bool:
+        if not cls.__supported_terms__:
+            raise Exception("No supported terms set for this contract.")
+        return all(term.__class__ in cls.__supported_terms__ for term in terms)
+
+    @classmethod
+    def validate_conditions(cls, conditions: Collection[ContractCondition]) -> bool:
+        if not cls.__supported_conditions__:
+            raise Exception("No supported conditions set for this contract.")
+        return all(condition.__class__ in cls.__supported_conditions__ for condition in conditions)
+
     @abstractmethod
     def validate(self) -> list[I]:
         """
@@ -74,7 +91,7 @@ class ParentContract[I: ParentT](Contract[I], metaclass=ABCMeta):
 
     @abstractmethod
     def create_child_contract(
-            self, conditions: Collection[ContractCondition], terms: Collection[ContractTerm]
+            self, conditions: Collection[ContractCondition] = (), terms: Collection[ContractTerm] = ()
     ) -> ChildContract[I] | None:
         """Create a child contract from this parent contract if available"""
         raise NotImplementedError
@@ -126,28 +143,97 @@ class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMe
 
 
 class ModelContract(ParentContract[ModelNode]):
+
+    __supported_terms__ = frozenset({
+        properties.HasProperties,
+        properties.HasDescription,
+        properties.HasRequiredTags,
+        properties.HasAllowedTags,
+        properties.HasRequiredMetaKeys,
+        properties.HasAllowedMetaKeys,
+        properties.HasAllowedMetaValues,
+        node.Exists,
+        node.HasTests,
+        node.HasAllColumns,
+        node.HasExpectedColumns,
+        node.HasMatchingDescription,
+        node.HasContract,
+        node.HasValidRefDependencies,
+        node.HasValidSourceDependencies,
+        node.HasValidMacroDependencies,
+        node.HasNoFinalSemiColon,
+        node.HasNoHardcodedRefs,
+        model.HasConstraints,
+    })
+    __supported_conditions__ = frozenset({
+        NameCondition, PathCondition, TagCondition, MetaCondition
+    })
+
     @property
     def items(self) -> Iterable[ModelNode]:
         return (node for node in self.manifest.nodes.values() if isinstance(node, ModelNode))
 
     def create_child_contract(
-            self, conditions: Collection[ContractCondition], terms: Collection[ContractTerm]
+            self, conditions: Collection[ContractCondition] = (), terms: Collection[ContractTerm] = ()
     ) -> ColumnContract[ModelNode]:
         return ColumnContract[ModelNode](parent=self, conditions=conditions, terms=terms)
 
 
 class SourceContract(ParentContract[SourceDefinition]):
+
+    __supported_terms__ = frozenset({
+        properties.HasProperties,
+        properties.HasDescription,
+        properties.HasRequiredTags,
+        properties.HasAllowedTags,
+        properties.HasRequiredMetaKeys,
+        properties.HasAllowedMetaKeys,
+        properties.HasAllowedMetaValues,
+        node.Exists,
+        node.HasTests,
+        node.HasAllColumns,
+        node.HasExpectedColumns,
+        node.HasMatchingDescription,
+        source.HasLoader,
+        source.HasFreshness,
+        source.HasDownstreamDependencies,
+    })
+    __supported_conditions__ = frozenset({
+        NameCondition, PathCondition, TagCondition, MetaCondition
+    })
+
     @property
     def items(self) -> Iterable[SourceDefinition]:
         return iter(self.manifest.sources.values())
 
     def create_child_contract(
-            self, conditions: Collection[ContractCondition], terms: Collection[ContractTerm]
+            self, conditions: Collection[ContractCondition] = (), terms: Collection[ContractTerm] = ()
     ) -> ColumnContract[SourceDefinition]:
         return ColumnContract[SourceDefinition](parent=self, conditions=conditions, terms=terms)
 
 
 class ColumnContract[T: NodeT](ChildContract[ColumnInfo, T]):
+
+    __supported_terms__ = frozenset({
+        properties.HasProperties,
+        properties.HasDescription,
+        properties.HasRequiredTags,
+        properties.HasAllowedTags,
+        properties.HasRequiredMetaKeys,
+        properties.HasAllowedMetaKeys,
+        properties.HasAllowedMetaValues,
+        column.Exists,
+        column.HasTests,
+        column.HasExpectedName,
+        column.HasDataType,
+        column.HasMatchingDescription,
+        column.HasMatchingDataType,
+        column.HasMatchingIndex,
+    })
+    __supported_conditions__ = frozenset({
+        NameCondition, TagCondition, MetaCondition
+    })
+
     @property
     def items(self) -> Iterable[tuple[ColumnInfo, T]]:
         return (
@@ -156,6 +242,15 @@ class ColumnContract[T: NodeT](ChildContract[ColumnInfo, T]):
 
 
 class MacroContract(ParentContract[Macro]):
+
+    __supported_terms__ = frozenset({
+        properties.HasProperties,
+        properties.HasDescription,
+    })
+    __supported_conditions__ = frozenset({
+        NameCondition, PathCondition
+    })
+
     @property
     def items(self) -> Iterable[Macro]:
         return (
@@ -164,12 +259,21 @@ class MacroContract(ParentContract[Macro]):
         )
 
     def create_child_contract(
-            self, conditions: Collection[ContractCondition], terms: Collection[ContractTerm]
+            self, conditions: Collection[ContractCondition] = (), terms: Collection[ContractTerm] = ()
     ) -> MacroArgumentContract:
         return MacroArgumentContract(parent=self, conditions=conditions, terms=terms)
 
 
 class MacroArgumentContract(ChildContract[MacroArgument, Macro]):
+
+    __supported_terms__ = frozenset({
+        properties.HasDescription,
+        macro.HasType,
+    })
+    __supported_conditions__ = frozenset({
+        NameCondition
+    })
+
     @property
     def items(self) -> Iterable[tuple[MacroArgument, Macro]]:
         return (

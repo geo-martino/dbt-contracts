@@ -14,4 +14,4 @@ type PropertiesT = ParsedResource | SourceDefinition | Macro
 type DescriptionT = ParsedResource | ColumnInfo | SourceDefinition | Macro | MacroArgument
 type TagT = ParsedResource | ColumnInfo
 type MetaT = ParsedResource | ColumnInfo
-type NodeT = BaseNode | SourceDefinition
+type NodeT = ParsedResource | SourceDefinition
