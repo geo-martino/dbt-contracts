@@ -4,11 +4,12 @@ import re
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
+from dbt.adapters.utils import classproperty
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from dbt_contracts.contracts.result import Result, RESULT_PROCESSOR_MAP
 from dbt_contracts.types import ItemT, ParentT
@@ -67,8 +68,13 @@ class ContractTerm[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
     """
     @property
     def name(self) -> str:
+        """The name of this condition in snake_case."""
+        return self._name()
+
+    @classmethod
+    def _name(cls) -> str:
         """The name of this term in snake_case."""
-        class_name = self.__class__.__name__
+        class_name = cls.__name__.replace("Term", "")
         return re.sub(r"([a-z])([A-Z])", r"\1_\2", class_name).lower()
 
     @abstractmethod
@@ -89,6 +95,17 @@ class ContractCondition[T: ItemT](BaseModel, metaclass=ABCMeta):
     Conditional logic to apply to items within the manifest to determine
     whether they should be processed by subsequent terms.
     """
+    @property
+    def name(self) -> str:
+        """The name of this condition in snake_case."""
+        return self._name()
+
+    @classmethod
+    def _name(cls) -> str:
+        """The name of this condition in snake_case."""
+        class_name = cls.__name__.replace("Condition", "")
+        return re.sub(r"([a-z])([A-Z])", r"\1_\2", class_name).lower()
+
     @abstractmethod
     def run(self, item: T) -> bool:
         """Run this condition to check whether the given item should be processed."""

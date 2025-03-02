@@ -12,6 +12,7 @@ from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 
 from dbt_contracts.contracts import Contract, ParentContract, ContractTerm, ContractCondition, ChildContract, \
     ModelContract, SourceContract, ColumnContract, MacroContract, MacroArgumentContract
+from dbt_contracts.contracts._contracts import CONTRACT_CLASSES, CONTRACT_MAP
 from dbt_contracts.contracts.conditions import NameCondition, TagCondition
 from dbt_contracts.contracts.terms import properties, source, column, macro
 from dbt_contracts.types import ItemT, ParentT
@@ -71,6 +72,25 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
         result = contract.validate()
         assert sorted(result, key=self._items_sort_key) == sorted(filtered_items, key=self._items_sort_key)
 
+    def test_from_dict(self, contract: Contract[I]):
+        config = {
+            "filter": sample(
+                [cls._name() for cls in contract.__supported_conditions__],
+                k=min(len(contract.__supported_conditions__), 2)
+            ),
+            "terms": sample(
+                [cls._name() for cls in contract.__supported_terms__],
+                k=min(len(contract.__supported_terms__), 3)
+            ),
+        }
+        new_contract: Contract[I] = contract.__class__.from_dict(config, manifest=contract.manifest, catalog=contract.catalog)
+
+        assert new_contract.manifest == contract.manifest
+        assert new_contract.catalog == contract.catalog
+
+        assert [condition.name for condition in new_contract.conditions] == config["filter"]
+        assert [term.name for term in new_contract.terms] == config["terms"]
+
 
 class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
     """Base class for testing parent contracts."""
@@ -92,15 +112,9 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
         return item.unique_id
 
     @staticmethod
-    def test_create_child_contract(
-            contract: ParentContract[I, P],
-            child_conditions: Collection[ContractCondition],
-            child_terms: Collection[ContractTerm]
-    ):
-        child = contract.create_child_contract(conditions=child_conditions, terms=child_terms)
-        assert child.parent == contract
-        assert child.conditions == child_conditions
-        assert child.terms == child_terms
+    def test_contract_is_mapped(contract: ParentContract[I, P]):
+        assert contract.__class__ in CONTRACT_CLASSES
+        assert CONTRACT_MAP.get(contract.__config_key__) == contract.__class__
 
     @staticmethod
     def test_validate_terms(contract: ParentContract[I, P]):
@@ -116,6 +130,9 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
         invalid_cls = choice(invalid_classes)
         assert not contract.validate_terms(list(contract.terms) + [invalid_cls()])
 
+        with pytest.raises(Exception):
+            contract.__class__(terms=list(contract.terms) + [invalid_cls()])
+
     @staticmethod
     def test_validate_conditions(contract: ParentContract[I, P]):
         assert contract.validate_conditions(contract.conditions)
@@ -129,6 +146,52 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
 
         invalid_cls = choice(invalid_classes)
         assert not contract.validate_conditions(list(contract.conditions) + [invalid_cls()])
+
+        with pytest.raises(Exception):
+            contract.__class__(conditions=list(contract.conditions) + [invalid_cls()])
+
+    @staticmethod
+    def test_create_child_contract(
+            contract: ParentContract[I, P],
+            child_conditions: Collection[ContractCondition],
+            child_terms: Collection[ContractTerm]
+    ):
+        child = contract.create_child_contract(conditions=child_conditions, terms=child_terms)
+        assert child.parent == contract
+        assert child.conditions == child_conditions
+        assert child.terms == child_terms
+
+    def test_create_child_contract_from_dict(self, contract: ParentContract[I, P]):
+        config = {
+            "filter": sample(
+                [cls._name() for cls in contract.__supported_conditions__],
+                k=min(len(contract.__supported_conditions__), 2)
+            ),
+            "terms": sample(
+                [cls._name() for cls in contract.__supported_terms__],
+                k=min(len(contract.__supported_terms__), 3)
+            ),
+            contract.__child_contract__.__config_key__: {
+                "filter": sample(
+                    [cls._name() for cls in contract.__child_contract__.__supported_conditions__],
+                    k=min(len(contract.__child_contract__.__supported_conditions__), 2)
+                ),
+                "terms": sample(
+                    [cls._name() for cls in contract.__child_contract__.__supported_terms__],
+                    k=min(len(contract.__child_contract__.__supported_terms__), 3)
+                ),
+            }
+        }
+
+        child = contract.create_child_contract_from_dict(config)
+
+        assert child.parent == contract
+        assert child.manifest == contract.manifest
+        assert child.catalog == contract.catalog
+
+        child_config = config[contract.__child_contract__.__config_key__]
+        assert [condition.name for condition in child.conditions] == child_config["filter"]
+        assert [term.name for term in child.terms] == child_config["terms"]
 
 
 class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
@@ -173,6 +236,9 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
         invalid_cls = choice(invalid_classes)
         assert not contract.validate_terms(list(contract.terms) + [invalid_cls()])
 
+        with pytest.raises(Exception):
+            contract.__class__(terms=list(contract.terms) + [invalid_cls()])
+
     @staticmethod
     def test_validate_conditions(contract: ChildContract[I, P], parent: ParentContract[I, P]):
         assert contract.validate_conditions(contract.conditions)
@@ -186,6 +252,9 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
 
         invalid_cls = choice(invalid_classes)
         assert not contract.validate_conditions(list(contract.conditions) + [invalid_cls()])
+
+        with pytest.raises(Exception):
+            contract.__class__(conditions=list(contract.conditions) + [invalid_cls()])
 
 
 class TestModelContract(ParentContractTester[ColumnInfo, ModelNode]):
