@@ -1,10 +1,13 @@
 import argparse
 import os
+from pathlib import Path
 
 from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 
 from dbt_contracts import PROGRAM_NAME
 from dbt_contracts.contracts_old import CONTRACTS, ParentContract
+from dbt_contracts.dbt_cli import get_config, clean_paths, install_dependencies
+from dbt_contracts.runner import ContractRunner
 
 DEFAULT_CONFIG_FILE_NAME: str = "contracts.yml"
 DEFAULT_OUTPUT_FILE_NAME: str = "contracts_results"
@@ -144,3 +147,33 @@ files = CORE_PARSER.add_argument(
     default=None,
     type=str,
 )
+
+
+def main():
+    config = get_config()
+
+    if config.args.config is None and config.args.project_dir:
+        config.args.config = config.args.project_dir
+    if config.args.output is None:
+        config.args.output = Path(config.project_root, config.target_path)
+
+    if config.args.clean:
+        clean_paths()
+    if config.args.deps:
+        install_dependencies()
+
+    runner = ContractRunner.from_config(config)
+    if config.args.files:
+        runner.paths = config.args.files
+
+    results = runner.run(contract_key=config.args.contract, enforcements=config.args.enforce)
+
+    if config.args.format:
+        runner.write_results(results, format_type=config.args.format, output=config.args.output)
+
+    if not config.args.no_fail and results:
+        raise Exception(f"Found {len(results)} contract violations.")
+
+
+if __name__ == "__main__":
+    main()

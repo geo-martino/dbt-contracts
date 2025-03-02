@@ -14,11 +14,11 @@ from dbt.config import RuntimeConfig
 from dbt.contracts.graph.manifest import Manifest
 
 from dbt_contracts.cli import DEFAULT_CONFIG_FILE_NAME, DEFAULT_OUTPUT_FILE_NAME
+from dbt_contracts.contracts.result import Result, ResultChild
 from dbt_contracts.contracts_old import Contract, CONTRACTS_CONFIG_MAP, ParentContract
 from dbt_contracts.dbt_cli import get_manifest, get_catalog, get_config
 from dbt_contracts.formatters import ObjectFormatter
 from dbt_contracts.formatters.table import TableFormatter, TableColumnFormatter, GroupedTableFormatter
-from dbt_contracts.contracts.result import Result, ResultChild
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 

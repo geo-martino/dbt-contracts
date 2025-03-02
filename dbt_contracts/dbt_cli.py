@@ -8,11 +8,11 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from dbt.artifacts.schemas.catalog.v1.catalog import CatalogArtifact
 from dbt.cli.main import dbtRunner, dbtRunnerResult
 from dbt.config import RuntimeConfig
 from dbt.constants import MANIFEST_FILE_NAME
 from dbt.contracts.graph.manifest import Manifest
-from dbt.artifacts.schemas.catalog.v1.catalog import CatalogArtifact
 from dbt.flags import set_from_args
 from dbt.task.docs.generate import CATALOG_FILENAME
 from dbt_common.context import set_invocation_context

@@ -6,12 +6,12 @@ from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import SourceDefinition, Macro, BaseNode
 
-ChildT = ColumnInfo | MacroArgument
-ParentT = BaseResource | None
-ItemT = ChildT | ParentT
+type ChildT = ColumnInfo | MacroArgument
+type ParentT = BaseResource | None
+type ItemT = ChildT | ParentT
 
-PropertiesT = ParsedResource | SourceDefinition | Macro
-DescriptionT = ParsedResource | ColumnInfo | SourceDefinition | Macro | MacroArgument
-TagT = ParsedResource | ColumnInfo
-MetaT = ParsedResource | ColumnInfo
-NodeT = BaseNode | SourceDefinition
+type PropertiesT = ParsedResource | SourceDefinition | Macro
+type DescriptionT = ParsedResource | ColumnInfo | SourceDefinition | Macro | MacroArgument
+type TagT = ParsedResource | ColumnInfo
+type MetaT = ParsedResource | ColumnInfo
+type NodeT = BaseNode | SourceDefinition

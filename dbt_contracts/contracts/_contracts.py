@@ -11,8 +11,6 @@ from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 
 from dbt_contracts.contracts._core import ContractContext, ContractTerm, ContractCondition
-from dbt_contracts.contracts.result import Result, ModelResult, SourceResult, ColumnResult, MacroResult, \
-    MacroArgumentResult
 from dbt_contracts.types import ItemT, ParentT
 
 
@@ -68,7 +66,7 @@ class ParentContract[I: ParentT](Contract[I], metaclass=ABCMeta):
         raise NotImplementedError
 
 
-class ChildContract[I: ItemT, P: ParentT](metaclass=ABCMeta):
+class ChildContract[I: ItemT, P: ParentT](Contract[I], metaclass=ABCMeta):
     """
     Composes the terms and conditions that make a contract for specific types of dbt child objects within a manifest.
     """
@@ -94,13 +92,10 @@ class ChildContract[I: ItemT, P: ParentT](metaclass=ABCMeta):
             conditions: Collection[ContractCondition] = (),
             terms: Collection[ContractTerm] = (),
     ):
+        super().__init__(manifest=parent.manifest, catalog=parent.catalog, conditions=conditions, terms=terms)
+
         #: The contract object representing the parent contract for this child contract.
         self.parent = parent
-
-        #: The conditions to apply to items when filtering items to process
-        self.conditions = conditions
-        #: The terms to apply to items when validating items
-        self.terms = terms
 
 
 class ModelContract(ParentContract[ModelNode]):
@@ -111,7 +106,7 @@ class ModelContract(ParentContract[ModelNode]):
     def create_child_contract(
             self, conditions: Sequence[ContractCondition], terms: Sequence[ContractTerm]
     ) -> ColumnContract[ModelNode]:
-        return ColumnContract(parent_contract=self, conditions=conditions, terms=terms)
+        return ColumnContract[ModelNode](parent_contract=self, conditions=conditions, terms=terms)
 
 
 class SourceContract(ParentContract[SourceDefinition]):
@@ -122,14 +117,14 @@ class SourceContract(ParentContract[SourceDefinition]):
     def create_child_contract(
             self, conditions: Sequence[ContractCondition], terms: Sequence[ContractTerm]
     ) -> ColumnContract[SourceDefinition]:
-        return ColumnContract(parent_contract=self, conditions=conditions, terms=terms)
+        return ColumnContract[SourceDefinition](parent_contract=self, conditions=conditions, terms=terms)
 
 
 class ColumnContract[T: ParentT](ChildContract[ColumnInfo, T]):
     @property
     def items(self) -> Iterable[tuple[ColumnInfo, T]]:
         return (
-            (column, parent) for parent in self.parent_contract.filtered_items for column in parent.columns.values()
+            (column, parent) for parent in self.parent.filtered_items for column in parent.columns.values()
         )
 
 
@@ -144,14 +139,14 @@ class MacroContract(ParentContract[Macro]):
     def create_child_contract(
             self, conditions: Sequence[ContractCondition], terms: Sequence[ContractTerm]
     ) -> MacroArgumentContract:
-        return MacroArgumentContract(parent_contract=self, conditions=conditions, terms=terms)
+        return MacroArgumentContract(parent=self, conditions=conditions, terms=terms)
 
 
 class MacroArgumentContract(ChildContract[MacroArgument, Macro]):
     @property
     def items(self) -> Iterable[tuple[MacroArgument, Macro]]:
         return (
-            (arg, macro) for macro in self.parent_contract.filtered_items
+            (arg, macro) for macro in self.parent.filtered_items
             if macro.package_name == self.manifest.metadata.project_name
             for arg in macro.arguments
         )

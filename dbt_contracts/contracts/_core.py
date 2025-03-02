@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import re
 from abc import ABCMeta, abstractmethod
-from collections.abc import Mapping, Iterable, Sequence, Generator
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from dbt_contracts.contracts.result import Result, RESULT_PROCESSOR_MAP
 from dbt_contracts.types import ItemT, ParentT
