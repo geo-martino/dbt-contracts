@@ -3,17 +3,16 @@ import itertools
 import textwrap
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Generic
 
 from colorama import Fore
 
-from dbt_contracts.formatters._core import ObjT, KeysT, ObjectFormatter, get_value_from_object, get_values_from_object
+from dbt_contracts.formatters._core import KeysT, ObjectFormatter, get_value_from_object, get_values_from_object
 
 
 @dataclass
-class TableColumnFormatter:
+class TableColumnFormatter[T]:
     """Configure a column of values for a table."""
-    keys: Collection[KeysT] | KeysT
+    keys: Collection[KeysT[T]] | KeysT[T]
     prefixes: Collection[str] | str = ()
     alignment: str = "<"
     colours: Collection[str] | str = ()
@@ -29,10 +28,10 @@ class TableColumnFormatter:
         if isinstance(self.colours, str):
             self.colours = [self.colours] * len(self.keys)
 
-    def _get_str_values_from_object(self, obj: ObjT) -> Iterable[str]:
+    def _get_str_values_from_object(self, obj: T) -> Iterable[str]:
         return map(str, map(lambda x: x if x is not None else "", get_values_from_object(obj, self.keys)))
 
-    def get_width(self, objects: Iterable[ObjT]) -> int:
+    def get_width(self, objects: Iterable[T]) -> int:
         """Calculate the width of this column for a given set of `logs`."""
         values = itertools.chain.from_iterable(map(
             lambda obj: (
@@ -44,7 +43,7 @@ class TableColumnFormatter:
         ))
         return max(self.min_width, min(max(map(len, values)), self.max_width))
 
-    def get_column(self, obj: ObjT, width: int = None) -> list[str]:
+    def get_column(self, obj: T, width: int = None) -> list[str]:
         """
         Get the column values for the given `obj`.
 
@@ -105,11 +104,11 @@ class TableColumnFormatter:
         return lines
 
 
-class TableFormatter(ObjectFormatter):
+class TableFormatter[T](ObjectFormatter[T]):
 
     def __init__(
             self,
-            columns: Sequence[TableColumnFormatter],
+            columns: Sequence[TableColumnFormatter[T]],
             column_sep_value: str = "|",
             column_sep_colour: str = Fore.LIGHTWHITE_EX
     ):
@@ -126,7 +125,7 @@ class TableFormatter(ObjectFormatter):
     def _join_row(self, row: list[str]) -> str:
         return functools.reduce(self._join_if_populated, row)
 
-    def format(self, objects: Collection[ObjT], widths: Collection[int] = (), **__) -> list[str]:
+    def format(self, objects: Collection[T], widths: Collection[int] = (), **__) -> list[str]:
         logs = []
 
         calculate_widths = len(widths) != len(self.columns)
@@ -153,7 +152,7 @@ class TableFormatter(ObjectFormatter):
         return "\n".join(values)
 
 
-class GroupedTableFormatter(ObjectFormatter[ObjT], Generic[ObjT]):
+class GroupedTableFormatter[T](ObjectFormatter[T]):
     """
 
     :param group_key: The key to group by.
@@ -170,9 +169,9 @@ class GroupedTableFormatter(ObjectFormatter[ObjT], Generic[ObjT]):
     def __init__(
             self,
             table_formatter: TableFormatter,
-            group_key: KeysT[ObjT],
-            header_key: KeysT[ObjT] = None,
-            sort_key: Collection[KeysT[ObjT]] | KeysT[ObjT] = (),
+            group_key: KeysT[T],
+            header_key: KeysT[T] = None,
+            sort_key: Collection[KeysT[T]] | KeysT[T] = (),
             consistent_widths: bool = False,
     ):
         self.table_formatter = table_formatter
@@ -185,7 +184,7 @@ class GroupedTableFormatter(ObjectFormatter[ObjT], Generic[ObjT]):
 
         self.consistent_widths = consistent_widths
 
-    def format(self, objects: Collection[ObjT], **__) -> dict[str, list[str]]:
+    def format(self, objects: Collection[T], **__) -> dict[str, list[str]]:
         objects = sorted(objects, key=lambda obj: tuple(get_values_from_object(obj, self.sort_key)))
         groups = itertools.groupby(objects, key=lambda obj: get_value_from_object(obj, self.group_key))
 

@@ -1,12 +1,11 @@
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Collection, Iterable
-from typing import Any, TypeVar, Generic
+from typing import Any
 
-ObjT = TypeVar('ObjT')
-KeysT = str | Callable[[ObjT], Any]
+type KeysT[T] = str | Callable[[T], Any]
 
 
-def get_value_from_object(obj: ObjT, key: KeysT[ObjT]) -> Any:
+def get_value_from_object[T](obj: T, key: KeysT[T]) -> Any:
     """
     Get a values from the given `obj` for the given `key`.
 
@@ -18,7 +17,7 @@ def get_value_from_object(obj: ObjT, key: KeysT[ObjT]) -> Any:
     return key(obj) if callable(key) else getattr(obj, key)
 
 
-def get_values_from_object(obj: ObjT, keys: Collection[KeysT[ObjT]]) -> Iterable[Any]:
+def get_values_from_object[T](obj: T, keys: Collection[KeysT[T]]) -> Iterable[Any]:
     """
     Get many values from the given `obj` for the given `key`.
 
@@ -31,14 +30,14 @@ def get_values_from_object(obj: ObjT, keys: Collection[KeysT[ObjT]]) -> Iterable
     return (get_value_from_object(obj, key) for key in keys)
 
 
-class ObjectFormatter(Generic[ObjT], metaclass=ABCMeta):
+class ObjectFormatter[T](metaclass=ABCMeta):
     """
     Base class for implementations which format a set of objects to strings.
     Usually used to format objects for logging purposes.
     This allows for the separation of how objects should be formatted for logging purposes from their implementations.
     """
     @abstractmethod
-    def format(self, objects: Collection[ObjT], **__) -> Collection[str]:
+    def format(self, objects: Collection[T], **__) -> Collection[str]:
         """
         Format the given objects to a collection of strings which can be used to log as needed.
 
