@@ -12,16 +12,12 @@ from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import ModelNode, Macro, SourceDefinition
 from dbt.flags import GLOBAL_FLAGS
 
-from dbt_contracts.contracts.result import Result, ModelResult, SourceResult, ColumnResult, MacroResult, MacroArgumentResult
+from dbt_contracts.contracts.result import Result, ModelResult, SourceResult, ColumnResult, MacroResult, \
+    MacroArgumentResult
 from dbt_contracts.types import ItemT, ParentT
 
 
 class ResultMock(Result):
-
-    @classmethod
-    def resource_type(cls) -> type[ModelNode]:
-        return ModelNode
-
     @classmethod
     def _extract_patch_object_for_item(
             cls, patch: Mapping[str, Any], item: ItemT, parent: ParentT = None
@@ -103,8 +99,10 @@ class TestResult:
             "__end_col__": 1,
         }
 
+    # noinspection PyTestUnpassedFixture
     @pytest.fixture
     def result(self, model: ModelNode, source: SourceDefinition) -> Result:
+        """Fixture for a Result object"""
         patch_object = {
             "__start_line__": 90,
             "__start_col__": 1,
@@ -158,6 +156,7 @@ class TestResult:
 class TestModelResult:
     @pytest.fixture
     def patch(self) -> dict[str, Any]:
+        """Fixture for a loaded patch object"""
         return {
             "models": [
                 {"name": "model1", "config": {"test": 1}},
@@ -177,6 +176,7 @@ class TestModelResult:
 class TestSourceResult:
     @pytest.fixture
     def patch(self) -> dict[str, Any]:
+        """Fixture for a loaded patch object"""
         return {
             "sources": [
                 {
@@ -200,7 +200,7 @@ class TestSourceResult:
 
     def test_extract_patch_object_for_item(self, patch: dict[str, Any], source: SourceDefinition):
         source.source_name = "does not exist"
-        assert ModelResult._extract_patch_object_for_item(patch, source) is None
+        assert SourceResult._extract_patch_object_for_item(patch, source) is None
 
         source.source_name = "source1"
         source.name = "table2"
@@ -210,6 +210,7 @@ class TestSourceResult:
 class TestColumnResult:
     @pytest.fixture
     def patch(self) -> dict[str, Any]:
+        """Fixture for a loaded patch object"""
         return {
             "models": [
                 {"name": "model1", "columns": [{"name": "col1", "tags": ["tag1"]}]},
@@ -275,6 +276,7 @@ class TestColumnResult:
 class TestMacroResult:
     @pytest.fixture
     def patch(self) -> dict[str, Any]:
+        """Fixture for a loaded patch object"""
         return {
             "macros": [
                 {"name": "macro1", "arguments": [{"name": "arg1", "description": "I am arg1"}]},
@@ -294,6 +296,7 @@ class TestMacroResult:
 class TestMacroArgumentResult:
     @pytest.fixture
     def patch(self) -> dict[str, Any]:
+        """Fixture for a loaded patch object"""
         return {
             "macros": [
                 {"name": "macro1", "arguments": [{"name": "arg1", "description": "I am arg1"}]},

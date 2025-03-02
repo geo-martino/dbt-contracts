@@ -22,6 +22,7 @@ def test_has_loader(source: SourceDefinition, context: ContractContext):
 
 @pytest.fixture
 def fresh_source(source: SourceDefinition) -> SourceDefinition:
+    """Fixture for a source with freshness"""
     source.loaded_at_field = "i am a loaded at field"
     source.freshness = FreshnessThreshold(
         warn_after=Time(count=2, period=TimePeriod.hour),

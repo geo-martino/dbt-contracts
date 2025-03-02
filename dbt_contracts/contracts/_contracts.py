@@ -50,6 +50,11 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
             conditions: Collection[ContractCondition] = (),
             terms: Collection[ContractTerm] = ()
     ):
+        if not self.validate_terms(terms):
+            raise Exception("Unsupported terms for this contract.")
+        if not self.validate_conditions(conditions):
+            raise Exception("Unsupported conditions for this contract.")
+
         #: The dbt manifest to extract items from
         self.manifest = manifest
         #: The dbt catalog to extract information on database objects from
@@ -62,12 +67,14 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
 
     @classmethod
     def validate_terms(cls, terms: Collection[ContractTerm]) -> bool:
+        """.Validate that all the given ``terms`` are supported by this contract."""
         if not cls.__supported_terms__:
             raise Exception("No supported terms set for this contract.")
         return all(term.__class__ in cls.__supported_terms__ for term in terms)
 
     @classmethod
     def validate_conditions(cls, conditions: Collection[ContractCondition]) -> bool:
+        """.Validate that all the given ``conditions`` are supported by this contract."""
         if not cls.__supported_conditions__:
             raise Exception("No supported conditions set for this contract.")
         return all(condition.__class__ in cls.__supported_conditions__ for condition in conditions)
@@ -171,7 +178,7 @@ class ModelContract(ParentContract[ModelNode]):
 
     @property
     def items(self) -> Iterable[ModelNode]:
-        return (node for node in self.manifest.nodes.values() if isinstance(node, ModelNode))
+        return (n for n in self.manifest.nodes.values() if isinstance(n, ModelNode))
 
     def create_child_contract(
             self, conditions: Collection[ContractCondition] = (), terms: Collection[ContractTerm] = ()
@@ -237,7 +244,7 @@ class ColumnContract[T: NodeT](ChildContract[ColumnInfo, T]):
     @property
     def items(self) -> Iterable[tuple[ColumnInfo, T]]:
         return (
-            (column, parent) for parent in self.parent.filtered_items for column in parent.columns.values()
+            (col, parent) for parent in self.parent.filtered_items for col in parent.columns.values()
         )
 
 
@@ -254,8 +261,8 @@ class MacroContract(ParentContract[Macro]):
     @property
     def items(self) -> Iterable[Macro]:
         return (
-            macro for macro in self.manifest.macros.values()
-            if macro.package_name == self.manifest.metadata.project_name
+            mac for mac in self.manifest.macros.values()
+            if mac.package_name == self.manifest.metadata.project_name
         )
 
     def create_child_contract(
@@ -277,7 +284,7 @@ class MacroArgumentContract(ChildContract[MacroArgument, Macro]):
     @property
     def items(self) -> Iterable[tuple[MacroArgument, Macro]]:
         return (
-            (arg, macro) for macro in self.parent.filtered_items
-            if macro.package_name == self.manifest.metadata.project_name
-            for arg in macro.arguments
+            (arg, mac) for mac in self.parent.filtered_items
+            if mac.package_name == self.manifest.metadata.project_name
+            for arg in mac.arguments
         )

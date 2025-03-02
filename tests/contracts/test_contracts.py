@@ -18,20 +18,25 @@ from dbt_contracts.types import ItemT, ParentT
 
 
 class ContractTester[I: ItemT](metaclass=ABCMeta):
+    """Base class for testing contracts."""
     @abstractmethod
     def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> Contract[I]:
+        """Fixture for creating a contract."""
         raise NotImplementedError
 
     @abstractmethod
     def items(self, **kwargs) -> list[I]:
+        """Fixture for items to be tested."""
         raise NotImplementedError
 
     @abstractmethod
     def filtered_items(self, items: list[I]) -> list[I]:
+        """Fixture for filtered set of items to be tested."""
         raise NotImplementedError
 
     @abstractmethod
     def valid_items(self, filtered_items: list[I]) -> list[I]:
+        """Fixture for valid set of items to be tested."""
         raise NotImplementedError
 
     @staticmethod
@@ -68,16 +73,19 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
 
 
 class ParentContractTester[I: ParentT](ContractTester[I]):
+    """Base class for testing parent contracts."""
     @abstractmethod
     def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> ParentContract[I]:
         raise NotImplementedError
 
     @abstractmethod
     def child_conditions(self) -> Collection[ContractCondition]:
+        """Fixture for child conditions."""
         raise NotImplementedError
 
     @abstractmethod
     def child_terms(self) -> Collection[ContractTerm]:
+        """Fixture for child terms."""
         raise NotImplementedError
 
     def _items_sort_key(self, item: I) -> Any:
@@ -143,6 +151,7 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
 
     @abstractmethod
     def parent(self, manifest: Manifest, catalog: CatalogArtifact) -> ParentContract[I]:
+        """Fixture for parent contract."""
         raise NotImplementedError
 
     def _items_sort_key(self, item: tuple[I, P]) -> Any:

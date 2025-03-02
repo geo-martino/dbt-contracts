@@ -4,7 +4,7 @@ Generic types to use for all contracts.
 from dbt.artifacts.resources.base import BaseResource
 from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
 from dbt.artifacts.resources.v1.macro import MacroArgument
-from dbt.contracts.graph.nodes import SourceDefinition, Macro, BaseNode
+from dbt.contracts.graph.nodes import SourceDefinition, Macro
 
 type ChildT = ColumnInfo | MacroArgument
 type ParentT = BaseResource | None

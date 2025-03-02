@@ -22,6 +22,7 @@ def test_exists(node: CompiledNode, simple_resource: BaseResource, context: Cont
     assert Exists().run(node, context=context)
 
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        # noinspection PyTypeChecker
         assert not Exists().run(simple_resource, context=context)
         mock_add_result.assert_called_once()
 
@@ -32,6 +33,7 @@ def test_get_tests(node: CompiledNode, simple_resource: BaseResource, manifest: 
     assert all(isinstance(test, TestNode) for test in tests)
     assert all(test.attached_node == node.unique_id for test in tests)
 
+    # noinspection PyTypeChecker
     assert not list(HasTests._get_tests(item=simple_resource, manifest=manifest))
 
 
@@ -41,6 +43,7 @@ def test_has_tests(node: CompiledNode, simple_resource: BaseResource, context: C
     assert not HasTests(min_count=10).run(node, context=context)
 
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        # noinspection PyTypeChecker
         assert not HasTests().run(simple_resource, context=context)
         mock_add_result.assert_called_once()
 
@@ -90,12 +93,14 @@ def test_has_matching_description(node: CompiledNode, node_table: CatalogTable, 
 # noinspection PyTestUnpassedFixture
 @pytest.fixture(params=["model"])
 def compiled_node(request: FixtureRequest) -> CompiledNode:
+    """CompiledNode fixture"""
     return deepcopy(request.getfixturevalue(request.param))
 
 
 # noinspection PyTestUnpassedFixture
 @pytest.fixture
 def contract_node(compiled_node: CompiledNode) -> CompiledNode:
+    """CompiledNode fixture with enforced contract"""
     compiled_node.contract.enforced = True
     for column in compiled_node.columns.values():
         column.data_type = "int"

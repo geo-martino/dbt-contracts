@@ -19,6 +19,7 @@ def test_context_init():
 
 
 def assert_result(results: list[Result], name: str, message: str, item: ItemT, parent: ParentT = None):
+    """Assert that a result with the given name and message exists in the results list"""
     assert any(result.name == item.name for result in results)
     assert any(result.result_name == name for result in results)
     assert any(result.message == message for result in results)

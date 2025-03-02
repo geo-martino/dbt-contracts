@@ -9,6 +9,6 @@ class HasType(ContractTerm[MacroArgument, Macro]):
         missing_type = not item.type
         if missing_type:
             message = "Argument does not have a type configured"
-            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item, parent=parent)
 
         return not missing_type

@@ -18,7 +18,7 @@ class HasProperties[I: PropertiesT](ContractTerm[I, None]):
         missing_properties = item.patch_path is None
         if missing_properties:
             message = "No properties file found"
-            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item, parent=parent)
 
         return not missing_properties
 
@@ -28,7 +28,7 @@ class HasDescription[I: DescriptionT, P: ParentT](ContractTerm[I, P]):
         missing_description = not item.description
         if missing_description:
             message = "Missing description"
-            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item, parent=parent)
 
         return not missing_description
 
@@ -43,7 +43,7 @@ class HasRequiredTags[I: TagT, P: ParentT](ContractTerm[I, P]):
         missing_tags = set(self.tags) - set(item.tags)
         if missing_tags:
             message = f"Missing required tags: {', '.join(missing_tags)}"
-            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item, parent=parent)
 
         return not missing_tags
 
@@ -58,7 +58,7 @@ class HasAllowedTags[I: TagT, P: ParentT](ContractTerm[I, P]):
         invalid_tags = set(item.tags) - set(self.tags)
         if invalid_tags:
             message = f"Contains invalid tags: {', '.join(invalid_tags)}"
-            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item, parent=parent)
 
         return len(invalid_tags) == 0
 
@@ -73,7 +73,7 @@ class HasRequiredMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
         missing_keys = set(self.keys) - set(item.meta.keys())
         if missing_keys:
             message = f"Missing required keys: {', '.join(missing_keys)}"
-            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item, parent=parent)
 
         return not missing_keys
 
@@ -88,7 +88,7 @@ class HasAllowedMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
         invalid_keys = set(item.meta.keys()) - set(self.keys)
         if invalid_keys:
             message = f"Contains invalid keys: {', '.join(invalid_keys)}"
-            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item, parent=parent)
 
         return len(invalid_keys) == 0
 
@@ -127,6 +127,6 @@ class HasAllowedMetaValues[I: MetaT, P: ParentT](ContractTerm[I, P]):
 
         if invalid_meta:
             message = f"Contains invalid meta values: {invalid_meta} | Accepted values: {expected_meta}"
-            context.add_result(name=self._term_name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item, parent=parent)
 
         return not invalid_meta

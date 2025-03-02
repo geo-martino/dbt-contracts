@@ -150,6 +150,7 @@ files = CORE_PARSER.add_argument(
 
 
 def main():
+    """Main entry point for the CLI"""
     config = get_config()
 
     if config.args.config is None and config.args.project_dir:

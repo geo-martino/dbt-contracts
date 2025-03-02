@@ -26,6 +26,7 @@ class ContractContext:
 
     @property
     def results(self) -> list[Result]:
+        """The list of stored results from term validations."""
         return self._results
 
     def __post_init__(self) -> None:
@@ -65,7 +66,8 @@ class ContractTerm[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
     e.g. a Column (child item) within a Model (parent item)
     """
     @property
-    def _term_name(self) -> str:
+    def name(self) -> str:
+        """The name of this term in snake_case."""
         class_name = self.__class__.__name__
         return re.sub(r"([a-z])([A-Z])", r"\1_\2", class_name).lower()
 

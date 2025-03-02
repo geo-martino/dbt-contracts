@@ -11,5 +11,5 @@ class HasConstraints(NodeContractTerm[ModelNode], RangeMatcher):
         log_message = self._match(count=count, kind="constraints")
 
         if log_message:
-            context.add_result(name=self._term_name, message=log_message, item=item, parent=parent)
+            context.add_result(name=self.name, message=log_message, item=item, parent=parent)
         return not log_message
