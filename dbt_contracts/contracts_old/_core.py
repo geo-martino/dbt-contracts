@@ -15,7 +15,7 @@ from dbt.artifacts.resources.base import BaseResource
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 
-from dbt_contracts.result import RESULT_PROCESSOR_MAP, Result
+from dbt_contracts.contracts.result import RESULT_PROCESSOR_MAP, Result
 from dbt_contracts.types import T, ChildT, ParentT, CombinedT
 
 ProcessorMethodT = Callable[..., bool]

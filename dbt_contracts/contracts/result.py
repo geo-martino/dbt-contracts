@@ -70,7 +70,7 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
         # noinspection PyUnresolvedReferences
         field_names: set[str] = set(cls.model_fields.keys())
         patch = cls._get_patch_object(item=parent or item, patches=patches)
-        patch_object = cls._extract_patch_object_for_item(patch, item=item, parent=parent) or {}
+        patch_object = cls._extract_patch_object_for_item(patch=patch, item=item, parent=parent) or {}
 
         if parent is not None:
             kwargs |= dict(
@@ -116,7 +116,7 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
         flags = get_flags()
         project_dir = getattr(flags, "PROJECT_DIR", None) or ""
 
-        if (path_in_project := Path(project_dir, patch_path)).is_file():
+        if project_dir and (path_in_project := Path(project_dir, patch_path)).is_file():
             patch_path = path_in_project
         elif (path_in_cwd := Path(os.getcwd(), patch_path)).is_file():
             patch_path = path_in_cwd
@@ -144,7 +144,7 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
     def _read_patch_file(cls, path: Path) -> dict[str, Any]:
         with path.open("r") as file:
             patch = yaml.load(file, Loader=SafeLineLoader)
-        return patch
+        return patch or {}
 
     @classmethod
     @abstractmethod

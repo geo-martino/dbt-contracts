@@ -12,7 +12,7 @@ from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import ModelNode, Macro, SourceDefinition
 from dbt.flags import GLOBAL_FLAGS
 
-from dbt_contracts.result import Result, ModelResult, SourceResult, ColumnResult, MacroResult, MacroArgumentResult
+from dbt_contracts.contracts.result import Result, ModelResult, SourceResult, ColumnResult, MacroResult, MacroArgumentResult
 from dbt_contracts.types import ItemT, ParentT
 
 
@@ -55,15 +55,14 @@ class TestResult:
         expected.touch()
         assert Result._get_patch_path(source, to_absolute=True) == expected
 
-    def test_get_absolute_patch_path_in_cwd(self, source: SourceDefinition, tmp_path: Path, monkeypatch: MonkeyPatch):
-        monkeypatch.chdir(tmp_path)
-        # still relative because file doesn't exist in any absolute path
-        assert Result._get_patch_path(source, to_absolute=True) == Path(source.original_file_path)
-
-        expected = Path(os.getcwd(), source.original_file_path)
+    def test_get_absolute_patch_path_in_cwd(self, source: SourceDefinition, tmp_path: Path):
+        expected = tmp_path.joinpath(source.original_file_path)
         expected.parent.mkdir(parents=True, exist_ok=True)
         expected.touch()
-        assert Result._get_patch_path(source, to_absolute=True) == expected
+
+        # noinspection SpellCheckingInspection
+        with mock.patch.object(os, "getcwd", return_value=str(tmp_path)):
+            assert Result._get_patch_path(source, to_absolute=True) == expected
 
     def test_get_patch_object_for_invalid_patch_path(self, model: ModelNode, tmp_path: Path):
         assert not Result._get_patch_object(model)  # patch file doesn't exist

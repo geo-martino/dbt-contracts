@@ -148,7 +148,7 @@ def sources(faker: Faker, columns: list[ColumnInfo]) -> list[SourceDefinition]:
 
 
 @pytest.fixture
-def source(sources: list[SourceDefinition], column: ColumnInfo) -> SourceDefinition:
+def source(sources: list[SourceDefinition]) -> SourceDefinition:
     return deepcopy(choice(sources))
 
 

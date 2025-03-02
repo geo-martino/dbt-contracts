@@ -28,7 +28,6 @@ class HasFreshness(NodeContractTerm[SourceDefinition]):
 class HasDownstreamDependencies(NodeContractTerm[SourceDefinition], RangeMatcher):
     def run(self, item: SourceDefinition, context: ContractContext, parent: None = None) -> bool:
         count = sum(item.unique_id in node.depends_on_nodes for node in context.manifest.nodes.values())
-        print(count)
         log_message = self._match(count=count, kind="downstream dependencies")
 
         if log_message:

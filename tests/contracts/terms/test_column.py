@@ -1,4 +1,4 @@
-from copy import copy
+from copy import copy, deepcopy
 from random import choice
 from unittest import mock
 
@@ -42,12 +42,18 @@ def test_get_and_validate_table_unmatched_table(
         mock_add_result.assert_called_once()
 
 
+# noinspection PyTestUnpassedFixture
 def test_get_and_validate_table_missing_column(
         node: NodeT, node_column: ColumnInfo, node_table: CatalogTable, context: ContractContext
 ):
-    node_table.columns.pop(node_column.name)
+    # add a new column to the node to simulate a column being remove
+    # preferred way to set up test as the node_table should not be modified to ensure other tests pass
+    new_column = deepcopy(node_column)
+    new_column.name = "new_columns"
+    node.columns[new_column.name] = new_column
+
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
-        assert Exists()._get_and_validate_table(node=node, column=node_column, context=context) is None
+        assert Exists()._get_and_validate_table(node=node, column=new_column, context=context) is None
         mock_add_result.assert_called_once()
 
 
@@ -180,7 +186,14 @@ def test_has_matching_index(
     assert list(node.columns).index(node_column.name) == node_table.columns[node_column.name].index
     assert HasMatchingIndex().run(node_column, parent=node, context=context)
 
-    node_table.columns[node_column.name].index += 5
+    # reorder columns
+    if list(node.columns.keys()).index(node_column.name) == (len(node.columns) - 1):
+        first_column = node.columns.pop(list(node.columns.keys())[0])
+        node.columns[first_column.name] = first_column
+    else:
+        node.columns.pop(node_column.name)
+        node.columns[node_column.name] = node_column
+
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
         assert not HasMatchingIndex().run(node_column, parent=node, context=context)
         mock_add_result.assert_called_once()

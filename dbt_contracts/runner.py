@@ -18,7 +18,7 @@ from dbt_contracts.contracts_old import Contract, CONTRACTS_CONFIG_MAP, ParentCo
 from dbt_contracts.dbt_cli import get_manifest, get_catalog, get_config
 from dbt_contracts.formatters import ObjectFormatter
 from dbt_contracts.formatters.table import TableFormatter, TableColumnFormatter, GroupedTableFormatter
-from dbt_contracts.result import Result, ResultChild
+from dbt_contracts.contracts.result import Result, ResultChild
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
