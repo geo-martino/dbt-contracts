@@ -15,12 +15,12 @@ from dbt_contracts.types import ItemT, TagT, MetaT
 
 
 class NameCondition(ContractCondition[ItemT], PatternMatcher):
-    def validate(self, item: (BaseResource, ColumnInfo, MacroArgument)) -> bool:
+    def run(self, item: (BaseResource, ColumnInfo, MacroArgument)) -> bool:
         return self._match(item.name)
 
 
 class PathCondition(ContractCondition[BaseResource], PatternMatcher):
-    def validate(self, item: BaseResource) -> bool:
+    def run(self, item: BaseResource) -> bool:
         paths = [item.original_file_path, item.path]
         if isinstance(item, ParsedResource) and item.patch_path:
             paths.append(item.patch_path.split("://")[1])
@@ -33,7 +33,7 @@ class TagCondition(ContractCondition[TagT]):
         default=tuple(),
     )
 
-    def validate(self, item: ParsedResource | ColumnInfo) -> bool:
+    def run(self, item: ParsedResource | ColumnInfo) -> bool:
         return not self.tags or any(tag in self.tags for tag in item.tags)
 
 
@@ -58,7 +58,7 @@ class MetaCondition(ContractCondition[MetaT]):
         # noinspection PyTypeChecker
         return meta
 
-    def validate(self, item: ParsedResource | ColumnInfo) -> bool:
+    def run(self, item: ParsedResource | ColumnInfo) -> bool:
         def _match(key: str) -> bool:
             values = self.meta[key]
             if not isinstance(values, Collection) or isinstance(values, str):
@@ -69,10 +69,10 @@ class MetaCondition(ContractCondition[MetaT]):
 
 
 class IsMaterializedCondition(ContractCondition[ParsedResource]):
-    def validate(self, item: ParsedResource) -> bool:
+    def run(self, item: ParsedResource) -> bool:
         return item.config.materialized != "ephemeral"
 
 
 class IsEnabledCondition(ContractCondition[SourceDefinition]):
-    def validate(self, item: SourceDefinition) -> bool:
+    def run(self, item: SourceDefinition) -> bool:
         return item.config.enabled

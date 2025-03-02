@@ -88,6 +88,6 @@ class ContractCondition[T: ItemT](BaseModel, metaclass=ABCMeta):
     whether they should be processed by subsequent terms.
     """
     @abstractmethod
-    def validate(self, item: T) -> bool:
-        """Check whether the given item should be processed."""
+    def run(self, item: T) -> bool:
+        """Run this condition to check whether the given item should be processed."""
         raise NotImplementedError

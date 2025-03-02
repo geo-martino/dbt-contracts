@@ -30,6 +30,10 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
     def filtered_items(self, items: list[I]) -> list[I]:
         raise NotImplementedError
 
+    @abstractmethod
+    def valid_items(self, filtered_items: list[I]) -> list[I]:
+        raise NotImplementedError
+
     @staticmethod
     def test_create_context(contract: Contract[I]):
         assert contract.manifest is not None
@@ -46,7 +50,19 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
 
     def test_get_items(self, contract: Contract[I], items: list[I], filtered_items: list[I]):
         assert sorted(contract.items, key=self._items_sort_key) == sorted(items, key=self._items_sort_key)
-        assert sorted(contract.filtered_items, key=self._items_sort_key) == sorted(filtered_items, key=self._items_sort_key)
+        assert sorted(contract.filtered_items, key=self._items_sort_key) == sorted(
+            filtered_items, key=self._items_sort_key
+        )
+
+    def test_validate_items(self, contract: Contract[I], valid_items: list[I]):
+        result = contract.validate()
+        assert sorted(result, key=self._items_sort_key) == sorted(valid_items, key=self._items_sort_key)
+
+    def test_validate_items_on_no_terms(self, contract: Contract[I], filtered_items: list[I]):
+        contract.terms = []
+        result = contract.validate()
+        assert len(filtered_items) == len(list(contract.filtered_items))
+        assert sorted(result, key=self._items_sort_key) == sorted(filtered_items, key=self._items_sort_key)
 
 
 class ParentContractTester[I: ParentT](ContractTester[I]):
@@ -65,8 +81,8 @@ class ParentContractTester[I: ParentT](ContractTester[I]):
     def _items_sort_key(self, item: I) -> Any:
         return item.unique_id
 
+    @staticmethod
     def test_create_child_contract(
-            self,
             contract: ParentContract[I],
             child_conditions: Collection[ContractCondition],
             child_terms: Collection[ContractTerm]
@@ -86,6 +102,10 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
     def filtered_items(self, items: list[tuple[I, P]]) -> list[tuple[I, P]]:
         raise NotImplementedError
 
+    @abstractmethod
+    def valid_items(self, filtered_items: list[tuple[I, P]]) -> list[tuple[I, P]]:
+        raise NotImplementedError
+
     # noinspection PyMethodOverriding
     @abstractmethod
     def contract(self, manifest: Manifest, catalog: CatalogArtifact, parent: ParentContract[I]) -> ChildContract[I, P]:
@@ -100,11 +120,11 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
 
 
 class TestModelContract(ParentContractTester[ModelNode]):
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def items(self, models: list[ModelNode]) -> list[ModelNode]:
         return models
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def filtered_items(self, items: list[ModelNode]) -> list[ModelNode]:
         items = sample(items, k=len(items) // 3)
         for item in items:
@@ -113,26 +133,33 @@ class TestModelContract(ParentContractTester[ModelNode]):
 
         return items
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
+    def valid_items(self, filtered_items: list[ModelNode]) -> list[ModelNode]:
+        items = sample(filtered_items, k=len(filtered_items) // 2)
+        for item in items:
+            item.tags.append("required_tag")
+
+        return items
+
+    @pytest.fixture(scope="class")
     def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> ModelContract:
         conditions = [
             NameCondition(include=["model1", "model2"]),
             TagCondition(tags=["include"])
         ]
         terms = [
-            node.HasExpectedColumns(min_count=3),
-            model.HasConstraints(min_count=3),
+            properties.HasRequiredTags(tags="required_tag"),
         ]
         return ModelContract(manifest=manifest, catalog=catalog, conditions=conditions, terms=terms)
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def child_conditions(self) -> Collection[ContractCondition]:
         return [
             NameCondition(include=["col1", "col2"]),
             TagCondition(tags=["valid"])
         ]
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def child_terms(self) -> Collection[ContractTerm]:
         return [
             column.HasDataType(min_count=3),
@@ -140,11 +167,11 @@ class TestModelContract(ParentContractTester[ModelNode]):
 
 
 class TestSourceContract(ParentContractTester[SourceDefinition]):
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def items(self, sources: list[SourceDefinition]) -> list[SourceDefinition]:
         return sources
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def filtered_items(self, items: list[SourceDefinition]) -> list[SourceDefinition]:
         items = sample(items, k=len(items) // 3)
         for item in items:
@@ -153,26 +180,35 @@ class TestSourceContract(ParentContractTester[SourceDefinition]):
 
         return items
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
+    def valid_items(self, filtered_items: list[SourceDefinition]) -> list[SourceDefinition]:
+        items = [item for item in filtered_items if bool(item.loader)]
+        items = sample(items, k=len(items) // 2)
+        for item in items:
+            item.tags.append("required_tag")
+
+        return items
+
+    @pytest.fixture(scope="class")
     def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> SourceContract:
         conditions = [
             NameCondition(include=["source1", "source2"]),
             TagCondition(tags=["include"])
         ]
         terms = [
-            node.HasExpectedColumns(min_count=3),
+            properties.HasRequiredTags(tags="required_tag"),
             source.HasLoader(),
         ]
         return SourceContract(manifest=manifest, catalog=catalog, conditions=conditions, terms=terms)
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def child_conditions(self) -> Collection[ContractCondition]:
         return [
             NameCondition(include=["col1", "col2"]),
             TagCondition(tags=["valid"])
         ]
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def child_terms(self) -> Collection[ContractTerm]:
         return [
             column.HasDataType(min_count=3),
@@ -181,13 +217,13 @@ class TestSourceContract(ParentContractTester[SourceDefinition]):
 
 class TestColumnContract(ChildContractTester[ColumnInfo, ModelNode]):
     # noinspection PyTestUnpassedFixture
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def items(self, parent: ModelContract, **__) -> list[tuple[ColumnInfo, ModelNode]]:
         parent_items = list(parent.filtered_items)
         assert parent_items
         return [(col, item) for item in parent_items for col in item.columns.values()]
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def filtered_items(self, items: list[tuple[ColumnInfo, ModelNode]]) -> list[tuple[ColumnInfo, ModelNode]]:
         columns = list({col.name: col for col, _ in items}.values())
         columns = sample(columns, k=len(columns) // 3)
@@ -196,29 +232,35 @@ class TestColumnContract(ChildContractTester[ColumnInfo, ModelNode]):
 
         return [(col, parent) for col, parent in items if "valid" in col.tags]
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
+    def valid_items(self, filtered_items: list[tuple[ColumnInfo, ModelNode]]) -> list[tuple[ColumnInfo, ModelNode]]:
+        return [
+            (col, parent) for col, parent in filtered_items if bool(col.data_type)
+        ]
+
+    @pytest.fixture(scope="class")
     def contract(self, manifest: Manifest, catalog: CatalogArtifact, parent: ModelContract) -> ColumnContract:
         conditions = [
             TagCondition(tags=["valid"])
         ]
         terms = [
-            column.HasDataType(min_count=3),
+            column.HasDataType(),
         ]
         return ColumnContract(parent=parent, conditions=conditions, terms=terms)
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def parent(self, manifest: Manifest, catalog: CatalogArtifact) -> ModelContract:
         return ModelContract(manifest=manifest, catalog=catalog)
 
 
 class TestMacroContract(ParentContractTester[Macro]):
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def items(self, macros: list[Macro], manifest: Manifest) -> list[Macro]:
-        for macro in macros:
-            macro.package_name = manifest.metadata.project_name
+        for item in macros:
+            item.package_name = manifest.metadata.project_name
         return macros
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def filtered_items(self, items: list[Macro]) -> list[Macro]:
         items = sample(items, k=len(items) // 3)
         for item in items:
@@ -226,7 +268,13 @@ class TestMacroContract(ParentContractTester[Macro]):
 
         return items
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
+    def valid_items(self, filtered_items: list[Macro]) -> list[Macro]:
+        return [
+            item for item in filtered_items if bool(item.description)
+        ]
+
+    @pytest.fixture(scope="class")
     def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> MacroContract:
         conditions = [
             NameCondition(include=["macro1", "macro2"]),
@@ -236,13 +284,13 @@ class TestMacroContract(ParentContractTester[Macro]):
         ]
         return MacroContract(manifest=manifest, catalog=catalog, conditions=conditions, terms=terms)
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def child_conditions(self) -> Collection[ContractCondition]:
         return [
             NameCondition(include=["arg1", "arg2"]),
         ]
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def child_terms(self) -> Collection[ContractTerm]:
         return [
             macro.HasType(),
@@ -251,13 +299,13 @@ class TestMacroContract(ParentContractTester[Macro]):
 
 class TestMacroArgumentContract(ChildContractTester[MacroArgument, Macro]):
     # noinspection PyTestUnpassedFixture
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def items(self, parent: MacroContract, **__) -> list[tuple[MacroArgument, Macro]]:
         parent_items = list(parent.filtered_items)
         assert parent_items
         return [(arg, item) for item in parent_items for arg in item.arguments]
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def filtered_items(self, items: list[tuple[MacroArgument, Macro]]) -> list[tuple[MacroArgument, Macro]]:
         arguments = list({arg.name: arg for arg, _ in items}.values())
         arguments = sample(arguments, k=len(arguments) // 3)
@@ -266,7 +314,13 @@ class TestMacroArgumentContract(ChildContractTester[MacroArgument, Macro]):
 
         return [(arg, parent) for arg, parent in items if arg.name in ("arg1", "arg2")]
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
+    def valid_items(self, filtered_items: list[tuple[MacroArgument, Macro]]) -> list[tuple[MacroArgument, Macro]]:
+        return [
+            (arg, parent) for arg, parent in filtered_items if bool(arg.type)
+        ]
+
+    @pytest.fixture(scope="class")
     def contract(self, manifest: Manifest, catalog: CatalogArtifact, parent: MacroContract) -> MacroArgumentContract:
         conditions = [
             NameCondition(include=["arg1", "arg2"]),
@@ -276,6 +330,6 @@ class TestMacroArgumentContract(ChildContractTester[MacroArgument, Macro]):
         ]
         return MacroArgumentContract(parent=parent, conditions=conditions, terms=terms)
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def parent(self, manifest: Manifest, catalog: CatalogArtifact) -> MacroContract:
         return MacroContract(manifest=manifest, catalog=catalog)

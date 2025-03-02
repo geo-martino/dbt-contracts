@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from collections.abc import Generator, Collection, Iterable
+from collections.abc import Collection, Iterable
+from functools import cached_property
 
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
@@ -10,7 +11,7 @@ from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 
 from dbt_contracts.contracts._core import ContractContext, ContractTerm, ContractCondition
-from dbt_contracts.types import ItemT, ParentT
+from dbt_contracts.types import ItemT, ParentT, NodeT
 
 
 class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
@@ -25,14 +26,14 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def filtered_items(self) -> Generator[I]:
+    def filtered_items(self) -> Iterable[I]:
         """
         Get all the items that this contract can process from the manifest
         filtered according to the given conditions.
         """
         raise NotImplementedError
 
-    @property
+    @cached_property
     def context(self) -> ContractContext:
         """Generate a context object from the current loaded dbt artifacts"""
         return ContractContext(manifest=self.manifest, catalog=self.catalog)
@@ -54,12 +55,21 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
         #: The terms to apply to items when validating items
         self.terms = terms
 
+    @abstractmethod
+    def validate(self) -> list[I]:
+        """
+        Validate the terms of this contract against the filtered items.
+
+        :return: The valid items.
+        """
+        raise NotImplementedError
+
 
 class ParentContract[I: ParentT](Contract[I], metaclass=ABCMeta):
     @property
-    def filtered_items(self) -> Generator[I]:
+    def filtered_items(self) -> Iterable[I]:
         for item in self.items:
-            if not self.conditions or all(condition.validate(item) for condition in self.conditions):
+            if not self.conditions or all(condition.run(item) for condition in self.conditions):
                 yield item
 
     @abstractmethod
@@ -68,6 +78,15 @@ class ParentContract[I: ParentT](Contract[I], metaclass=ABCMeta):
     ) -> ChildContract[I] | None:
         """Create a child contract from this parent contract if available"""
         raise NotImplementedError
+
+    def validate(self) -> list[I]:
+        if not self.terms:
+            print("go")
+            return list(self.filtered_items)
+        return [
+            item for item in self.filtered_items
+            if all(term.run(item, context=self.context) for term in self.terms)
+        ]
 
 
 class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMeta):
@@ -81,14 +100,14 @@ class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMe
         raise NotImplementedError
 
     @property
-    def filtered_items(self) -> Generator[tuple[I, P]]:
+    def filtered_items(self) -> Iterable[tuple[I, P]]:
         for item, parent in self.items:
-            if not self.conditions or all(condition.validate(item) for condition in self.conditions):
+            if not self.conditions or all(condition.run(item) for condition in self.conditions):
                 yield item, parent
 
     def __init__(
             self,
-            parent: ParentContract[ParentT],
+            parent: ParentContract[P],
             conditions: Collection[ContractCondition] = (),
             terms: Collection[ContractTerm] = (),
     ):
@@ -96,6 +115,14 @@ class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMe
 
         #: The contract object representing the parent contract for this child contract.
         self.parent = parent
+
+    def validate(self) -> list[tuple[I, P]]:
+        if not self.terms:
+            return list(self.filtered_items)
+        return [
+            (item, parent) for item, parent in self.filtered_items
+            if all(term.run(item, parent=parent, context=self.context) for term in self.terms)
+        ]
 
 
 class ModelContract(ParentContract[ModelNode]):
@@ -120,7 +147,7 @@ class SourceContract(ParentContract[SourceDefinition]):
         return ColumnContract[SourceDefinition](parent=self, conditions=conditions, terms=terms)
 
 
-class ColumnContract[T: ParentT](ChildContract[ColumnInfo, T]):
+class ColumnContract[T: NodeT](ChildContract[ColumnInfo, T]):
     @property
     def items(self) -> Iterable[tuple[ColumnInfo, T]]:
         return (

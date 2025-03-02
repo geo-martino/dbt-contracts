@@ -139,7 +139,7 @@ def sources(faker: Faker, columns: list[ColumnInfo]) -> list[SourceDefinition]:
             identifier=faker.word(),
             source_name=faker.word(),
             source_description=faker.sentence(),
-            loader=faker.word(),
+            loader=choice(("", faker.word())),
             columns={column.name: column for column in sample(columns, k=faker.random_int(3, 8))},
             description=faker.sentence(),
         )
