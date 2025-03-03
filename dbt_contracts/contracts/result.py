@@ -52,6 +52,11 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
 
     resource_type: ClassVar[type[ItemT]]
 
+    @property
+    def has_parent(self) -> bool:
+        """Was this result built using a parent item."""
+        return self.parent_id is not None or self.parent_name is not None or self.parent_type is not None
+
     @classmethod
     def from_resource(
             cls, item: I, parent: P = None, patches: MutableMapping[Path, dict[str, Any]] = None, **kwargs

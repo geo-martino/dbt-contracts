@@ -168,7 +168,7 @@ class GroupedTableFormatter[T](ObjectFormatter[T]):
     """
     def __init__(
             self,
-            table_formatter: TableFormatter,
+            table_formatter: TableFormatter[T],
             group_key: KeysT[T],
             header_key: KeysT[T] = None,
             sort_key: Collection[KeysT[T]] | KeysT[T] = (),

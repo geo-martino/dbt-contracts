@@ -225,7 +225,6 @@ class ColumnContract[T: NodeT](ChildContract[ColumnInfo, T]):
     __config_key__ = "columns"
 
     __supported_terms__ = frozenset({
-        properties.HasProperties,
         properties.HasDescription,
         properties.HasRequiredTags,
         properties.HasAllowedTags,
