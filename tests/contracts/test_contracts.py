@@ -352,6 +352,7 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
             item, parent = choice(items)
             term.run(item, parent=parent, context=context)
 
+
 class TestModelContract(ParentContractTester[ColumnInfo, ModelNode]):
     @pytest.fixture(scope="class")
     def items(self, models: list[ModelNode]) -> list[ModelNode]:

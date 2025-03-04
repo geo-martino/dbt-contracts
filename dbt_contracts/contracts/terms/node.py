@@ -47,9 +47,6 @@ class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
 
     @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
-        if context.manifest is None:
-            raise Exception("Must provide a manifest to run this operation")
-
         count = len(tuple(self._get_tests(item, manifest=context.manifest)))
         log_message = self._match(count=count, kind="tests")
 

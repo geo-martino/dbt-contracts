@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from abc import ABCMeta, abstractmethod
 from collections.abc import Callable
-from typing import ClassVar, Any
+from typing import ClassVar
 
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest

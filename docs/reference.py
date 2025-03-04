@@ -125,7 +125,8 @@ class ReferencePageBuilder:
 
         return f"<{self._format_type_to_str(kind).strip("`")}>"
 
-    def _get_dropdown_block(self, title: str, colour: str = "primary", icon: str = None) -> list[str]:
+    @staticmethod
+    def _get_dropdown_block(title: str, colour: str = "primary", icon: str = None) -> list[str]:
         block = [
             f".. dropdown:: {title}",
             ":animate: fade-in",
