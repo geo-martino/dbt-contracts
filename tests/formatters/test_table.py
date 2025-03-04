@@ -1,4 +1,6 @@
 from pathlib import Path
+from random import choice
+from unittest import mock
 
 import pytest
 from colorama import Fore
@@ -83,9 +85,6 @@ class TestTableCellBuilder:
         value = "i am a very long value"
         assert builder._apply_wrap(value) == [value]
 
-        builder = TableCellBuilder(key="name", max_width=0)
-        assert builder._apply_wrap(value) == [value]
-
         builder = TableCellBuilder(key="name", max_width=10, wrap=True)
         assert builder._apply_wrap(value) == ["i am a", "very long", "value"]
 
@@ -136,6 +135,27 @@ class TestTableRowBuilder:
             TableCellBuilder(key="result_level", min_width=10, max_width=20),
         ]
 
+    @pytest.fixture
+    def builder(self, cells: list[TableCellBuilder]) -> TableRowBuilder:
+        return TableRowBuilder(cells=cells)
+
+    def test_validate_cells(self, cells: list[TableCellBuilder]):
+        cells_row_2 = cells.copy()
+        cells_row_2[0] = None
+
+        # all valid
+        TableRowBuilder(cells=cells)
+        TableRowBuilder(cells=[cells])
+        TableRowBuilder(cells=[cells, cells_row_2])
+
+        with pytest.raises(Exception):
+            TableRowBuilder(cells=cells_row_2)
+        with pytest.raises(Exception):
+            TableRowBuilder(cells=[cells_row_2])
+        with pytest.raises(Exception):
+            print(len(cells), len(cells[:-1]))
+            TableRowBuilder(cells=[cells, cells[:-1]])
+
     def test_separator_coloured(self, cells: list[TableCellBuilder]):
         assert TableRowBuilder(cells=cells).separator_coloured == "|"
         assert TableRowBuilder(cells=cells, separator=",").separator_coloured == ","
@@ -144,30 +164,60 @@ class TestTableRowBuilder:
         expected = f"{Fore.RED.replace("m", ";1m")},{Fore.RESET.replace("m", ";0m")}"
         assert builder.separator_coloured == expected
 
-    def test_get_widths_from_lines(self):
-        lines = [["this is a cell", "this is another cell", "this is the last cell"]]
-        assert TableRowBuilder.get_widths_from_lines(lines) == [len(lines[0][0]), len(lines[0][1]), len(lines[0][2])]
+    def test_get_lines_simple(self, result: Result, cells: list[TableCellBuilder]):
+        min_widths = [None] * len(cells)
 
-        lines = [
-            ["this is", "this is", "this"],
-            ["a", "another cell", "is"],
-            ["cell", " " * len("another cell"), "the"],
-            [" " * len("this is"), " " * len("another cell"), "last cell"],
+        builder = TableRowBuilder(cells=cells)
+        assert builder._get_lines(result, min_widths) == ["this is a result", "failure   ", "error     "]
+        builder = TableRowBuilder(cells=[cells])
+        assert builder._get_lines(result, min_widths) == ["this is a result", "failure   ", "error     "]
+
+    def test_get_lines_multi_row(self, result: Result, cells: list[TableCellBuilder]):
+        cells = [cells, [None, TableCellBuilder(key="message"), None]]
+        min_widths = [None] * len(cells[0])
+        expected = ["this is a result\n", "failure   \nThis is an error message.", "error     \n"]
+
+        builder = TableRowBuilder(cells=cells)
+        assert builder._get_lines(result, min_widths) == expected
+
+    def test_get_lines_with_min_widths(self, result: Result, cells: list[TableCellBuilder]):
+        cells = [cells, [None, TableCellBuilder(key="message"), None]]
+        min_widths = [20, 30, 0]
+        expected = [
+            "this is a result    \n",
+            "failure                       \nThis is an error message.     ",
+            "error\n"
         ]
-        assert TableRowBuilder.get_widths_from_lines(lines) == [7, 12, 9]
 
-    def test_get_max_lines(self):
+        builder = TableRowBuilder(cells=cells)
+        assert builder._get_lines(result, min_widths) == expected
+
+    def test_get_lines_with_wrap(self, result: Result, cells: list[TableCellBuilder]):
+        cells[0].max_width = 5
+        cells[0].wrap = True
+        cells = [cells, [TableCellBuilder(key="result_name"), TableCellBuilder(key="message"), None]]
+        min_widths = [None] * len(cells[0])
+        expected = [
+            "this      \nis a      \nresult    \nresult    ",
+            "failure   \nThis is an error message.",
+            "error     \n"
+        ]
+
+        builder = TableRowBuilder(cells=cells)
+        assert builder._get_lines(result, min_widths) == expected
+
+    def test_get_max_length(self):
         lines = ["this is a cell", "this is another cell", "this is the last cell"]
-        assert TableRowBuilder._get_max_lines(lines) == 1
+        assert TableRowBuilder._get_max_rows(lines) == 1
 
         lines[2] = "this is\nthe last\ncell"
-        assert TableRowBuilder._get_max_lines(lines) == 3
+        assert TableRowBuilder._get_max_rows(lines) == 3
 
         lines[1] = "this is\nanother cell"
-        assert TableRowBuilder._get_max_lines(lines) == 3
+        assert TableRowBuilder._get_max_rows(lines) == 3
 
         lines[0] = "this\nis\na\ncell"
-        assert TableRowBuilder._get_max_lines(lines) == 4
+        assert TableRowBuilder._get_max_rows(lines) == 4
 
     def test_pad_cell_lines(self):
         lines = ["this is a cell", "this is another cell", "this is the last cell"]
@@ -209,24 +259,128 @@ class TestTableRowBuilder:
         lines.append(["            ", "         "])
         assert TableRowBuilder._remove_empty_lines(lines) == lines[:2]
 
-    def test_build_lines(self, cells: list[TableCellBuilder], result: Result):
-        pass  # TODO
+    def test_get_widths_from_lines(self):
+        lines = [["this is a cell", "this is another cell", "this is the last cell"]]
+        assert TableRowBuilder.get_widths_from_lines(lines) == [len(lines[0][0]), len(lines[0][1]), len(lines[0][2])]
 
-    def test_build_lines_uses_min_widths(self, cells: list[TableCellBuilder], result: Result):
-        pass  # TODO
+        lines = [
+            ["this is", "this is", "this"],
+            ["a", "another cell", "is"],
+            ["cell", " " * len("another cell"), "the"],
+            [" " * len("this is"), " " * len("another cell"), "last cell"],
+        ]
+        assert TableRowBuilder.get_widths_from_lines(lines) == [7, 12, 9]
 
-    def test_extend_line_widths(self, cells: list[TableCellBuilder], result: Result):
-        pass  # TODO
+    def test_extend_line_widths_fails(self, builder: TableRowBuilder, result: Result):
+        # noinspection PyTypeChecker
+        min_widths = [None] * (len(builder.cells[0]) - 1)
+        with pytest.raises(Exception):  # too few min widths given
+            builder.extend_line_widths([], min_widths=min_widths)
 
-    def test_join(self, cells: list[TableCellBuilder], result: Result):
-        pass  # TODO
+    def test_extend_line_widths(self, builder: TableRowBuilder, result: Result):
+        lines = [
+            ["this is a result", "failure", "error", "keep as is"],
+            ["result", "This is an error message.", "", ""],
+            ["this is a result", "failure", "error", ""],
+        ]
+        builder.cells[0][2].alignment = ">"
+        builder.cells[0].append(None)
+        min_widths = [20, 30, 10, None]
+        expected = [
+            ["this is a result    ", "failure                       ", "     error", "keep as is"],
+            ["result              ", "This is an error message.     ", "          ", ""],
+            ["this is a result    ", "failure                       ", "     error", ""],
+        ]
 
-    def test_build(self, cells: list[TableCellBuilder], result: Result):
-        builder = TableRowBuilder(cells=cells, separator=":")
+        assert builder.extend_line_widths(lines, min_widths=min_widths) == expected
+
+    def test_build_lines_fails(self, builder: TableRowBuilder, result: Result):
+        builder.build_lines(result)  # valid because no min_widths given
+
+        # noinspection PyTypeChecker
+        min_widths = [None] * (len(builder.cells[0]) - 1)
+        with pytest.raises(Exception):  # too few min widths given
+            builder.build_lines(result, min_widths=min_widths)
+
+    def test_build_lines(self, builder: TableRowBuilder, result: Result):
+        assert builder.build_lines(result) == [["this is a result", "failure   ", "error     "]]
+
+        builder.cells = [
+            builder.cells[0],
+            [TableCellBuilder(key="result_name"), TableCellBuilder(key="message"), None],
+            [  # produces an empty line
+                TableCellBuilder(key="patch_path"),
+                TableCellBuilder(key="patch_start_line"),
+                TableCellBuilder(key="patch_start_col")
+            ],
+            builder.cells[0],
+        ]
+        expected = [
+            ["this is a result", "failure                  ", "error     "],
+            ["result          ", "This is an error message.", "          "],
+            ["this is a result", "failure                  ", "error     "],
+        ]
+        assert builder.build_lines(result) == expected
+
+    def test_build_lines_uses_min_widths(self, builder: TableRowBuilder, result: Result):
+        builder.cells = [
+            builder.cells[0],
+            [TableCellBuilder(key="result_name"), TableCellBuilder(key="message"), None],
+            [  # produces an empty line
+                TableCellBuilder(key="patch_path"),
+                TableCellBuilder(key="patch_start_line"),
+                TableCellBuilder(key="patch_start_col")
+            ],
+            builder.cells[0],
+        ]
+        min_widths = [20, 30, 0]
+        expected = [
+            ["this is a result    ", "failure                       ", "error"],
+            ["result              ", "This is an error message.     ", "     "],
+            ["this is a result    ", "failure                       ", "error"],
+        ]
+        assert builder.build_lines(result, min_widths=min_widths) == expected
+
+    def test_build_lines_pads_cell_lines(self, builder: TableRowBuilder, result: Result):
+        builder.cells = [
+            builder.cells[0],
+            [TableCellBuilder(key="result_name"), TableCellBuilder(key="message", max_width=5, wrap=True), None],
+            builder.cells[0],
+        ]
+        expected = [
+            ["this is a result", "failure   ", "error     "],
+            ["result          ", "This      ", "          "],
+            ["this is a result", "is an     ", "error     "],
+            ["                ", "error     ", "          "],
+            ["                ", "message.  ", "          "],
+            ["                ", "failure   ", "          "]
+        ]
+        assert builder.build_lines(result) == expected
+
+    def test_join(self, builder: TableRowBuilder, result: Result):
+        builder.cells[0].append(TableCellBuilder(key="message", min_width=10, max_width=6, wrap=True))
+        builder.colour = Fore.RED
+        sep = builder.separator_coloured
+        lines = [
+            ["this is a result", "failure   ", "error     ", "This      "],
+            ["                ", "          ", "          ", "is an     "],
+            ["                ", "          ", "          ", "error     "],
+            ["                ", "          ", "          ", "message.  "]
+        ]
+
+        assert builder.join(lines) == "\n".join((
+            f"this is a result {sep} failure    {sep} error      {sep} This      ",
+            f"                 {sep}            {sep}            {sep} is an     ",
+            f"                 {sep}            {sep}            {sep} error     ",
+            f"                 {sep}            {sep}            {sep} message.  ",
+        ))
+
+    def test_build(self, builder: TableRowBuilder, result: Result):
+        builder.separator = ":"
         assert builder.build(result) == "this is a result : failure    : error     "
 
-        cells.append(TableCellBuilder(key="message", min_width=10, max_width=6, wrap=True))
-        builder = TableRowBuilder(cells=cells, colour=Fore.RED)
+        builder.cells[0].append(TableCellBuilder(key="message", min_width=10, max_width=6, wrap=True))
+        builder.colour = Fore.RED
         sep = builder.separator_coloured
         assert builder.build(result) == "\n".join((
             f"this is a result {sep} failure    {sep} error      {sep} This      ",
@@ -235,8 +389,11 @@ class TestTableRowBuilder:
             f"                 {sep}            {sep}            {sep} message.  ",
         ))
 
-    def test_build_uses_min_widths(self, cells: list[TableCellBuilder], result: Result):
-        pass  # TODO
+    def test_build_uses_min_widths(self, builder: TableRowBuilder, result: Result):
+        min_widths = [1, 2, 3]
+        with mock.patch.object(TableRowBuilder, "build_lines", return_value=[]) as mock_build_lines:
+            builder.build(result, min_widths=min_widths)
+            mock_build_lines.assert_called_once_with(result, min_widths=min_widths)
 
 
 class TestTableBuilder:
@@ -304,8 +461,8 @@ class TestTableBuilder:
         formatter.consistent_widths = True
         formatter.add_results(results)
         assert formatter.build() == (
-            'this is the 1st res… | failure              | error     \n'
-            'this is the 2nd res… | a very great success | info      '
+            "this is the 1st res… | failure              | error     \n"
+            "this is the 2nd res… | a very great success | info      "
         )
 
 

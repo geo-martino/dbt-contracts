@@ -29,11 +29,13 @@ class TableCellBuilder[T: Result](BaseModel):
     )
     min_width: int | None = Field(
         description="The minimum width of the cell. Any value shorter than this will pad the cell.",
-        default=None
+        default=None,
+        ge=1,
     )
     max_width: int | None = Field(
         description="The maximum width of the cell. Any value larger than this will be truncated with '…'.",
-        default=None
+        default=None,
+        ge=1,
     )
     wrap: bool = Field(
         description="Whether to wrap the value in the cell.",
@@ -59,7 +61,7 @@ class TableCellBuilder[T: Result](BaseModel):
     def _get_value(self, result: T) -> str:
         if callable(self.key):
             return self.key(result)
-        return getattr(result, self.key, "")
+        return getattr(result, self.key, "") or ""
 
     def _apply_prefix(self, value: str) -> str:
         if not self.prefix:
@@ -133,7 +135,7 @@ class TableCellBuilder[T: Result](BaseModel):
 
 
 class TableRowBuilder[T: Result](BaseModel):
-    cells: Sequence[TableCellBuilder[T]] = Field(
+    cells: Sequence[TableCellBuilder[T]] | Sequence[Sequence[TableCellBuilder[T] | None]] = Field(
         description="The cell builders to use to build the row.",
     )
     separator: str = Field(
@@ -145,6 +147,18 @@ class TableRowBuilder[T: Result](BaseModel):
         default=None
     )
 
+    @model_validator(mode="after")
+    def remap_and_validate_cells(self) -> Self:
+        if all(isinstance(cell, TableCellBuilder) for cell in self.cells):
+            self.cells = [self.cells]
+
+        if not len(set(map(len, self.cells))) == 1:
+            raise Exception("All cell rows must be of equal length")
+        if not all(isinstance(cell, TableCellBuilder) for cell in self.cells[0]):
+            raise Exception("All cells in the 1st row must be filled")
+
+        return self
+
     @property
     def separator_coloured(self) -> str:
         """Get the separator with colour applied if set."""
@@ -152,13 +166,26 @@ class TableRowBuilder[T: Result](BaseModel):
             return self.separator
         return f"{self.colour.replace("m", ";1m")}{self.separator}{Fore.RESET.replace("m", ";0m")}"
 
-    @staticmethod
-    def get_widths_from_lines(lines: Collection[Collection[str]]) -> list[int]:
-        """Get the maximum width for each column from the given `lines`."""
-        return [max(map(len, column)) for column in zip(*lines)]
+    def _get_lines(self, result: Result, min_widths: Sequence[int | None]) -> list[str]:
+        values: list[list[str]] = []  # col -> row list
+
+        for cells in self.cells:
+            line: list[str] = [
+                cell.build(result, min_width=min_width) if cell is not None else ""
+                for cell, min_width in zip(cells, min_widths, strict=True)
+            ]
+            values.append(line)
+
+            lines = [value.splitlines() for value in map("\n".join, zip(*values))]
+            min_widths = [
+                width if width is not None and width >= max(map(len, line)) else max(map(len, line))
+                for line, width in zip(lines, min_widths)
+            ]
+
+        return list(map("\n".join, zip(*values)))
 
     @staticmethod
-    def _get_max_lines(values: Sequence[str]) -> int:
+    def _get_max_rows(values: Sequence[str]) -> int:
         return max(len(value.splitlines()) for value in values)
 
     @classmethod
@@ -169,20 +196,20 @@ class TableRowBuilder[T: Result](BaseModel):
         :param values: The values of the cells in the row.
         :return: The cells for each row with padding applied.
         """
-        line_count = cls._get_max_lines(values)
+        row_count = cls._get_max_rows(values)
 
-        cells = []
+        columns = []
         for value in values:
-            lines = value.splitlines()
-            if len(lines) >= line_count:
-                cells.append(lines)
+            rows = value.splitlines()
+            if len(rows) >= row_count:
+                columns.append(rows)
                 continue
 
-            max_length = max(map(len, lines))
-            lines.extend([" " * max_length] * (line_count - len(lines)))
-            cells.append(lines)
+            max_length = max(map(len, rows))
+            rows.extend([" " * max_length] * (row_count - len(rows)))
+            columns.append(rows)
 
-        return [[cell[i] for cell in cells] for i in range(line_count)]
+        return [[cell[i] for cell in columns] for i in range(row_count)]
 
     @staticmethod
     def _remove_empty_lines(lines: Iterable[list[str]]) -> list[list[str]]:
@@ -193,7 +220,36 @@ class TableRowBuilder[T: Result](BaseModel):
         """
         return [line for line in lines if any(bool(cell.strip()) for cell in line)]
 
-    def build_lines(self, result: T, min_widths: Sequence[int] = ()) -> list[list[str]]:
+    @staticmethod
+    def get_widths_from_lines(lines: Collection[Collection[str]]) -> list[int]:
+        """Get the maximum width for each column from the given `lines`."""
+        return [max(map(len, column)) for column in zip(*lines)]
+
+    def extend_line_widths(self, lines: Sequence[Sequence[str]], min_widths: Sequence[int | None]) -> list[list[str]]:
+        """
+        Adjust the given `lines` to the given `min_widths` aligning according to the matching cell config.
+
+        :param lines: The lines to adjust.
+        :param min_widths: The widths to extend the lines to.
+        :return: The extended lines.
+        """
+        # noinspection PyTypeChecker
+        if len(min_widths) != len(self.cells[0]):
+            # noinspection PyTypeChecker
+            raise Exception(
+                f"Given widths do not equal the number of cells configured for this row builder: "
+                f"cells={len(self.cells[0])}, widths={len(min_widths)}"
+            )
+
+        return [
+            [
+                f"{value:{cell.alignment}{width}}" if width is not None else value
+                for cell, value, width in zip(self.cells[0], line, min_widths)
+            ]
+            for line in lines
+        ]
+
+    def build_lines(self, result: T, min_widths: Sequence[int | None] = ()) -> list[list[str]]:
         """
         Build a formatted row or set of rows for the given `result` and returns them as their individual lines.
 
@@ -204,38 +260,21 @@ class TableRowBuilder[T: Result](BaseModel):
         :return: The formatted row as a set of lines.
         """
         if not min_widths:
-            min_widths = [None] * len(self.cells)
-        if len(min_widths) != len(self.cells):
+            # noinspection PyTypeChecker
+            min_widths = [None] * len(self.cells[0])
+        # noinspection PyTypeChecker
+        if len(min_widths) != len(self.cells[0]):
             raise Exception(
                 f"Given widths do not equal the number of cells configured for this row builder: "
                 f"cells={len(self.cells)}, widths={len(min_widths)}"
             )
 
-        values = [
-            cell.build(result, min_width=min_width) for cell, min_width in zip(self.cells, min_widths, strict=True)
-        ]
-        lines = self._pad_cell_lines(values)
+        lines = self._get_lines(result, min_widths=min_widths)
+        lines = self._pad_cell_lines(lines)
         lines = self._remove_empty_lines(lines)
+        min_widths = self.get_widths_from_lines(lines)
+        lines = self.extend_line_widths(lines, min_widths=min_widths)
         return lines
-
-    def extend_line_widths(self, lines: Sequence[Sequence[str]], min_widths: Sequence[int]) -> list[list[str]]:
-        """
-        Adjust the given `lines` to the given `min_widths` aligning according to the matching cell config.
-
-        :param lines: The lines to adjust.
-        :param min_widths: The widths to extend the lines to.
-        :return: The extended lines.
-        """
-        if len(min_widths) != len(self.cells):
-            raise Exception(
-                f"Given widths do not equal the number of cells configured for this row builder: "
-                f"cells={len(self.cells)}, widths={len(min_widths)}"
-            )
-
-        return [
-            [f"{value:{cell.alignment}{width}}" for cell, value, width in zip(self.cells, line, min_widths)]
-            for line in lines
-        ]
 
     def join(self, lines: Sequence[Sequence[str]]) -> str:
         """Join the given lines into a single string."""
