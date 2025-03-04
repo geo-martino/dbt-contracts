@@ -3,7 +3,6 @@ from random import choice
 import pytest
 from _pytest.fixtures import FixtureRequest
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition
-
 from faker import Faker
 
 from dbt_contracts.contracts.conditions import NameCondition, PathCondition, TagCondition, MetaCondition, \

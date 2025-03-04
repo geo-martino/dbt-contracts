@@ -1,5 +1,4 @@
 from pathlib import Path
-from random import choice
 from unittest import mock
 
 import pytest
@@ -141,6 +140,7 @@ class TestTableRowBuilder:
 
     def test_validate_cells(self, cells: list[TableCellBuilder]):
         cells_row_2 = cells.copy()
+        # noinspection PyTypeChecker
         cells_row_2[0] = None
 
         # all valid
@@ -528,9 +528,9 @@ class TestGroupedTableFormatter:
     def test_get_value(self, results: list[Result]):
         assert GroupedTableFormatter._get_value(results[0], getter="name") == "this is the 1st result"
 
-        getter = lambda x: f"{x.name} ({x.result_type})"
-        expected = "this is the 1st result (failure)"
-        assert GroupedTableFormatter._get_value(results[0], getter=getter) == expected
+        assert GroupedTableFormatter._get_value(
+            results[0], getter=lambda x: f"{x.name} ({x.result_type})"
+        ) == "this is the 1st result (failure)"
 
     def test_add_results_basic(self, formatter: GroupedTableFormatter, results: list[Result]):
         assert not formatter.header_key

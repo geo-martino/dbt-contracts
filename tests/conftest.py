@@ -12,7 +12,6 @@ from dbt.artifacts.schemas.catalog import CatalogArtifact, CatalogMetadata
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro, TestNode, GenericTestNode, CompiledNode
 from dbt_common.contracts.metadata import CatalogTable, TableMetadata, ColumnMetadata
-
 from faker import Faker
 
 from dbt_contracts.contracts import ContractContext
