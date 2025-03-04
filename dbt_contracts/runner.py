@@ -1,4 +1,5 @@
 import logging
+from functools import cached_property
 
 from colorama import Fore
 from dbt.artifacts.schemas.catalog import CatalogArtifact
@@ -74,10 +75,6 @@ DEFAULT_TERMINAL_LOG_FORMATTER = GroupedTableFormatter(
         lambda result: result.name if result.has_parent else "",
     ],
 )
-
-
-def cached_property(args):
-    pass
 
 
 class ContractsRunner:
