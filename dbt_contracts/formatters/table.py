@@ -368,12 +368,17 @@ class GroupedTableFormatter[T: Result](ResultsFormatter[T]):
     def _get_value(result: T, getter: str | Callable[[T], str]) -> str:
         if callable(getter):
             return getter(result)
-        return getattr(result, getter, "")
+        return getattr(result, getter, "") or ""
 
     def add_results(self, results: Collection[T]) -> None:
+        results = sorted(results, key=lambda r: self._get_value(result=r, getter=self.group_key))
         groups = itertools.groupby(results, key=lambda r: self._get_value(result=r, getter=self.group_key))
+
         for group_key, group in groups:
-            group = sorted(group, key=lambda r: self._get_value(result=r, getter=self.sort_key))
+            if self.sort_key is not None:
+                group = sorted(group, key=lambda r: self._get_value(result=r, getter=self.sort_key))
+            else:
+                group = list(group)
             header = self._get_value(result=group[0], getter=self.header_key) if self.header_key else group_key
 
             self.formatter.add_header(header)

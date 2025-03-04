@@ -6,7 +6,7 @@ import pytest
 from colorama import Fore
 
 from dbt_contracts.contracts.result import ModelResult, Result
-from dbt_contracts.formatters.table import TableCellBuilder, TableRowBuilder, TableFormatter
+from dbt_contracts.formatters.table import TableCellBuilder, TableRowBuilder, TableFormatter, GroupedTableFormatter
 
 
 class TestTableCellBuilder:
@@ -467,4 +467,130 @@ class TestTableBuilder:
 
 
 class TestGroupedTableFormatter:
-    pass  # TODO
+    @pytest.fixture
+    def results(self, tmp_path: Path) -> list[Result]:
+        """A fixture for the results."""
+        return [
+            ModelResult(
+                name="this is the 1st result",
+                path=tmp_path,
+                result_type="failure",
+                result_level="error",
+                result_name="result",
+                message="This is an error message.",
+            ),
+            ModelResult(
+                name="this is the 5th result",
+                path=tmp_path,
+                result_type="warning",
+                result_level="warning",
+                result_name="result",
+                message="This is a warning message.",
+            ),
+            ModelResult(
+                name="this is the 3rd result",
+                path=tmp_path,
+                result_type="another very great success",
+                result_level="info",
+                result_name="result",
+                message="This is a success message.",
+            ),
+            ModelResult(
+                name="this is the 4th result",
+                path=tmp_path,
+                result_type="failure",
+                result_level="error",
+                result_name="result",
+                message="This is an error message.",
+            ),
+            ModelResult(
+                name="this is the 2nd result",
+                path=tmp_path,
+                result_type="a very great success",
+                result_level="info",
+                result_name="result",
+                message="This is a success message.",
+            ),
+        ]
+
+    @pytest.fixture
+    def formatter(self, ) -> GroupedTableFormatter:
+        """A fixture for the grouped table formatter."""
+        cells = [
+            TableCellBuilder(key="name", min_width=10, max_width=20),
+            TableCellBuilder(key="result_type", min_width=10, max_width=20),
+            TableCellBuilder(key="result_level", min_width=10, max_width=20),
+        ]
+        row = TableRowBuilder(cells=cells)
+        table = TableFormatter(builder=row)
+        return GroupedTableFormatter(formatter=table, group_key="result_level")
+
+    def test_get_value(self, results: list[Result]):
+        assert GroupedTableFormatter._get_value(results[0], getter="name") == "this is the 1st result"
+
+        getter = lambda x: f"{x.name} ({x.result_type})"
+        expected = "this is the 1st result (failure)"
+        assert GroupedTableFormatter._get_value(results[0], getter=getter) == expected
+
+    def test_add_results_basic(self, formatter: GroupedTableFormatter, results: list[Result]):
+        assert not formatter.header_key
+        assert not formatter.sort_key
+
+        with (
+                mock.patch.object(TableFormatter, "add_header") as mock_header,
+                mock.patch.object(TableFormatter, "add_results") as mock_results,
+                mock.patch.object(TableFormatter, "build") as mock_build,
+        ):
+            formatter.add_results(results)
+
+            assert len(mock_header.mock_calls) == 3
+            assert len(mock_results.mock_calls) == 3
+            assert len(mock_build.mock_calls) == 3
+
+            group_keys = {result.result_level for result in results}
+            for key in group_keys:
+                mock_header.assert_any_call(key)
+                group = [result for result in results if result.result_level == key]
+                mock_results.assert_any_call(group)
+
+    def test_add_results_with_header(self, formatter: GroupedTableFormatter, results: list[Result]):
+        assert not formatter.sort_key
+        formatter.header_key = "message"
+
+        with (
+                mock.patch.object(TableFormatter, "add_header") as mock_header,
+                mock.patch.object(TableFormatter, "add_results") as mock_results,
+                mock.patch.object(TableFormatter, "build") as mock_build,
+        ):
+            formatter.add_results(results)
+
+            assert len(mock_header.mock_calls) == 3
+            assert len(mock_results.mock_calls) == 3
+            assert len(mock_build.mock_calls) == 3
+
+            group_headers = {result.result_level: result.message for result in results}
+            for key, message in group_headers.items():
+                mock_header.assert_any_call(message)
+                group = [result for result in results if result.result_level == key]
+                mock_results.assert_any_call(group)
+
+    def test_add_results_with_sort(self, formatter: GroupedTableFormatter, results: list[Result]):
+        assert not formatter.header_key
+        formatter.sort_key = "name"
+
+        with (
+                mock.patch.object(TableFormatter, "add_header") as mock_header,
+                mock.patch.object(TableFormatter, "add_results") as mock_results,
+                mock.patch.object(TableFormatter, "build") as mock_build,
+        ):
+            formatter.add_results(results)
+
+            assert len(mock_header.mock_calls) == 3
+            assert len(mock_results.mock_calls) == 3
+            assert len(mock_build.mock_calls) == 3
+
+            group_keys = {result.result_level for result in results}
+            for key in group_keys:
+                group = [result for result in results if result.result_level == key]
+                group = sorted(group, key=lambda r: r.name)
+                mock_results.assert_any_call(group)
