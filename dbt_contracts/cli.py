@@ -1,13 +1,13 @@
 import argparse
 import os
-from pathlib import Path
 
 from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 
 from dbt_contracts import PROGRAM_NAME
 from dbt_contracts.contracts import CONTRACT_CLASSES, ParentContract
-from dbt_contracts.dbt_cli import get_config, clean_paths, install_dependencies
-from dbt_contracts.runner import ContractsRunner
+
+DEFAULT_CONFIG_FILE_NAME: str = "contracts"
+DEFAULT_OUTPUT_FILE_NAME: str = "contracts_results"
 
 CORE_PARSER = argparse.ArgumentParser(
     prog=PROGRAM_NAME,
@@ -81,7 +81,7 @@ install_deps = CORE_PARSER.add_argument(
 config = CORE_PARSER.add_argument(
     "--config",
     help="Either the path to a contracts configuration file, "
-         f"or the directory to look in for the {ContractsRunner.default_config_file_name!r} file. "
+         f"or the directory to look in for the {DEFAULT_CONFIG_FILE_NAME!r} file. "
          "Defaults to the project dir when not specified.",
     nargs="?",
     default=None,
@@ -91,7 +91,7 @@ config = CORE_PARSER.add_argument(
 output = CORE_PARSER.add_argument(
     "--output",
     help="Either the path to a file to write to when formatting results output, "
-         f"or the directory to write a file to with filename {ContractsRunner.default_output_file_name!r}. "
+         f"or the directory to write a file to with filename {DEFAULT_OUTPUT_FILE_NAME!r}. "
          "Defaults to the project's target folder when not specified.",
     nargs="?",
     default=None,
@@ -144,34 +144,3 @@ files = CORE_PARSER.add_argument(
     default=None,
     type=str,
 )
-
-
-def main():
-    """Main entry point for the CLI"""
-    conf = get_config()
-
-    if conf.args.config is None and conf.args.project_dir:
-        conf.args.config = conf.args.project_dir
-    if conf.args.output is None:
-        conf.args.output = Path(conf.project_root, conf.target_path)
-
-    if conf.args.clean:
-        clean_paths()
-    if conf.args.deps:
-        install_dependencies()
-
-    runner = ContractRunner.from_config(conf)
-    if conf.args.files:
-        runner.paths = conf.args.files
-
-    results = runner.run(contract_key=conf.args.contract, enforcements=conf.args.enforce)
-
-    if conf.args.format:
-        runner.write_results(results, format_type=conf.args.format, output=conf.args.output)
-
-    if not conf.args.no_fail and results:
-        raise Exception(f"Found {len(results)} contract violations.")
-
-
-if __name__ == "__main__":
-    main()

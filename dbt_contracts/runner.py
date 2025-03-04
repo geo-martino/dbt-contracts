@@ -8,6 +8,7 @@ from dbt.config import RuntimeConfig
 from distlib.manifest import Manifest
 
 from dbt_contracts import dbt_cli
+from dbt_contracts.cli import DEFAULT_CONFIG_FILE_NAME, DEFAULT_OUTPUT_FILE_NAME
 from dbt_contracts.contracts.result import Result
 from dbt_contracts.formatters.table import TableCellBuilder, GroupedTableFormatter, TableFormatter, TableRowBuilder
 
@@ -79,8 +80,8 @@ DEFAULT_TERMINAL_LOG_FORMATTER = GroupedTableFormatter(
 
 class ContractsRunner:
     """Handles loading config for contracts and their execution."""
-    default_config_file_name: str = "contracts"
-    default_output_file_name: str = "contracts_results"
+    default_config_file_name: str = DEFAULT_CONFIG_FILE_NAME
+    default_output_file_name: str = DEFAULT_OUTPUT_FILE_NAME
 
     @cached_property
     def dbt(self) -> dbtRunner:
