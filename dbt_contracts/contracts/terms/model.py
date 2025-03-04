@@ -2,10 +2,12 @@ from dbt.contracts.graph.nodes import ModelNode
 
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.matchers import RangeMatcher
+from dbt_contracts.contracts.terms._core import validate_context
 from dbt_contracts.contracts.terms.node import NodeContractTerm
 
 
 class HasConstraints(NodeContractTerm[ModelNode], RangeMatcher):
+    @validate_context
     def run(self, item: ModelNode, context: ContractContext, parent: None = None) -> bool:
         count = len(item.constraints)
         log_message = self._match(count=count, kind="constraints")

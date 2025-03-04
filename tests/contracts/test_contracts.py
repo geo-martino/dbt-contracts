@@ -43,6 +43,26 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
         raise NotImplementedError
 
     @staticmethod
+    def test_needs_manifest(contract: Contract[I]):
+        contract.terms = [term() for term in contract.__supported_terms__ if not term.needs_manifest]
+        assert not contract.needs_manifest
+
+        contract.terms = [term() for term in contract.__supported_terms__ if term.needs_manifest]
+        if not contract.terms:
+            return
+        assert contract.needs_manifest
+
+    @staticmethod
+    def test_needs_catalog(contract: Contract[I]):
+        contract.terms = [term() for term in contract.__supported_terms__ if not term.needs_catalog]
+        assert not contract.needs_catalog
+
+        contract.terms = [term() for term in contract.__supported_terms__ if term.needs_catalog]
+        if not contract.terms:
+            return
+        assert contract.needs_catalog
+
+    @staticmethod
     def test_create_context(contract: Contract[I]):
         assert contract.manifest is not None
         assert contract.catalog is not None
@@ -199,6 +219,39 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
         assert [condition.name for condition in child.conditions] == child_config["filter"]
         assert [term.name for term in child.terms] == child_config["terms"]
 
+    @staticmethod
+    def test_validate_context_for_manifest(contract: Contract[I], items: list[I], manifest: Manifest):
+        contract.terms = [term() for term in contract.__supported_terms__ if term.needs_manifest]
+        context = contract.context
+        context.manifest = None
+        for term in contract.terms:
+            with pytest.raises(Exception):
+                term.run(choice(items), context=context)
+
+        context.manifest = manifest
+        for term in contract.terms:  # just check that these don't fail
+            term.run(choice(items), context=context)
+
+    @staticmethod
+    def test_validate_context_for_catalog(contract: Contract[I], items: list[I], catalog: CatalogArtifact):
+        contract.terms = [term() for term in contract.__supported_terms__ if not term.needs_catalog]
+        assert not contract.needs_catalog
+
+        contract.terms = [term() for term in contract.__supported_terms__ if term.needs_catalog]
+        if not contract.terms:
+            return
+        assert contract.needs_catalog
+
+        context = contract.context
+        context.catalog = None
+        for term in contract.terms:
+            with pytest.raises(Exception):
+                term.run(choice(items), context=context)
+
+        context.catalog = catalog
+        for term in contract.terms:  # just check that these don't fail
+            term.run(choice(items), context=context)
+
 
 class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
     @abstractmethod
@@ -262,6 +315,42 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
         with pytest.raises(Exception):
             contract.__class__(conditions=list(contract.conditions) + [invalid_cls()])
 
+    @staticmethod
+    def test_validate_context_for_manifest(contract: Contract[I], items: list[tuple[I, P]], manifest: Manifest):
+        contract.terms = [term() for term in contract.__supported_terms__ if term.needs_manifest]
+        context = contract.context
+        context.manifest = None
+        for term in contract.terms:
+            with pytest.raises(Exception):
+                item, parent = choice(items)
+                term.run(item, parent=parent, context=context)
+
+        context.manifest = manifest
+        for term in contract.terms:  # just check that these don't fail
+            item, parent = choice(items)
+            term.run(item, parent=parent, context=context)
+
+    @staticmethod
+    def test_validate_context_for_catalog(contract: Contract[I], items: list[tuple[I, P]], catalog: CatalogArtifact):
+        contract.terms = [term() for term in contract.__supported_terms__ if not term.needs_catalog]
+        assert not contract.needs_catalog
+
+        contract.terms = [term() for term in contract.__supported_terms__ if term.needs_catalog]
+        if not contract.terms:
+            return
+        assert contract.needs_catalog
+
+        context = contract.context
+        context.catalog = None
+        for term in contract.terms:
+            with pytest.raises(Exception):
+                item, parent = choice(items)
+                term.run(item, parent=parent, context=context)
+
+        context.catalog = catalog
+        for term in contract.terms:  # just check that these don't fail
+            item, parent = choice(items)
+            term.run(item, parent=parent, context=context)
 
 class TestModelContract(ParentContractTester[ColumnInfo, ModelNode]):
     @pytest.fixture(scope="class")
@@ -285,7 +374,7 @@ class TestModelContract(ParentContractTester[ColumnInfo, ModelNode]):
 
         return items
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> ModelContract:
         conditions = [
             c_properties.NameCondition(include=["model1", "model2"]),
@@ -333,7 +422,7 @@ class TestSourceContract(ParentContractTester[ColumnInfo, SourceDefinition]):
 
         return items
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> SourceContract:
         conditions = [
             c_properties.NameCondition(include=["source1", "source2"]),
@@ -382,7 +471,7 @@ class TestColumnContract(ChildContractTester[ColumnInfo, ModelNode]):
             (col, parent) for col, parent in filtered_items if bool(col.data_type)
         ]
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def contract(self, manifest: Manifest, catalog: CatalogArtifact, parent: ModelContract) -> ColumnContract:
         conditions = [
             c_properties.TagCondition(tags=["valid"])
@@ -418,7 +507,7 @@ class TestMacroContract(ParentContractTester[MacroArgument, Macro]):
             item for item in filtered_items if bool(item.description)
         ]
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> MacroContract:
         conditions = [
             c_properties.NameCondition(include=["macro1", "macro2"]),
@@ -464,7 +553,7 @@ class TestMacroArgumentContract(ChildContractTester[MacroArgument, Macro]):
             (arg, parent) for arg, parent in filtered_items if bool(arg.type)
         ]
 
-    @pytest.fixture(scope="class")
+    @pytest.fixture
     def contract(self, manifest: Manifest, catalog: CatalogArtifact, parent: MacroContract) -> MacroArgumentContract:
         conditions = [
             c_properties.NameCondition(include=["arg1", "arg2"]),

@@ -10,7 +10,7 @@ from pydantic import Field
 
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.matchers import RangeMatcher, StringMatcher
-from dbt_contracts.contracts.terms._core import ContractTerm
+from dbt_contracts.contracts.terms._core import ContractTerm, validate_context
 from dbt_contracts.contracts.utils import get_matching_catalog_table
 from dbt_contracts.types import NodeT
 
@@ -20,6 +20,9 @@ class NodeContractTerm[T: NodeT](ContractTerm[T, None], metaclass=ABCMeta):
 
 
 class Exists[T: NodeT](NodeContractTerm[T]):
+    needs_catalog = True
+
+    @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         table = get_matching_catalog_table(item, catalog=context.catalog)
         if table is None:
@@ -30,6 +33,7 @@ class Exists[T: NodeT](NodeContractTerm[T]):
 
 
 class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
+    needs_manifest = True
 
     @staticmethod
     def _get_tests(item: NodeT, manifest: Manifest) -> Iterable[TestNode]:
@@ -41,6 +45,7 @@ class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
 
         return filter(_filter_nodes, manifest.nodes.values())
 
+    @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         if context.manifest is None:
             raise Exception("Must provide a manifest to run this operation")
@@ -54,6 +59,9 @@ class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
 
 
 class HasAllColumns[T: NodeT](NodeContractTerm[T]):
+    needs_catalog = True
+
+    @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         table = get_matching_catalog_table(item, catalog=context.catalog)
         if not table:
@@ -88,6 +96,7 @@ class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
         default=tuple()
     )
 
+    @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         node_column_types = {column.name: column.data_type for column in item.columns.values()}
 
@@ -118,6 +127,9 @@ class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
 
 
 class HasMatchingDescription[T: NodeT](NodeContractTerm[T], StringMatcher):
+    needs_catalog = True
+
+    @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         table = get_matching_catalog_table(item, catalog=context.catalog)
         if not table:
@@ -132,6 +144,7 @@ class HasMatchingDescription[T: NodeT](NodeContractTerm[T], StringMatcher):
 
 
 class HasContract[T: CompiledNode](NodeContractTerm[T]):
+    @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         missing_contract = not item.contract.enforced
         if missing_contract:
@@ -150,6 +163,8 @@ class HasContract[T: CompiledNode](NodeContractTerm[T]):
 
 
 class HasValidUpstreamDependencies[T: CompiledNode](NodeContractTerm[T], metaclass=ABCMeta):
+    needs_manifest = True
+
     @staticmethod
     def _add_result_for_invalid_dependencies(
             item: T, kind: str, context: ContractContext, missing: Collection
@@ -166,6 +181,7 @@ class HasValidUpstreamDependencies[T: CompiledNode](NodeContractTerm[T], metacla
 
 
 class HasValidRefDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
+    @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         upstream_dependencies = {ref for ref in item.depends_on_nodes if ref.startswith("model")}
         missing_dependencies = upstream_dependencies - set(context.manifest.nodes.keys())
@@ -176,6 +192,7 @@ class HasValidRefDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
 
 
 class HasValidSourceDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
+    @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         upstream_dependencies = {ref for ref in item.depends_on_nodes if ref.startswith("source")}
         missing_dependencies = upstream_dependencies - set(context.manifest.sources.keys())
@@ -186,6 +203,7 @@ class HasValidSourceDependencies[T: CompiledNode](HasValidUpstreamDependencies[T
 
 
 class HasValidMacroDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
+    @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         upstream_dependencies = set(item.depends_on_macros)
         missing_dependencies = upstream_dependencies - set(context.manifest.macros.keys())
@@ -196,6 +214,7 @@ class HasValidMacroDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]
 
 
 class HasNoFinalSemiColon[T: CompiledNode](NodeContractTerm[T]):
+    @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         # ignore non-SQL models
         if Path(item.path).suffix.casefold() != ".sql":
@@ -265,6 +284,7 @@ class HasNoHardcodedRefs[T: CompiledNode](NodeContractTerm[T]):
         if curr_token == "as" and next_token.startswith("(") and re.match(self.cte_pattern, prev_token, re.I):
             return prev_token
 
+    @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         # ignore non-SQL models
         if Path(item.path).suffix.casefold() != ".sql":

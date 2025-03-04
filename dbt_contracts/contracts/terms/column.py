@@ -12,7 +12,7 @@ from pydantic import Field, field_validator
 
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.matchers import StringMatcher, RangeMatcher
-from dbt_contracts.contracts.terms._core import ContractTerm
+from dbt_contracts.contracts.terms._core import ContractTerm, validate_context
 from dbt_contracts.contracts.utils import get_matching_catalog_table
 from dbt_contracts.types import NodeT
 
@@ -43,6 +43,9 @@ class ColumnContractTerm[T: NodeT](ContractTerm[ColumnInfo, T], metaclass=ABCMet
 
 
 class Exists[T: NodeT](ColumnContractTerm[T]):
+    needs_catalog = True
+
+    @validate_context
     def run(self, item: ColumnInfo, context: ContractContext, parent: T = None) -> bool:
         if not self._validate_node(column=item, node=parent, context=context):
             return False
@@ -51,6 +54,8 @@ class Exists[T: NodeT](ColumnContractTerm[T]):
 
 
 class HasTests[T: NodeT](ColumnContractTerm[T], RangeMatcher):
+    needs_manifest = True
+
     @staticmethod
     def _get_tests(column: ColumnInfo, node: NodeT, manifest: Manifest) -> Iterable[TestNode]:
         def _filter_nodes(test: Any) -> bool:
@@ -61,6 +66,7 @@ class HasTests[T: NodeT](ColumnContractTerm[T], RangeMatcher):
 
         return filter(_filter_nodes, manifest.nodes.values())
 
+    @validate_context
     def run(self, item: ColumnInfo, context: ContractContext, parent: T = None) -> bool:
         if not self._validate_node(column=item, node=parent, context=context):
             return False
@@ -111,6 +117,7 @@ class HasExpectedName[T: NodeT](ColumnContractTerm[T], StringMatcher):
 
         return table.columns[column.name].type
 
+    @validate_context
     def run(self, item: ColumnInfo, context: ContractContext, parent: T = None) -> bool:
         if not self._validate_node(column=item, node=parent, context=context):
             return False
@@ -133,6 +140,7 @@ class HasExpectedName[T: NodeT](ColumnContractTerm[T], StringMatcher):
 
 
 class HasDataType[T: NodeT](ColumnContractTerm[T]):
+    @validate_context
     def run(self, item: ColumnInfo, context: ContractContext, parent: T = None) -> bool:
         if not self._validate_node(column=item, node=parent, context=context):
             return False
@@ -146,6 +154,9 @@ class HasDataType[T: NodeT](ColumnContractTerm[T]):
 
 
 class HasMatchingDescription[T: NodeT](ColumnContractTerm[T], StringMatcher):
+    needs_catalog = True
+
+    @validate_context
     def run(self, item: ColumnInfo, context: ContractContext, parent: T = None) -> bool:
         if not self._validate_node(column=item, node=parent, context=context):
             return False
@@ -164,6 +175,9 @@ class HasMatchingDescription[T: NodeT](ColumnContractTerm[T], StringMatcher):
 
 
 class HasMatchingDataType[T: NodeT](ColumnContractTerm[T], StringMatcher):
+    needs_catalog = True
+
+    @validate_context
     def run(self, item: ColumnInfo, context: ContractContext, parent: T = None) -> bool:
         if not self._validate_node(column=item, node=parent, context=context):
             return False
@@ -182,6 +196,9 @@ class HasMatchingDataType[T: NodeT](ColumnContractTerm[T], StringMatcher):
 
 
 class HasMatchingIndex[T: NodeT](ColumnContractTerm[T], StringMatcher):
+    needs_catalog = True
+
+    @validate_context
     def run(self, item: ColumnInfo, context: ContractContext, parent: T = None) -> bool:
         if not self._validate_node(column=item, node=parent, context=context):
             return False

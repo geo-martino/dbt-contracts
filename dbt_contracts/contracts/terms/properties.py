@@ -6,12 +6,13 @@ from dbt.contracts.graph.nodes import SourceDefinition
 from pydantic import BeforeValidator, Field, field_validator
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.terms._core import ContractTerm
+from dbt_contracts.contracts.terms._core import ContractTerm, validate_context
 from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.types import ParentT, PropertiesT, DescriptionT, TagT, MetaT
 
 
 class HasProperties[I: PropertiesT](ContractTerm[I, None]):
+    @validate_context
     def run(self, item: I, context: ContractContext, parent: None = None) -> bool:
         if isinstance(item, SourceDefinition):  # sources always have properties files defined
             return True
@@ -25,6 +26,7 @@ class HasProperties[I: PropertiesT](ContractTerm[I, None]):
 
 
 class HasDescription[I: DescriptionT, P: ParentT](ContractTerm[I, P]):
+    @validate_context
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         missing_description = not item.description
         if missing_description:
@@ -40,6 +42,7 @@ class HasRequiredTags[I: TagT, P: ParentT](ContractTerm[I, P]):
         default=tuple(),
     )
 
+    @validate_context
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         missing_tags = set(self.tags) - set(item.tags)
         if missing_tags:
@@ -55,6 +58,7 @@ class HasAllowedTags[I: TagT, P: ParentT](ContractTerm[I, P]):
         default=tuple(),
     )
 
+    @validate_context
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         invalid_tags = set(item.tags) - set(self.tags)
         if invalid_tags:
@@ -70,6 +74,7 @@ class HasRequiredMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
         default=tuple(),
     )
 
+    @validate_context
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         missing_keys = set(self.keys) - set(item.meta.keys())
         if missing_keys:
@@ -85,6 +90,7 @@ class HasAllowedMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
         default=tuple(),
     )
 
+    @validate_context
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         invalid_keys = set(item.meta.keys()) - set(self.keys)
         if invalid_keys:
@@ -115,6 +121,7 @@ class HasAllowedMetaValues[I: MetaT, P: ParentT](ContractTerm[I, P]):
         # noinspection PyTypeChecker
         return meta
 
+    @validate_context
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         invalid_meta: dict[str, str] = {}
         expected_meta: dict[str, Collection[str]] = {}

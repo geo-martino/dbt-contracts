@@ -46,6 +46,16 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
         """Generate a context object from the current loaded dbt artifacts"""
         return ContractContext(manifest=self.manifest, catalog=self.catalog)
 
+    @property
+    def needs_manifest(self) -> bool:
+        """Do any of the terms in this contract require a manifest to execute"""
+        return any(term.needs_manifest for term in self.terms)
+
+    @property
+    def needs_catalog(self) -> bool:
+        """Do any of the terms in this contract require a catalog to execute"""
+        return any(term.needs_catalog for term in self.terms)
+
     @classmethod
     def from_dict(cls, config: Mapping[str, Any], manifest: Manifest, catalog: CatalogArtifact) -> Self:
         """

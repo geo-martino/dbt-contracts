@@ -2,10 +2,12 @@ from dbt.contracts.graph.nodes import SourceDefinition
 
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.matchers import RangeMatcher
+from dbt_contracts.contracts.terms._core import validate_context
 from dbt_contracts.contracts.terms.node import NodeContractTerm
 
 
 class HasLoader(NodeContractTerm[SourceDefinition]):
+    @validate_context
     def run(self, item: SourceDefinition, context: ContractContext, parent: None = None) -> bool:
         missing_loader = not item.loader
         if missing_loader:
@@ -16,6 +18,7 @@ class HasLoader(NodeContractTerm[SourceDefinition]):
 
 
 class HasFreshness(NodeContractTerm[SourceDefinition]):
+    @validate_context
     def run(self, item: SourceDefinition, context: ContractContext, parent: None = None) -> bool:
         missing_freshness = not bool(item.loaded_at_field) or not item.has_freshness
         if missing_freshness:
@@ -26,6 +29,9 @@ class HasFreshness(NodeContractTerm[SourceDefinition]):
 
 
 class HasDownstreamDependencies(NodeContractTerm[SourceDefinition], RangeMatcher):
+    needs_manifest = True
+
+    @validate_context
     def run(self, item: SourceDefinition, context: ContractContext, parent: None = None) -> bool:
         count = sum(item.unique_id in node.depends_on_nodes for node in context.manifest.nodes.values())
         log_message = self._match(count=count, kind="downstream dependencies")
