@@ -2,11 +2,11 @@ from random import choice
 
 import pytest
 from _pytest.fixtures import FixtureRequest
-from dbt.contracts.graph.nodes import ModelNode, SourceDefinition
+from dbt.contracts.graph.nodes import ModelNode
 from faker import Faker
 
-from dbt_contracts.contracts.conditions import NameCondition, PathCondition, TagCondition, MetaCondition, \
-    IsEnabledCondition, IsMaterializedCondition
+from dbt_contracts.contracts.conditions.properties import NameCondition, PathCondition, TagCondition, MetaCondition, \
+    IsMaterializedCondition
 
 
 @pytest.mark.parametrize("item", ["model", "column", "argument"])
@@ -58,11 +58,3 @@ def test_is_materialized_validation(model: ModelNode, faker: Faker):
 
     model.config.materialized = "ephemeral"
     assert not IsMaterializedCondition().run(model)
-
-
-def test_is_enabled_validation(source: SourceDefinition, faker: Faker):
-    source.config.enabled = True
-    assert IsEnabledCondition().run(source)
-
-    source.config.enabled = False
-    assert not IsEnabledCondition().run(source)

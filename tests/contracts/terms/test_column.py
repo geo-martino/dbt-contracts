@@ -97,6 +97,7 @@ def test_get_tests(node: NodeT, node_column: ColumnInfo, simple_resource: BaseRe
     assert all(isinstance(test, TestNode) for test in tests)
     assert all(test.attached_node == node.unique_id and test.column_name == node_column.name for test in tests)
 
+    # noinspection PyTypeChecker
     assert not list(HasTests._get_tests(column=node_column, node=simple_resource, manifest=manifest))
 
 

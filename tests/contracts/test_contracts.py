@@ -8,13 +8,15 @@ from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
-from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
+from dbt.contracts.graph.nodes import ModelNode
+from dbt.contracts.graph.nodes import SourceDefinition, Macro
 
-from dbt_contracts.contracts import Contract, ParentContract, ContractTerm, ContractCondition, ChildContract, \
+from dbt_contracts.contracts import CONTRACT_CLASSES, CONTRACT_MAP
+from dbt_contracts.contracts import Contract, ParentContract, ChildContract, \
     ModelContract, SourceContract, ColumnContract, MacroContract, MacroArgumentContract
-from dbt_contracts.contracts._contracts import CONTRACT_CLASSES, CONTRACT_MAP
-from dbt_contracts.contracts.conditions import NameCondition, TagCondition
-from dbt_contracts.contracts.terms import properties, source, column, macro
+from dbt_contracts.contracts.conditions import properties as c_properties, ContractCondition
+from dbt_contracts.contracts.terms import properties as t_properties, source as t_source, column as t_column, \
+    macro as t_macro, ContractTerm
 from dbt_contracts.types import ItemT, ParentT
 
 
@@ -72,7 +74,8 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
         result = contract.validate()
         assert sorted(result, key=self._items_sort_key) == sorted(filtered_items, key=self._items_sort_key)
 
-    def test_from_dict(self, contract: Contract[I]):
+    @staticmethod
+    def test_from_dict(contract: Contract[I]):
         config = {
             "filter": sample(
                 [cls._name() for cls in contract.__supported_conditions__],
@@ -163,7 +166,8 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
         assert child.conditions == child_conditions
         assert child.terms == child_terms
 
-    def test_create_child_contract_from_dict(self, contract: ParentContract[I, P]):
+    @staticmethod
+    def test_create_child_contract_from_dict(contract: ParentContract[I, P]):
         config = {
             "filter": sample(
                 [cls._name() for cls in contract.__supported_conditions__],
@@ -284,25 +288,25 @@ class TestModelContract(ParentContractTester[ColumnInfo, ModelNode]):
     @pytest.fixture(scope="class")
     def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> ModelContract:
         conditions = [
-            NameCondition(include=["model1", "model2"]),
-            TagCondition(tags=["include"])
+            c_properties.NameCondition(include=["model1", "model2"]),
+            c_properties.TagCondition(tags=["include"])
         ]
         terms = [
-            properties.HasRequiredTags(tags="required_tag"),
+            t_properties.HasRequiredTags(tags="required_tag"),
         ]
         return ModelContract(manifest=manifest, catalog=catalog, conditions=conditions, terms=terms)
 
     @pytest.fixture(scope="class")
     def child_conditions(self) -> Collection[ContractCondition]:
         return [
-            NameCondition(include=["col1", "col2"]),
-            TagCondition(tags=["valid"])
+            c_properties.NameCondition(include=["col1", "col2"]),
+            c_properties.TagCondition(tags=["valid"])
         ]
 
     @pytest.fixture(scope="class")
     def child_terms(self) -> Collection[ContractTerm]:
         return [
-            column.HasDataType(min_count=3),
+            t_column.HasDataType(min_count=3),
         ]
 
 
@@ -332,26 +336,26 @@ class TestSourceContract(ParentContractTester[ColumnInfo, SourceDefinition]):
     @pytest.fixture(scope="class")
     def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> SourceContract:
         conditions = [
-            NameCondition(include=["source1", "source2"]),
-            TagCondition(tags=["include"])
+            c_properties.NameCondition(include=["source1", "source2"]),
+            c_properties.TagCondition(tags=["include"])
         ]
         terms = [
-            properties.HasRequiredTags(tags="required_tag"),
-            source.HasLoader(),
+            t_properties.HasRequiredTags(tags="required_tag"),
+            t_source.HasLoader(),
         ]
         return SourceContract(manifest=manifest, catalog=catalog, conditions=conditions, terms=terms)
 
     @pytest.fixture(scope="class")
     def child_conditions(self) -> Collection[ContractCondition]:
         return [
-            NameCondition(include=["col1", "col2"]),
-            TagCondition(tags=["valid"])
+            c_properties.NameCondition(include=["col1", "col2"]),
+            c_properties.TagCondition(tags=["valid"])
         ]
 
     @pytest.fixture(scope="class")
     def child_terms(self) -> Collection[ContractTerm]:
         return [
-            column.HasDataType(min_count=3),
+            t_column.HasDataType(min_count=3),
         ]
 
 
@@ -381,10 +385,10 @@ class TestColumnContract(ChildContractTester[ColumnInfo, ModelNode]):
     @pytest.fixture(scope="class")
     def contract(self, manifest: Manifest, catalog: CatalogArtifact, parent: ModelContract) -> ColumnContract:
         conditions = [
-            TagCondition(tags=["valid"])
+            c_properties.TagCondition(tags=["valid"])
         ]
         terms = [
-            column.HasDataType(),
+            t_column.HasDataType(),
         ]
         return ColumnContract(parent=parent, conditions=conditions, terms=terms)
 
@@ -417,23 +421,23 @@ class TestMacroContract(ParentContractTester[MacroArgument, Macro]):
     @pytest.fixture(scope="class")
     def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> MacroContract:
         conditions = [
-            NameCondition(include=["macro1", "macro2"]),
+            c_properties.NameCondition(include=["macro1", "macro2"]),
         ]
         terms = [
-            properties.HasDescription(),
+            t_properties.HasDescription(),
         ]
         return MacroContract(manifest=manifest, catalog=catalog, conditions=conditions, terms=terms)
 
     @pytest.fixture(scope="class")
     def child_conditions(self) -> Collection[ContractCondition]:
         return [
-            NameCondition(include=["arg1", "arg2"]),
+            c_properties.NameCondition(include=["arg1", "arg2"]),
         ]
 
     @pytest.fixture(scope="class")
     def child_terms(self) -> Collection[ContractTerm]:
         return [
-            macro.HasType(),
+            t_macro.HasType(),
         ]
 
 
@@ -463,10 +467,10 @@ class TestMacroArgumentContract(ChildContractTester[MacroArgument, Macro]):
     @pytest.fixture(scope="class")
     def contract(self, manifest: Manifest, catalog: CatalogArtifact, parent: MacroContract) -> MacroArgumentContract:
         conditions = [
-            NameCondition(include=["arg1", "arg2"]),
+            c_properties.NameCondition(include=["arg1", "arg2"]),
         ]
         terms = [
-            macro.HasType(),
+            t_macro.HasType(),
         ]
         return MacroArgumentContract(parent=parent, conditions=conditions, terms=terms)
 

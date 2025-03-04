@@ -5,10 +5,9 @@ from typing import Annotated
 from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ParsedResource, ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
-from dbt.contracts.graph.nodes import SourceDefinition
 from pydantic import BeforeValidator, Field, field_validator
 
-from dbt_contracts.contracts._core import ContractCondition
+from dbt_contracts.contracts.conditions._core import ContractCondition
 from dbt_contracts.contracts.matchers import PatternMatcher
 from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.types import ItemT, TagT, MetaT
@@ -71,8 +70,3 @@ class MetaCondition(ContractCondition[MetaT]):
 class IsMaterializedCondition(ContractCondition[ParsedResource]):
     def run(self, item: ParsedResource) -> bool:
         return item.config.materialized != "ephemeral"
-
-
-class IsEnabledCondition(ContractCondition[SourceDefinition]):
-    def run(self, item: SourceDefinition) -> bool:
-        return item.config.enabled

@@ -1,7 +1,8 @@
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import Macro
 
-from dbt_contracts.contracts._core import ContractContext, ContractTerm
+from dbt_contracts.contracts import ContractContext
+from dbt_contracts.contracts.terms._core import ContractTerm
 
 
 class HasType(ContractTerm[MacroArgument, Macro]):

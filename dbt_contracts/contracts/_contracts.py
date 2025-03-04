@@ -11,9 +11,10 @@ from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 
-from dbt_contracts.contracts._core import ContractContext, ContractTerm, ContractCondition
-from dbt_contracts.contracts.conditions import NameCondition, PathCondition, TagCondition, MetaCondition
-from dbt_contracts.contracts.terms import properties, node, model, source, column, macro
+from dbt_contracts.contracts import ContractContext
+from dbt_contracts.contracts.conditions import ContractCondition, properties as c_properties, source as c_source
+from dbt_contracts.contracts.terms import ContractTerm, properties as t_properties, node as t_node, model as t_model, \
+    source as t_source, column as t_column, macro as t_macro
 from dbt_contracts.types import ItemT, ParentT, NodeT
 
 
@@ -225,22 +226,24 @@ class ColumnContract[T: NodeT](ChildContract[ColumnInfo, T]):
     __config_key__ = "columns"
 
     __supported_terms__ = frozenset({
-        properties.HasDescription,
-        properties.HasRequiredTags,
-        properties.HasAllowedTags,
-        properties.HasRequiredMetaKeys,
-        properties.HasAllowedMetaKeys,
-        properties.HasAllowedMetaValues,
-        column.Exists,
-        column.HasTests,
-        column.HasExpectedName,
-        column.HasDataType,
-        column.HasMatchingDescription,
-        column.HasMatchingDataType,
-        column.HasMatchingIndex,
+        t_properties.HasDescription,
+        t_properties.HasRequiredTags,
+        t_properties.HasAllowedTags,
+        t_properties.HasRequiredMetaKeys,
+        t_properties.HasAllowedMetaKeys,
+        t_properties.HasAllowedMetaValues,
+        t_column.Exists,
+        t_column.HasTests,
+        t_column.HasExpectedName,
+        t_column.HasDataType,
+        t_column.HasMatchingDescription,
+        t_column.HasMatchingDataType,
+        t_column.HasMatchingIndex,
     })
     __supported_conditions__ = frozenset({
-        NameCondition, TagCondition, MetaCondition
+        c_properties.NameCondition,
+        c_properties.TagCondition,
+        c_properties.MetaCondition,
     })
 
     @property
@@ -255,11 +258,11 @@ class MacroArgumentContract(ChildContract[MacroArgument, Macro]):
     __config_key__ = "arguments"
 
     __supported_terms__ = frozenset({
-        properties.HasDescription,
-        macro.HasType,
+        t_properties.HasDescription,
+        t_macro.HasType,
     })
     __supported_conditions__ = frozenset({
-        NameCondition
+        c_properties.NameCondition
     })
 
     @property
@@ -277,28 +280,32 @@ class ModelContract(ParentContract[ColumnInfo, ModelNode]):
     __child_contract__ = ColumnContract
 
     __supported_terms__ = frozenset({
-        properties.HasProperties,
-        properties.HasDescription,
-        properties.HasRequiredTags,
-        properties.HasAllowedTags,
-        properties.HasRequiredMetaKeys,
-        properties.HasAllowedMetaKeys,
-        properties.HasAllowedMetaValues,
-        node.Exists,
-        node.HasTests,
-        node.HasAllColumns,
-        node.HasExpectedColumns,
-        node.HasMatchingDescription,
-        node.HasContract,
-        node.HasValidRefDependencies,
-        node.HasValidSourceDependencies,
-        node.HasValidMacroDependencies,
-        node.HasNoFinalSemiColon,
-        node.HasNoHardcodedRefs,
-        model.HasConstraints,
+        t_properties.HasProperties,
+        t_properties.HasDescription,
+        t_properties.HasRequiredTags,
+        t_properties.HasAllowedTags,
+        t_properties.HasRequiredMetaKeys,
+        t_properties.HasAllowedMetaKeys,
+        t_properties.HasAllowedMetaValues,
+        t_node.Exists,
+        t_node.HasTests,
+        t_node.HasAllColumns,
+        t_node.HasExpectedColumns,
+        t_node.HasMatchingDescription,
+        t_node.HasContract,
+        t_node.HasValidRefDependencies,
+        t_node.HasValidSourceDependencies,
+        t_node.HasValidMacroDependencies,
+        t_node.HasNoFinalSemiColon,
+        t_node.HasNoHardcodedRefs,
+        t_model.HasConstraints,
     })
     __supported_conditions__ = frozenset({
-        NameCondition, PathCondition, TagCondition, MetaCondition
+        c_properties.NameCondition,
+        c_properties.PathCondition,
+        c_properties.TagCondition,
+        c_properties.MetaCondition,
+        c_properties.IsMaterializedCondition,
     })
 
     @property
@@ -312,24 +319,28 @@ class SourceContract(ParentContract[ColumnInfo, SourceDefinition]):
     __child_contract__ = ColumnContract
 
     __supported_terms__ = frozenset({
-        properties.HasProperties,
-        properties.HasDescription,
-        properties.HasRequiredTags,
-        properties.HasAllowedTags,
-        properties.HasRequiredMetaKeys,
-        properties.HasAllowedMetaKeys,
-        properties.HasAllowedMetaValues,
-        node.Exists,
-        node.HasTests,
-        node.HasAllColumns,
-        node.HasExpectedColumns,
-        node.HasMatchingDescription,
-        source.HasLoader,
-        source.HasFreshness,
-        source.HasDownstreamDependencies,
+        t_properties.HasProperties,
+        t_properties.HasDescription,
+        t_properties.HasRequiredTags,
+        t_properties.HasAllowedTags,
+        t_properties.HasRequiredMetaKeys,
+        t_properties.HasAllowedMetaKeys,
+        t_properties.HasAllowedMetaValues,
+        t_node.Exists,
+        t_node.HasTests,
+        t_node.HasAllColumns,
+        t_node.HasExpectedColumns,
+        t_node.HasMatchingDescription,
+        t_source.HasLoader,
+        t_source.HasFreshness,
+        t_source.HasDownstreamDependencies,
     })
     __supported_conditions__ = frozenset({
-        NameCondition, PathCondition, TagCondition, MetaCondition
+        c_properties.NameCondition,
+        c_properties.PathCondition,
+        c_properties.TagCondition,
+        c_properties.MetaCondition,
+        c_source.IsEnabledCondition,
     })
 
     @property
@@ -343,11 +354,12 @@ class MacroContract(ParentContract[MacroArgument, Macro]):
     __child_contract__ = MacroArgumentContract
 
     __supported_terms__ = frozenset({
-        properties.HasProperties,
-        properties.HasDescription,
+        t_properties.HasProperties,
+        t_properties.HasDescription,
     })
     __supported_conditions__ = frozenset({
-        NameCondition, PathCondition
+        c_properties.NameCondition,
+        c_properties.PathCondition
     })
 
     @property
