@@ -1,207 +1,346 @@
-import functools
 import itertools
 import textwrap
-from collections.abc import Collection, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Sequence, Callable, Iterable, Collection
+from typing import Self, Any
 
 from colorama import Fore
+from pydantic import BaseModel, Field, model_validator
 
-from dbt_contracts.formatters._core import KeysT, ObjectFormatter, get_value_from_object, get_values_from_object
+from dbt_contracts.contracts.result import Result
+from dbt_contracts.formatters import ResultsFormatter
 
 
-@dataclass
-class TableColumnFormatter[T]:
-    """Configure a column of values for a table."""
-    keys: Collection[KeysT[T]] | KeysT[T]
-    prefixes: Collection[str] | str = ()
-    alignment: str = "<"
-    colours: Collection[str] | str = ()
-    min_width: int = 5
-    max_width: int = 30
-    wrap: bool = False
+class TableCellBuilder[T: Result](BaseModel):
+    key: str | Callable[[T], str] = Field(
+        description="The key to use to get the value from the :py:class:`.Result` "
+                    "or a callable object which returns a formatted string for the value",
+    )
+    prefix: str | None = Field(
+        description="The prefix to prepend to the value.",
+        default=None
+    )
+    alignment: str = Field(
+        description="The alignment of the value in the cell.",
+        default="<"
+    )
+    colour: str | None = Field(
+        description="The colour to apply to the value.",
+        default=None
+    )
+    min_width: int | None = Field(
+        description="The minimum width of the cell. Any value shorter than this will pad the cell.",
+        default=None
+    )
+    max_width: int | None = Field(
+        description="The maximum width of the cell. Any value larger than this will be truncated with '…'.",
+        default=None
+    )
+    wrap: bool = Field(
+        description="Whether to wrap the value in the cell.",
+        default=False
+    )
 
-    def __post_init__(self):
-        if isinstance(self.keys, str) or callable(self.keys):
-            self.keys = [self.keys]
-        if isinstance(self.prefixes, str):
-            self.prefixes = [self.prefixes] * len(self.keys)
-        if isinstance(self.colours, str):
-            self.colours = [self.colours] * len(self.keys)
+    @model_validator(mode="after")
+    def validate_wrap(self) -> Self:
+        """Validate the required parameters are set when using wrap=True."""
+        if self.wrap and not self.max_width:
+            raise Exception("Cannot wrap a cell without a max width.")
+        return self
 
-    def _get_str_values_from_object(self, obj: T) -> Iterable[str]:
-        return map(str, map(lambda x: x if x is not None else "", get_values_from_object(obj, self.keys)))
+    @property
+    def prefix_coloured(self) -> str:
+        """Get the prefix with colour applied if set."""
+        if not self.prefix:
+            return ""
+        if not self.colour:
+            return self.prefix
+        return f"{self.colour.replace("m", ";1m")}{self.prefix}{Fore.RESET.replace("m", ";0m")}"
 
-    def get_width(self, objects: Iterable[T]) -> int:
-        """Calculate the width of this column for a given set of `logs`."""
-        values = itertools.chain.from_iterable(map(
-            lambda obj: (
-                prefix + val for prefix, val in itertools.zip_longest(
-                    self.prefixes, self._get_str_values_from_object(obj), fillvalue=""
-                )
-            ),
-            objects
-        ))
-        return max(self.min_width, min(max(map(len, values)), self.max_width))
+    def _get_value(self, result: T) -> str:
+        if callable(self.key):
+            return self.key(result)
+        return getattr(result, self.key, "")
 
-    def get_column(self, obj: T, width: int = None) -> list[str]:
-        """
-        Get the column values for the given `obj`.
+    def _apply_prefix(self, value: str) -> str:
+        if not self.prefix:
+            return value
+        return f"{self.prefix_coloured}{value}"
 
-        :param obj: The object to populate the column with.
-        :param width: The width of this column. When not given, take the max width of the values for this object.
-        :return: The column values.
-        """
-        values = list(self._get_str_values_from_object(obj))
-        if width is None:
-            width = max(map(len, values))
+    def _truncate_value(self, value: str) -> str:
+        width = self.max_width
+        if not width or len(value) <= width:
+            return value
 
-        if not self.wrap:
-            column = map(
-                lambda x: self._get_column_value(*x, width=width),
-                itertools.zip_longest(values, self.prefixes, self.colours, fillvalue="")
-            )
-        else:
-            column = itertools.chain.from_iterable(map(
-                lambda x: self._wrap_value(*x, width=width),
-                itertools.zip_longest(values, self.prefixes, self.colours, fillvalue="")
-            ))
+        if self.prefix_coloured:
+            width -= len(self.prefix)
+        return value[:width - 1] + "…"
 
-        return list(column)
+    def _apply_padding_and_alignment(self, value: str, width: int | None) -> str:
+        if not self.alignment or not width:
+            return value
 
-    def _get_column_value(self, value: str, prefix: str, colour: str, width: int) -> str:
-        if not value:
-            return " " * width
+        if self.colour:
+            if self.prefix and value.startswith(self.prefix_coloured):
+                width += len(self.prefix_coloured) - len(self.prefix)
+            width += len(self.colour + Fore.RESET)
 
-        width = width - len(prefix)
-        fmt = f"{self.alignment}{width}.{width}"
+        return f"{value:{self.alignment}{width}}"
 
-        prefix = f"{colour.replace('m', ';1m')}{prefix}{Fore.RESET.replace('m', ';0m')}"
-        value_formatted = f"{colour}{self._truncate_value(value, width):{fmt}}{Fore.RESET}"
-        return prefix + value_formatted
+    def _apply_colour(self, value: str) -> str:
+        if not self.colour:
+            return value
+        return f"{self.colour}{value}{Fore.RESET}"
 
-    @staticmethod
-    def _truncate_value(value: str, width: int) -> str:
-        if len(value) > width:
-            value = value[:width - 3] + "..."
-        return value
+    def _apply_wrap(self, value: str) -> list[str]:
+        if not self.wrap or not self.max_width:
+            return [value]
 
-    @staticmethod
-    def _wrap_value(value: str, prefix: str, colour: str, width: int) -> list[str]:
         lines = textwrap.wrap(
-            value,
-            width=width,
-            initial_indent=f"{colour.replace('m', ';1m')}{prefix}{Fore.RESET.replace('m', ';0m')}{colour}",
+            (self.prefix if self.prefix else "") + value,
+            width=self.max_width,
             break_long_words=False,
             break_on_hyphens=False
         )
-
-        for i, line in enumerate(lines):
-            if i == 0:
-                lines[0] += Fore.RESET
-                continue
-            lines[i] = f"{colour}{line}{Fore.RESET}"
+        if self.prefix:
+            lines[0] = lines[0][len(self.prefix):]
 
         return lines
 
+    def build(self, result: T, min_width: int = None) -> str:
+        """
+        Build a formatted cell for the given `result`.
 
-class TableFormatter[T](ObjectFormatter[T]):
+        :param result: The result to build the cell for.
+        :param min_width: Ignore settings for min width and force the cell to be at least this given width instead.
+        :return: The formatted cell.
+        """
+        min_width = min_width if min_width is not None else self.min_width
 
-    def __init__(
-            self,
-            columns: Sequence[TableColumnFormatter[T]],
-            column_sep_value: str = "|",
-            column_sep_colour: str = Fore.LIGHTWHITE_EX
-    ):
-        self.columns = columns
-        self.column_sep_value = column_sep_value
-        self.column_sep_colour = column_sep_colour
+        value = self._get_value(result)
+        if self.wrap and self.max_width:
+            lines = self._apply_wrap(value)
+            lines = list(map(self._apply_colour, lines))
+            lines[0] = self._apply_prefix(lines[0])
+            lines = (self._apply_padding_and_alignment(line, width=min_width) for line in lines)
+            value = "\n".join(lines)
+        else:
+            value = self._truncate_value(value)
+            value = self._apply_colour(value)
+            value = self._apply_prefix(value)
+            value = self._apply_padding_and_alignment(value, width=min_width)
 
-    def _join_if_populated(self, left: str, right: str) -> str:
-        sep = " "
-        if left.strip() or right.strip():
-            sep = f"{self.column_sep_colour}{self.column_sep_value}{Fore.RESET}"
-        return f"{left} {sep} {right}"
-
-    def _join_row(self, row: list[str]) -> str:
-        return functools.reduce(self._join_if_populated, row)
-
-    def format(self, objects: Collection[T], widths: Collection[int] = (), **__) -> list[str]:
-        logs = []
-
-        calculate_widths = len(widths) != len(self.columns)
-
-        for obj in objects:
-            if calculate_widths:
-                widths = [column.get_width(objects) for column in self.columns]
-            cols = [column.get_column(obj, width=width) for column, width in zip(self.columns, widths)]
-
-            row_count = max(map(len, cols))
-            cols = [
-                values + ([" " * width] * (row_count - len(values)))
-                for values, column, width in zip(cols, self.columns, widths)
-                if not calculate_widths or any(val.strip() for val in values)
-            ]
-
-            rows = list(map(list, zip(*cols)))
-            log = "\n".join(map(self._join_row, rows))
-            logs.append(log)
-
-        return logs
-
-    def combine(self, values: Collection[str]) -> str:
-        return "\n".join(values)
+        return value
 
 
-class GroupedTableFormatter[T](ObjectFormatter[T]):
-    """
+class TableRowBuilder[T: Result](BaseModel):
+    cells: Sequence[TableCellBuilder[T]] = Field(
+        description="The cell builders to use to build the row.",
+    )
+    separator: str = Field(
+        description="The separator to use between the cells.",
+        default="|"
+    )
+    colour: str | None = Field(
+        description="The colour to apply to the separator.",
+        default=None
+    )
 
-    :param group_key: The key to group by.
-        May either be a string of the attribute name, or a lambda function for more complex logic.
-    :param header_key: An optional key to use for the table headers.
-        May either be a string of the attribute name, or a lambda function for more complex logic.
-        When None, uses the `group_key` to get the header.
-    :param sort_key: The key/s to sort by before grouping.
-        May either be a collection strings of the attribute name,
-        or a collection of lambda functions for more complex logic.
-    :param consistent_widths: Whether to keep the widths of all tables equal.
-        When disabled, also drops empty columns in individual tables.
-    """
-    def __init__(
-            self,
-            table_formatter: TableFormatter[T],
-            group_key: KeysT[T],
-            header_key: KeysT[T] = None,
-            sort_key: Collection[KeysT[T]] | KeysT[T] = (),
-            consistent_widths: bool = False,
-    ):
-        self.table_formatter = table_formatter
+    @property
+    def separator_coloured(self) -> str:
+        """Get the separator with colour applied if set."""
+        if not self.colour:
+            return self.separator
+        return f"{self.colour.replace("m", ";1m")}{self.separator}{Fore.RESET.replace("m", ";0m")}"
 
-        self.group_key = group_key
-        self.header_key = header_key
-        if not isinstance(sort_key, Collection) and not isinstance(sort_key, str):
-            sort_key = [sort_key]
-        self.sort_key = sort_key
+    @staticmethod
+    def get_widths_from_lines(lines: Collection[Collection[str]]) -> list[int]:
+        """Get the maximum width for each column from the given `lines`."""
+        return [max(map(len, column)) for column in zip(*lines)]
 
-        self.consistent_widths = consistent_widths
+    @staticmethod
+    def _get_max_lines(values: Sequence[str]) -> int:
+        return max(len(value.splitlines()) for value in values)
 
-    def format(self, objects: Collection[T], **__) -> dict[str, list[str]]:
-        objects = sorted(objects, key=lambda obj: tuple(get_values_from_object(obj, self.sort_key)))
-        groups = itertools.groupby(objects, key=lambda obj: get_value_from_object(obj, self.group_key))
+    @classmethod
+    def _pad_cell_lines(cls, values: Sequence[str]) -> list[list[str]]:
+        """
+        Pad the cell line count separately to match the line count of the cell with the most lines.
 
-        widths = ()
-        if self.consistent_widths:
-            widths = [column.get_width(objects) for column in self.table_formatter.columns]
+        :param values: The values of the cells in the row.
+        :return: The cells for each row with padding applied.
+        """
+        line_count = cls._get_max_lines(values)
 
-        tables = {}
-        for header, group in groups:
-            group = list(group)
-            if self.header_key:
-                header = next(map(lambda obj: get_value_from_object(obj, self.header_key), group))
+        cells = []
+        for value in values:
+            lines = value.splitlines()
+            if len(lines) >= line_count:
+                cells.append(lines)
+                continue
 
-            tables[header] = self.table_formatter.format(group, widths=widths)
+            max_length = max(map(len, lines))
+            lines.extend([" " * max_length] * (line_count - len(lines)))
+            cells.append(lines)
 
-        return tables
+        return [[cell[i] for cell in cells] for i in range(line_count)]
 
-    def combine(self, values: Mapping[str, Collection[str]]) -> str:
-        lines = itertools.chain.from_iterable([header] + list(rows) + ["\n"] for header, rows in values.items())
-        return "\n".join(lines)
+    @staticmethod
+    def _remove_empty_lines(lines: Iterable[list[str]]) -> list[list[str]]:
+        """
+        Remove empty lines from the given `values`.
+
+        :param lines: The values to remove empty lines from.
+        """
+        return [line for line in lines if any(bool(cell.strip()) for cell in line)]
+
+    def build_lines(self, result: T, min_widths: Sequence[int] = ()) -> list[list[str]]:
+        """
+        Build a formatted row or set of rows for the given `result` and returns them as their individual lines.
+
+        :param result: The result to build the row for.
+        :param min_widths: When provided, ignore settings for min width for each cell and force the cells to be
+            at least these given widths instead.
+            Must contain the same number of elements as there are cells configured for this builder.
+        :return: The formatted row as a set of lines.
+        """
+        if not min_widths:
+            min_widths = [None] * len(self.cells)
+        if len(min_widths) != len(self.cells):
+            raise Exception(
+                f"Given widths do not equal the number of cells configured for this row builder: "
+                f"cells={len(self.cells)}, widths={len(min_widths)}"
+            )
+
+        values = [
+            cell.build(result, min_width=min_width) for cell, min_width in zip(self.cells, min_widths, strict=True)
+        ]
+        lines = self._pad_cell_lines(values)
+        lines = self._remove_empty_lines(lines)
+        return lines
+
+    def extend_line_widths(self, lines: Sequence[Sequence[str]], min_widths: Sequence[int]) -> list[list[str]]:
+        """
+        Adjust the given `lines` to the given `min_widths` aligning according to the matching cell config.
+
+        :param lines: The lines to adjust.
+        :param min_widths: The widths to extend the lines to.
+        :return: The extended lines.
+        """
+        if len(min_widths) != len(self.cells):
+            raise Exception(
+                f"Given widths do not equal the number of cells configured for this row builder: "
+                f"cells={len(self.cells)}, widths={len(min_widths)}"
+            )
+
+        return [
+            [f"{value:{cell.alignment}{width}}" for cell, value, width in zip(self.cells, line, min_widths)]
+            for line in lines
+        ]
+
+    def join(self, lines: Sequence[Sequence[str]]) -> str:
+        """Join the given lines into a single string."""
+        return "\n".join(map(f" {self.separator_coloured} ".join, lines))
+
+    def build(self, result: T, min_widths: Sequence[int] = ()) -> str:
+        """
+        Build a formatted row or set of rows for the given `result`.
+
+        :param result: The result to build the row for.
+        :param min_widths: When provided, ignore settings for min width for each cell and force the cells to be
+            at least these given widths instead.
+            Must contain the same number of elements as there are cells configured for this builder.
+        :return: The formatted row.
+        """
+        lines = self.build_lines(result, min_widths=min_widths)
+        return self.join(lines)
+
+
+class TableFormatter[T: Result](ResultsFormatter[T]):
+    builder: TableRowBuilder[T] = Field(
+        description="The builder for the rows of the table",
+    )
+    consistent_widths: bool = Field(
+        description="Whether to ensure all rows have the same width for each column.",
+        default=False,
+    )
+
+    def __init__(self, /, **data: Any):
+        super().__init__(**data)
+
+        self._lines: list[str] = []
+        self._results: list[list[str]] = []
+
+    def add_header(self, header: str) -> None:
+        """Add a header to the table."""
+        if len(self._lines) >= 2 and self._lines[1] == "":
+            self._lines.pop(0)
+            self._lines.pop(0)
+
+        self._lines.insert(0, "")
+        self._lines.insert(0, header)
+
+    def add_results(self, results: Collection[T]) -> None:
+        for result in results:
+            widths = self.builder.get_widths_from_lines(self._results) if self.consistent_widths else None
+            row = self.builder.build_lines(result, min_widths=widths)
+
+            self._results.extend(row)
+
+        if not self.consistent_widths:
+            return
+
+        widths = self.builder.get_widths_from_lines(self._results)
+        self._results = self.builder.extend_line_widths(self._results, min_widths=widths)
+
+    def build(self) -> str:
+        output = "\n".join(self._lines) + self.builder.join(self._results)
+
+        self._lines.clear()
+        self._results.clear()
+
+        return output
+
+
+class GroupedTableFormatter[T: Result](ResultsFormatter[T]):
+    formatter: TableFormatter[T] = Field(
+        description="The formatter to use for each table.",
+    )
+    group_key: str | Callable[[T], str] = Field(
+        description="The key to use to get the group value for each table from a :py:class:`.Result` "
+                    "or a callable object which returns a formatted string for the value",
+    )
+    header_key: str | Callable[[T], str] | None = Field(
+        description="The key to use to get the header value for each table from a :py:class:`.Result` "
+                    "or a callable object which returns a formatted string for the value",
+        default=None,
+    )
+    sort_key: str | Callable[[T], str] | None = Field(
+        description="The key to use to get the sort value for each :py:class:`.Result` in a table "
+                    "or a callable object which returns a formatted string for the value",
+        default=None,
+    )
+
+    def __init__(self, /, **data: Any):
+        super().__init__(**data)
+
+        self._tables: dict[str, str] = {}
+
+    @staticmethod
+    def _get_value(result: T, getter: str | Callable[[T], str]) -> str:
+        if callable(getter):
+            return getter(result)
+        return getattr(result, getter, "")
+
+    def add_results(self, results: Collection[T]) -> None:
+        groups = itertools.groupby(results, key=lambda r: self._get_value(result=r, getter=self.group_key))
+        for group_key, group in groups:
+            group = sorted(group, key=lambda r: self._get_value(result=r, getter=self.sort_key))
+            header = self._get_value(result=group[0], getter=self.header_key) if self.header_key else group_key
+
+            self.formatter.add_header(header)
+            self.formatter.add_results(group)
+
+            self._tables[group_key] = self.formatter.build()
+
+    def build(self) -> str:
+        return "\n\n".join(self._tables.values())

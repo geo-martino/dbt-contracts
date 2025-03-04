@@ -16,7 +16,7 @@ from dbt.contracts.graph.manifest import Manifest
 from dbt_contracts.cli import DEFAULT_CONFIG_FILE_NAME, DEFAULT_OUTPUT_FILE_NAME
 from dbt_contracts.contracts.result import Result
 from dbt_contracts.dbt_cli import get_manifest, get_catalog, get_config
-from dbt_contracts.formatters import ObjectFormatter
+from dbt_contracts.formatters import ResultFormatter
 from dbt_contracts.formatters.table import TableFormatter, TableColumnFormatter, GroupedTableFormatter
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -214,7 +214,7 @@ class ContractRunner:
     def __init__(
             self,
             contracts: Collection[Contract],
-            results_formatter: ObjectFormatter[Result] = DEFAULT_TERMINAL_FORMATTER
+            results_formatter: ResultFormatter[Result] = DEFAULT_TERMINAL_FORMATTER
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 

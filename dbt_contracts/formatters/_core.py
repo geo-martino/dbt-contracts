@@ -2,6 +2,10 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Collection, Iterable
 from typing import Any
 
+from pydantic import BaseModel
+
+from dbt_contracts.contracts.result import Result
+
 type KeysT[T] = str | Callable[[T], Any]
 
 
@@ -30,28 +34,22 @@ def get_values_from_object[T](obj: T, keys: Collection[KeysT[T]]) -> Iterable[An
     return (get_value_from_object(obj, key) for key in keys)
 
 
-class ObjectFormatter[T](metaclass=ABCMeta):
+class ResultsFormatter[T: Result](BaseModel, metaclass=ABCMeta):
     """
-    Base class for implementations which format a set of objects to strings.
-    Usually used to format objects for logging purposes.
-    This allows for the separation of how objects should be formatted for logging purposes from their implementations.
+    Base class for implementations which format a set of :py:class:`.Result` objects to a string for displaying results.
+    Usually used to format results for logging purposes.
+    This allows for the separation of how results should be formatted for logging purposes from their implementations.
     """
     @abstractmethod
-    def format(self, objects: Collection[T], **__) -> Collection[str]:
+    def add_results(self, results: Collection[T]) -> None:
         """
-        Format the given objects to a collection of strings which can be used to log as needed.
+        Format the given results and update the stored output to be built.
 
-        :param objects: The objects to format.
-        :return: The formatted strings.
+        :param results: The results to format.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def combine(self, values: Collection[str]) -> str:
-        """
-        Combine the output of the :py:meth:`format` method to a single string.
-
-        :param values: The values to combine.
-        :return: The combined values.
-        """
+    def build(self) -> str:
+        """Build the output and return it. This clears the stored output."""
         raise NotImplementedError
