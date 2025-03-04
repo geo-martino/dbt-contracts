@@ -1,12 +1,13 @@
 import itertools
 import textwrap
 from collections.abc import Sequence, Callable, Iterable, Collection
-from typing import Self, Any
+from typing import Self, Any, Annotated
 
 from colorama import Fore
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, BeforeValidator
 
 from dbt_contracts.contracts.result import Result
+from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.formatters import ResultsFormatter
 
 
@@ -353,7 +354,7 @@ class GroupedTableFormatter[T: Result](ResultsFormatter[T]):
                     "or a callable object which returns a formatted string for the value",
         default=None,
     )
-    sort_key: str | Callable[[T], str] | None = Field(
+    sort_key: Annotated[Sequence[str | Callable[[T], Any]], BeforeValidator(to_tuple)] = Field(
         description="The key to use to get the sort value for each :py:class:`.Result` in a table "
                     "or a callable object which returns a formatted string for the value",
         default=None,
@@ -365,18 +366,22 @@ class GroupedTableFormatter[T: Result](ResultsFormatter[T]):
         self._tables: dict[str, str] = {}
 
     @staticmethod
-    def _get_value(result: T, getter: str | Callable[[T], str]) -> str:
+    def _get_value(result: T, getter: str | Callable[[T], Any]) -> Any:
         if callable(getter):
             return getter(result)
         return getattr(result, getter, "") or ""
+
+    @classmethod
+    def _get_values(cls, result: T, getters: Sequence[str | Callable[[T], Any]]) -> tuple[Any, ...]:
+        return tuple(cls._get_value(result, getter=getter) for getter in getters)
 
     def add_results(self, results: Collection[T]) -> None:
         results = sorted(results, key=lambda r: self._get_value(result=r, getter=self.group_key))
         groups = itertools.groupby(results, key=lambda r: self._get_value(result=r, getter=self.group_key))
 
         for group_key, group in groups:
-            if self.sort_key is not None:
-                group = sorted(group, key=lambda r: self._get_value(result=r, getter=self.sort_key))
+            if self.sort_key:
+                group = sorted(group, key=lambda r: self._get_values(result=r, getters=self.sort_key))
             else:
                 group = list(group)
             header = self._get_value(result=group[0], getter=self.header_key) if self.header_key else group_key
