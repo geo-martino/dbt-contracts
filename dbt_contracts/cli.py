@@ -1,10 +1,12 @@
 import argparse
 import os
+from pathlib import Path
 
 from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 
 from dbt_contracts import PROGRAM_NAME
 from dbt_contracts.contracts import CONTRACT_CLASSES
+from dbt_contracts.dbt_cli import get_config, clean_paths, install_dependencies
 from dbt_contracts.runner import ContractsRunner
 
 CORE_PARSER = argparse.ArgumentParser(
@@ -137,3 +139,36 @@ files = CORE_PARSER.add_argument(
     default=None,
     type=str,
 )
+
+
+def main():
+    """Main entry point for the CLI"""
+    args = CORE_PARSER.parse_args()
+    conf = get_config(args)
+
+    if args.clean:
+        clean_paths(config=conf)
+    if args.deps:
+        install_dependencies(config=conf)
+
+    if args.config is None and args.project_dir:
+        args.config = args.project_dir
+    if args.output is None:
+        args.output = Path(conf.project_root, conf.target_path)
+
+    runner = ContractsRunner.from_config(conf)
+    runner.config = conf
+    if args.files:
+        runner.paths = args.files
+
+    results = runner.validate(contract_key=args.contract, terms=args.enforce)
+
+    if args.format:
+        runner.write_results(results, path=args.output, output_type=args.format)
+
+    if not args.no_fail and results:
+        raise Exception(f"Found {len(results)} contract violations.")
+
+
+if __name__ == "__main__":
+    main()

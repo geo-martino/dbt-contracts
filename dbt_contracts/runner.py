@@ -102,7 +102,7 @@ class ContractsRunner:
             "text": cls._write_results_as_text,
             "json": cls._write_results_as_json,
             "jsonl": cls._write_results_as_jsonl,
-            "github_annotations": cls._write_results_as_github_annotations,
+            "github-annotations": cls._write_results_as_github_annotations,
         }
 
     @property
@@ -340,10 +340,10 @@ class ContractsRunner:
             path = path.joinpath(self.default_output_file_name)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        output_type = output_type.replace("-", "_")
+        output_type = output_type.replace("_", "-")
         output_path = self.output_writers_map.get(output_type)(results, path)
 
-        log = f"Wrote {output_type.replace("_", " ")} output to {str(output_path)!r}"
+        log = f"Wrote {output_type} output to {str(output_path)!r}"
         self.logger.info(f"{Fore.LIGHTBLUE_EX}{log}{Fore.RESET}")
         return output_path
 

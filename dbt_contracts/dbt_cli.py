@@ -39,7 +39,7 @@ def get_config(args: Namespace | ArgumentParser) -> RuntimeConfig:
     return RuntimeConfig.from_args(args)
 
 
-def add_default_args(*args: str, config: RuntimeConfig | ArgumentParser | None = None) -> list[str]:
+def add_default_args(*args: str, config: RuntimeConfig | Namespace | ArgumentParser | None = None) -> list[str]:
     """
     Gets the default args to give to all commands.
 
@@ -48,7 +48,7 @@ def add_default_args(*args: str, config: RuntimeConfig | ArgumentParser | None =
     """
     if config is None:
         return list(args)
-    if isinstance(config, ArgumentParser):
+    if isinstance(config, (Namespace, ArgumentParser)):
         config = get_config(config)
 
     defaults = {
@@ -65,7 +65,7 @@ def add_default_args(*args: str, config: RuntimeConfig | ArgumentParser | None =
     return args
 
 
-def load_artifact(filename: str, config: RuntimeConfig | ArgumentParser) -> Mapping[str, Any] | None:
+def load_artifact(filename: str, config: RuntimeConfig | Namespace | ArgumentParser) -> Mapping[str, Any] | None:
     """
     Load an artifact from the currently configured dbt target directory.
 
@@ -73,7 +73,7 @@ def load_artifact(filename: str, config: RuntimeConfig | ArgumentParser) -> Mapp
     :param config: The runtime config to use when trying to load the artifact from the target path.
     :return: The loaded artifact if found. None otherwise.
     """
-    if isinstance(config, ArgumentParser):
+    if isinstance(config, (Namespace, ArgumentParser)):
         config = get_config(config)
 
     target_dir = Path(config.project_target_path)
@@ -109,7 +109,9 @@ def get_result(*args, runner: dbtRunner = None) -> dbtRunnerResult:
     return result
 
 
-def clean_paths(*args, runner: dbtRunner = None, config: RuntimeConfig = None) -> None:
+def clean_paths(
+        *args, runner: dbtRunner = None, config: RuntimeConfig | Namespace | ArgumentParser = None
+) -> None:
     """
     Clean the configured paths i.e. run the `dbt clean` command.
 
@@ -122,7 +124,9 @@ def clean_paths(*args, runner: dbtRunner = None, config: RuntimeConfig = None) -
     return get_result("clean", "--no-clean-project-files-only", *args, runner=runner).result
 
 
-def install_dependencies(*args, runner: dbtRunner = None, config: RuntimeConfig = None) -> None:
+def install_dependencies(
+        *args, runner: dbtRunner = None, config: RuntimeConfig | Namespace | ArgumentParser = None
+) -> None:
     """
     Install additional dbt dependencies i.e. run the `dbt deps` command.
 
@@ -135,7 +139,9 @@ def install_dependencies(*args, runner: dbtRunner = None, config: RuntimeConfig 
     return get_result("deps", *args, runner=runner).result
 
 
-def get_manifest(*args, runner: dbtRunner = None, config: RuntimeConfig = None) -> Manifest:
+def get_manifest(
+        *args, runner: dbtRunner = None, config: RuntimeConfig | Namespace | ArgumentParser = None
+) -> Manifest:
     """
     Generate and return the dbt manifest for a project i.e. run the `dbt parse` command.
 
@@ -153,7 +159,9 @@ def get_manifest(*args, runner: dbtRunner = None, config: RuntimeConfig = None) 
     return get_result("parse", *args, runner=runner).result
 
 
-def get_catalog(*args, runner: dbtRunner = None, config: RuntimeConfig = None) -> CatalogArtifact:
+def get_catalog(
+        *args, runner: dbtRunner = None, config: RuntimeConfig | Namespace | ArgumentParser = None
+) -> CatalogArtifact:
     """
     Generate and return the dbt catalog for a project i.e. run the `dbt docs generate` command.
 
