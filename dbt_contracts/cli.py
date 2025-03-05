@@ -5,9 +5,7 @@ from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 
 from dbt_contracts import PROGRAM_NAME
 from dbt_contracts.contracts import CONTRACT_CLASSES
-
-DEFAULT_CONFIG_FILE_NAME: str = "contracts"
-DEFAULT_OUTPUT_FILE_NAME: str = "contracts_results"
+from dbt_contracts.runner import ContractsRunner
 
 CORE_PARSER = argparse.ArgumentParser(
     prog=PROGRAM_NAME,
@@ -81,7 +79,7 @@ install_deps = CORE_PARSER.add_argument(
 config = CORE_PARSER.add_argument(
     "--config",
     help="Either the path to a contracts configuration file, "
-         f"or the directory to look in for the {DEFAULT_CONFIG_FILE_NAME!r} file. "
+         f"or the directory to look in for the {ContractsRunner.default_config_file_name!r} file. "
          "Defaults to the project dir when not specified.",
     nargs="?",
     default=None,
@@ -91,7 +89,7 @@ config = CORE_PARSER.add_argument(
 output = CORE_PARSER.add_argument(
     "--output",
     help="Either the path to a file to write to when formatting results output, "
-         f"or the directory to write a file to with filename {DEFAULT_OUTPUT_FILE_NAME!r}. "
+         f"or the directory to write a file to with filename {ContractsRunner.default_output_file_name!r}. "
          "Defaults to the project's target folder when not specified.",
     nargs="?",
     default=None,
@@ -103,7 +101,7 @@ output_format = CORE_PARSER.add_argument(
     help="Specify the format of results output if desired. Output file will not be generated when not specified.",
     nargs="?",
     default=None,
-    choices=["text", "json", "jsonl", "github-annotations"],
+    choices=ContractsRunner.output_writers_map.keys(),
     type=str,
 )
 

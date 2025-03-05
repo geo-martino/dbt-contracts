@@ -16,7 +16,6 @@ from dbt.config import RuntimeConfig
 from distlib.manifest import Manifest
 
 from dbt_contracts import dbt_cli
-from dbt_contracts.cli import DEFAULT_CONFIG_FILE_NAME, DEFAULT_OUTPUT_FILE_NAME, CORE_PARSER
 from dbt_contracts.contracts import Contract, CONTRACT_MAP, ParentContract
 from dbt_contracts.contracts.conditions.properties import PathCondition
 from dbt_contracts.contracts.result import Result
@@ -91,8 +90,8 @@ DEFAULT_TERMINAL_LOG_FORMATTER = GroupedTableFormatter(
 
 class ContractsRunner:
     """Handles loading config for contracts and their execution."""
-    default_config_file_name: str = DEFAULT_CONFIG_FILE_NAME
-    default_output_file_name: str = DEFAULT_OUTPUT_FILE_NAME
+    default_config_file_name: str = "contracts"
+    default_output_file_name: str = "contracts_results"
 
     # noinspection PyMethodParameters
     @classproperty
@@ -110,8 +109,12 @@ class ContractsRunner:
     def config(self) -> RuntimeConfig:
         """The dbt runtime config"""
         if self._config is None:
-            self._config = dbt_cli.get_config(CORE_PARSER)
+            raise Exception("You must set the RuntimeConfig first.")
         return self._config
+
+    @config.setter
+    def config(self, value: RuntimeConfig) -> None:
+        self._config = value
 
     @cached_property
     def dbt(self) -> dbtRunner:
@@ -246,14 +249,15 @@ class ContractsRunner:
     def __init__(
             self,
             contracts: Collection[Contract],
-            results_formatter: ResultsFormatter = DEFAULT_TERMINAL_LOG_FORMATTER
+            results_formatter: ResultsFormatter = DEFAULT_TERMINAL_LOG_FORMATTER,
+            config: RuntimeConfig | None = None,
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self._contracts = contracts
         self._results_formatter = results_formatter
 
-        self._config: RuntimeConfig | None = None
+        self._config: RuntimeConfig | None = config
         self._paths: PathCondition | None = None
 
     def validate(self, contract_key: str = None, terms: Collection[str] = ()) -> list[Result]:
