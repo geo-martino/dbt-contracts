@@ -292,5 +292,7 @@ class MacroArgumentResult(Result[MacroArgument, Macro]):
         return super().from_resource(item=item, parent=parent, index=index, **kwargs)
 
 
-RESULT_PROCESSORS: list[type[Result]] = [ModelResult, SourceResult, MacroResult, ColumnResult, MacroArgumentResult]
+RESULT_PROCESSORS: tuple[type[Result], ...] = (
+    ModelResult, SourceResult, MacroResult, ColumnResult, MacroArgumentResult
+)
 RESULT_PROCESSOR_MAP: Mapping[type[ItemT], type[Result]] = {cls.resource_type: cls for cls in RESULT_PROCESSORS}

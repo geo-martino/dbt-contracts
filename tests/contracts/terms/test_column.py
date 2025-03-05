@@ -5,9 +5,9 @@ from unittest import mock
 import pytest
 from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ColumnInfo
+from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import TestNode, ModelNode, CompiledNode
 from dbt_common.contracts.metadata import CatalogTable
-from distlib.manifest import Manifest
 from faker import Faker
 
 from dbt_contracts.contracts import ContractContext

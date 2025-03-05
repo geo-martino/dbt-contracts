@@ -17,7 +17,7 @@ from dbt_contracts.contracts import Contract, ParentContract, ChildContract, CON
 from dbt_contracts.contracts.conditions import ContractCondition
 from dbt_contracts.contracts.terms import ContractTerm
 
-HEADER_SECTION_CHARS = ["=", "-", "^", '"']
+HEADER_SECTION_CHARS = ("=", "-", "^", '"')
 
 SECTIONS: dict[str, Callable[[type[Contract]], Collection[type[ContractTerm | ContractCondition]]]] = {
     "Filters": lambda contract: contract.__supported_conditions__,

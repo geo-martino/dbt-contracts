@@ -5,7 +5,7 @@ from pathlib import Path
 from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 
 from dbt_contracts import PROGRAM_NAME
-from dbt_contracts.contracts import CONTRACT_CLASSES, ParentContract
+from dbt_contracts.contracts import CONTRACT_CLASSES
 from dbt_contracts.dbt_cli import get_config, clean_paths, install_dependencies
 from dbt_contracts.runner import ContractsRunner
 
@@ -119,10 +119,11 @@ contract = CORE_PARSER.add_argument(
          "Specify granular contracts by separating keys by a '.' e.g. 'model', 'model.columns'",
     nargs="?",
     default=None,
-    choices=sorted(
-        *(contract.__config_key__ for contract in CONTRACT_CLASSES if isinstance(contract, ParentContract)),
-        *(contract.child_config_key for contract in CONTRACT_CLASSES if isinstance(contract, ParentContract)),
-    ),
+    choices=[
+        key for keys in (
+            (contract.__config_key__, contract.child_config_key) for contract in CONTRACT_CLASSES
+        ) for key in keys
+    ],
     type=str,
 )
 

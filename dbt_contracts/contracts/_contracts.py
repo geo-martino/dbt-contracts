@@ -30,6 +30,7 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
 
     @property
     def config_key(self) -> str:
+        """The key used to identify this contract in a configuration."""
         return self.__config_key__
 
     @property
@@ -413,5 +414,5 @@ class MacroContract(ParentContract[MacroArgument, Macro]):
         )
 
 
-CONTRACT_CLASSES = [ModelContract, SourceContract, MacroContract]
+CONTRACT_CLASSES: tuple[type[ParentContract], ...] = (ModelContract, SourceContract, MacroContract)
 CONTRACT_MAP = {contract.__config_key__: contract for contract in CONTRACT_CLASSES}

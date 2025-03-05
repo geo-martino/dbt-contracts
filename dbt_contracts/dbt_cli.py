@@ -17,9 +17,9 @@ from dbt.flags import set_from_args
 from dbt.task.docs.generate import CATALOG_FILENAME
 from dbt_common.context import set_invocation_context
 
-DEFAULT_GLOBAL_ARGS = [
+DEFAULT_GLOBAL_ARGS = (
     "--no-use-colors",
-]
+)
 
 
 def get_config(args: Namespace) -> RuntimeConfig:
@@ -99,7 +99,7 @@ def get_result(*args, runner: dbtRunner = None) -> dbtRunnerResult:
     if runner is None:
         runner = dbtRunner()
 
-    result: dbtRunnerResult = runner.invoke(list(args) + DEFAULT_GLOBAL_ARGS)
+    result: dbtRunnerResult = runner.invoke(list(args) + list(DEFAULT_GLOBAL_ARGS))
     if not result.success:
         raise result.exception
 

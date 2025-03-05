@@ -13,7 +13,7 @@ from dbt.adapters.utils import classproperty
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.cli.main import dbtRunner
 from dbt.config import RuntimeConfig
-from distlib.manifest import Manifest
+from dbt.contracts.graph.manifest import Manifest
 
 from dbt_contracts import dbt_cli
 from dbt_contracts.contracts import Contract, CONTRACT_MAP, ParentContract
@@ -39,8 +39,8 @@ def _get_default_table_header(result: Result) -> str:
     return f"{result.result_type}: {header_path}"
 
 
-DEFAULT_TERMINAL_LOG_BUILDER_CELLS = [
-    [
+DEFAULT_TERMINAL_LOG_BUILDER_CELLS = (
+    (
         TableCellBuilder(
             key="result_name", colour=Fore.RED, max_width=50
         ),
@@ -54,8 +54,8 @@ DEFAULT_TERMINAL_LOG_BUILDER_CELLS = [
         TableCellBuilder(
             key="message", colour=Fore.YELLOW, max_width=60, wrap=True
         ),
-    ],
-    [
+    ),
+    (
         None,
         TableCellBuilder(
             key="patch_start_col", prefix="P: ", alignment=">", colour=Fore.LIGHTBLUE_EX, min_width=6, max_width=9
@@ -65,8 +65,8 @@ DEFAULT_TERMINAL_LOG_BUILDER_CELLS = [
             prefix="> ", colour=Fore.CYAN, max_width=40
         ),
         None,
-    ],
-]
+    ),
+)
 
 DEFAULT_TERMINAL_LOG_FORMATTER_TABLE = TableFormatter(
     builder=TableRowBuilder(cells=DEFAULT_TERMINAL_LOG_BUILDER_CELLS, colour=Fore.LIGHTWHITE_EX),

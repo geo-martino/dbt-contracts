@@ -27,10 +27,10 @@ def format_contract_reference(contract: type[Contract], parent_key: str = "") ->
     title = format_contract_title(contract, parent_key)
     lines.extend((f"### {title}", ""))
 
-    # noinspection PyTypeChecker
+    # noinspection PyTypeChecker,PyProtectedMember
     method_map = {
-        "Filters": sorted(contract.__supported_conditions__),
-        "Enforcements": sorted(contract.__supported_terms__),
+        "Filters": sorted(condition._name() for condition in contract.__supported_conditions__),
+        "Terms": sorted(term._name() for term in contract.__supported_terms__),
     }
 
     for header, methods in method_map.items():
