@@ -16,6 +16,7 @@ from dbt_contracts.dbt_cli import add_default_args, load_artifact, DEFAULT_GLOBA
 
 @pytest.fixture
 def config(tmp_path: Path) -> Namespace:
+    """Fixture for dbt config."""
     config = Namespace(
         project_root="project_root",
         args=Namespace(profiles_dir="profiles_dir"),
