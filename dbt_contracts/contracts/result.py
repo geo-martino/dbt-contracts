@@ -1,4 +1,3 @@
-import os
 from abc import ABCMeta, abstractmethod
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
@@ -9,10 +8,10 @@ from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ParsedResource, ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
-from dbt.flags import get_flags
 from pydantic import BaseModel
 from yaml import MappingNode
 
+from dbt_contracts.contracts.utils import get_absolute_project_path
 from dbt_contracts.types import ItemT, ParentT
 
 
@@ -117,15 +116,7 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
 
         if patch_path is None or not to_absolute or patch_path.is_absolute():
             return patch_path
-
-        flags = get_flags()
-        project_dir = getattr(flags, "PROJECT_DIR", None) or ""
-
-        if project_dir and (path_in_project := Path(project_dir, patch_path)).is_file():
-            patch_path = path_in_project
-        elif (path_in_cwd := Path(os.getcwd(), patch_path)).is_file():
-            patch_path = path_in_cwd
-        return patch_path
+        return get_absolute_project_path(patch_path)
 
     @classmethod
     def _get_patch_object(

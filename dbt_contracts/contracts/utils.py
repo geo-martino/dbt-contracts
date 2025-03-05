@@ -1,7 +1,10 @@
+import os
+from pathlib import Path
 from typing import Any
 
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.nodes import SourceDefinition
+from dbt.flags import get_flags
 from dbt_common.contracts.metadata import CatalogTable
 
 from dbt_contracts.types import NodeT
@@ -29,3 +32,20 @@ def to_tuple(value: Any) -> tuple:
     elif isinstance(value, str):
         value = (value,)
     return tuple(value)
+
+
+def get_absolute_project_path(path: str | Path) -> Path | None:
+    """
+    Get the absolute path of the given relative `path` in the project directory.
+
+    :param path: The relative path.
+    :return: The absolute project path.
+    """
+    flags = get_flags()
+    project_dir = getattr(flags, "PROJECT_DIR", None) or ""
+
+    if project_dir and (path_in_project := Path(project_dir, path)).exists():
+        return path_in_project
+    elif (path_in_cwd := Path(os.getcwd(), path)).exists():
+        return path_in_cwd
+    return Path(path)

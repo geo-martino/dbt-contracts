@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from collections.abc import Collection, Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping, MutableSequence
 from functools import cached_property
 from typing import Any, Self, Type
 
+from dbt.adapters.utils import classproperty
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.artifacts.schemas.catalog import CatalogArtifact
@@ -15,6 +16,7 @@ from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.conditions import ContractCondition, properties as c_properties, source as c_source
 from dbt_contracts.contracts.terms import ContractTerm, properties as t_properties, node as t_node, model as t_model, \
     source as t_source, column as t_column, macro as t_macro
+from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.types import ItemT, ParentT, NodeT
 
 
@@ -25,6 +27,13 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
     __config_key__: str
     __supported_terms__: frozenset[type[ContractTerm]]
     __supported_conditions__: frozenset[type[ContractCondition]]
+
+    # noinspection PyMethodParameters
+    @classproperty
+    @abstractmethod
+    def config_key(cls) -> str:
+        """The key used to identify this contract type."""
+        raise NotImplementedError
 
     @property
     @abstractmethod
@@ -83,8 +92,8 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
         return cls(
             manifest=manifest,
             catalog=catalog,
-            conditions=tuple(condition for condition in conditions if condition is not None),
-            terms=tuple(term for term in terms if term is not None),
+            conditions=[condition for condition in conditions if condition is not None],
+            terms=[term for term in terms if term is not None],
         )
 
     @classmethod
@@ -109,12 +118,12 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
             self,
             manifest: Manifest = None,
             catalog: CatalogArtifact = None,
-            conditions: Collection[ContractCondition] = (),
-            terms: Collection[ContractTerm] = ()
+            conditions: MutableSequence[ContractCondition] = (),
+            terms: MutableSequence[ContractTerm] = ()
     ):
-        if not self.validate_terms(terms):
+        if len(terms) > 0 and not self.validate_terms(terms):
             raise Exception("Unsupported terms for this contract.")
-        if not self.validate_conditions(conditions):
+        if len(conditions) > 0 and not self.validate_conditions(conditions):
             raise Exception("Unsupported conditions for this contract.")
 
         #: The dbt manifest to extract items from
@@ -128,24 +137,29 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
         self.terms = terms
 
     @classmethod
-    def validate_terms(cls, terms: Collection[ContractTerm]) -> bool:
+    def validate_terms(cls, terms: ContractTerm | Collection[ContractTerm]) -> bool:
         """.Validate that all the given ``terms`` are supported by this contract."""
-        if not cls.__supported_terms__:
-            raise Exception("No supported terms set for this contract.")
+        if not cls.__supported_terms__ and len(terms := to_tuple(terms)) > 0:
+            return False
+        elif cls.__supported_terms__ and len(terms) == 0:
+            return False
         return all(term.__class__ in cls.__supported_terms__ for term in terms)
 
     @classmethod
-    def validate_conditions(cls, conditions: Collection[ContractCondition]) -> bool:
+    def validate_conditions(cls, conditions: ContractCondition | Collection[ContractCondition]) -> bool:
         """.Validate that all the given ``conditions`` are supported by this contract."""
-        if not cls.__supported_conditions__:
-            raise Exception("No supported conditions set for this contract.")
+        if not cls.__supported_conditions__ and len(conditions := to_tuple(conditions)) > 0:
+            return False
+        elif cls.__supported_conditions__ and len(conditions) == 0:
+            return False
         return all(condition.__class__ in cls.__supported_conditions__ for condition in conditions)
 
     @abstractmethod
-    def validate(self) -> list[I]:
+    def validate(self, terms: Collection[str] = ()) -> list[I]:
         """
         Validate the terms of this contract against the filtered items.
 
+        :param terms: Only run the terms with these names.
         :return: The valid items.
         """
         raise NotImplementedError
@@ -154,6 +168,11 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
 class ParentContract[I: ItemT, P: ParentT](Contract[P], metaclass=ABCMeta):
     __child_contract__: type[ChildContract[I, P]] | None = None
 
+    # noinspection PyMethodParameters
+    @classproperty
+    def config_key(cls) -> str:
+        return f"{cls.__config_key__}.{cls.__child_contract__.__config_key__}"
+
     @property
     def filtered_items(self) -> Iterable[P]:
         for item in self.items:
@@ -161,7 +180,7 @@ class ParentContract[I: ItemT, P: ParentT](Contract[P], metaclass=ABCMeta):
                 yield item
 
     def create_child_contract(
-            self, conditions: Collection[ContractCondition] = (), terms: Collection[ContractTerm] = ()
+            self, conditions: MutableSequence[ContractCondition] = (), terms: MutableSequence[ContractTerm] = ()
     ) -> ChildContract[I, P] | None:
         """Create a child contract from this parent contract."""
         if self.__child_contract__ is None:
@@ -179,12 +198,15 @@ class ParentContract[I: ItemT, P: ParentT](Contract[P], metaclass=ABCMeta):
         contract.parent = self
         return contract
 
-    def validate(self) -> list[P]:
+    # noinspection PyUnresolvedReferences
+    def validate(self, terms: Collection[str] = ()) -> list[P]:
         if not self.terms:
             return list(self.filtered_items)
+
+        run_terms = [term for term in self.terms if term.name in terms] if terms else self.terms
         return [
             item for item in self.filtered_items
-            if all(term.run(item, context=self.context) for term in self.terms)
+            if all(term.run(item, context=self.context) for term in run_terms)
         ]
 
 
@@ -192,6 +214,11 @@ class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMe
     """
     Composes the terms and conditions that make a contract for specific types of dbt child objects within a manifest.
     """
+    # noinspection PyMethodParameters
+    @classproperty
+    def config_key(cls) -> str:
+        return cls.__config_key__
+
     @property
     @abstractmethod
     def items(self) -> Iterable[tuple[I, P]]:
@@ -208,26 +235,29 @@ class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMe
             self,
             manifest: Manifest = None,
             catalog: CatalogArtifact = None,
-            conditions: Collection[ContractCondition] = (),
-            terms: Collection[ContractTerm] = (),
+            conditions: MutableSequence[ContractCondition] = (),
+            terms: MutableSequence[ContractTerm] = (),
             parent: ParentContract[I, P] = None,
     ):
         super().__init__(
             manifest=manifest or parent.manifest,
             catalog=catalog or parent.catalog,
             conditions=conditions,
-            terms=terms
+            terms=terms,
         )
 
         #: The contract object representing the parent contract for this child contract.
         self.parent = parent
 
-    def validate(self) -> list[tuple[I, P]]:
+    # noinspection PyUnresolvedReferences
+    def validate(self, terms: Collection[str] = ()) -> list[tuple[I, P]]:
         if not self.terms:
             return list(self.filtered_items)
+
+        run_terms = [term for term in self.terms if term.name in terms] if terms else self.terms
         return [
             (item, parent) for item, parent in self.filtered_items
-            if all(term.run(item, parent=parent, context=self.context) for term in self.terms)
+            if all(term.run(item, parent=parent, context=self.context) for term in run_terms)
         ]
 
 

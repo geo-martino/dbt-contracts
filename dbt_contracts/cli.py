@@ -4,7 +4,7 @@ import os
 from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 
 from dbt_contracts import PROGRAM_NAME
-from dbt_contracts.contracts import CONTRACT_CLASSES, ParentContract
+from dbt_contracts.contracts import CONTRACT_CLASSES
 
 DEFAULT_CONFIG_FILE_NAME: str = "contracts"
 DEFAULT_OUTPUT_FILE_NAME: str = "contracts_results"
@@ -119,12 +119,7 @@ contract = CORE_PARSER.add_argument(
          "Specify granular contracts by separating keys by a '.' e.g. 'model', 'model.columns'",
     nargs="?",
     default=None,
-    choices=[
-        str(contract.__config_key__) for contract in CONTRACT_CLASSES
-    ] + [
-        f"{contract.__config_key__}.{contract.__child_contract__.__config_key__}"
-        for contract in CONTRACT_CLASSES if issubclass(contract, ParentContract)
-    ],
+    choices=sorted(contract.config_key for contract in CONTRACT_CLASSES),
     type=str,
 )
 

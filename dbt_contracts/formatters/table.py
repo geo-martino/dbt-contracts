@@ -150,6 +150,7 @@ class TableRowBuilder[T: Result](BaseModel):
 
     @model_validator(mode="after")
     def remap_and_validate_cells(self) -> Self:
+        """Remap the cells if they are not in the matrix format and validate the cells."""
         if all(isinstance(cell, TableCellBuilder) for cell in self.cells):
             self.cells = [self.cells]
 
@@ -387,6 +388,7 @@ class GroupedTableFormatter[T: Result](ResultsFormatter[T]):
             header = self._get_value(result=group[0], getter=self.header_key) if self.header_key else group_key
 
             self.formatter.add_header(header)
+            print(group)
             self.formatter.add_results(group)
 
             self._tables[group_key] = self.formatter.build()

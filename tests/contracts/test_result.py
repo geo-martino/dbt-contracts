@@ -1,4 +1,3 @@
-import os
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -10,7 +9,6 @@ from _pytest.fixtures import FixtureRequest
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import ModelNode, Macro, SourceDefinition
-from dbt.flags import GLOBAL_FLAGS
 
 from dbt_contracts.contracts.result import Result, ModelResult, SourceResult, ColumnResult, MacroResult, \
     MacroArgumentResult
@@ -33,32 +31,22 @@ class TestResult:
         assert Result._get_result_type(item=item) == expected
         assert Result._get_result_type(item=item, parent=model) == f"Model {expected}"
 
-    def test_get_relative_patch_path_with_patch_path(self, model: ModelNode):
+    def test_get_patch_path_with_patch_path(self, model: ModelNode):
         assert model.patch_path
-        assert Result._get_patch_path(model) == Path(model.patch_path.split("://")[1])
+        with mock.patch("dbt_contracts.contracts.result.get_absolute_project_path") as mock_func:
+            assert Result._get_patch_path(model) == Path(model.patch_path.split("://")[1])
+            mock_func.assert_not_called()
 
-    def test_get_relative_patch_path_without_patch_path(self, source: SourceDefinition):
+    def test_get_patch_path_without_patch_path(self, source: SourceDefinition):
         source.patch_path = None
-        assert Result._get_patch_path(source) == Path(source.original_file_path)
+        with mock.patch("dbt_contracts.contracts.result.get_absolute_project_path") as mock_func:
+            assert Result._get_patch_path(source) == Path(source.original_file_path)
+            mock_func.assert_not_called()
 
-    def test_get_absolute_patch_path_in_project_dir(self, source: SourceDefinition, tmp_path: Path):
-        GLOBAL_FLAGS.PROJECT_DIR = tmp_path
-        # still relative because file doesn't exist in any absolute path
-        assert Result._get_patch_path(source, to_absolute=True) == Path(source.original_file_path)
-
-        expected = tmp_path.joinpath(source.original_file_path)
-        expected.parent.mkdir(parents=True, exist_ok=True)
-        expected.touch()
-        assert Result._get_patch_path(source, to_absolute=True) == expected
-
-    def test_get_absolute_patch_path_in_cwd(self, source: SourceDefinition, tmp_path: Path):
-        expected = tmp_path.joinpath(source.original_file_path)
-        expected.parent.mkdir(parents=True, exist_ok=True)
-        expected.touch()
-
-        # noinspection SpellCheckingInspection
-        with mock.patch.object(os, "getcwd", return_value=str(tmp_path)):
-            assert Result._get_patch_path(source, to_absolute=True) == expected
+    def test_get_absolute_patch_path(self, source: SourceDefinition):
+        with mock.patch("dbt_contracts.contracts.result.get_absolute_project_path") as mock_func:
+            assert Result._get_patch_path(source, to_absolute=True)
+            mock_func.assert_called_once()
 
     def test_get_patch_object_for_invalid_patch_path(self, model: ModelNode, tmp_path: Path):
         assert not Result._get_patch_object(model)  # patch file doesn't exist

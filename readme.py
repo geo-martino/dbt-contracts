@@ -6,7 +6,7 @@ import re
 import docstring_parser
 
 from dbt_contracts import PROGRAM_OWNER_USER, PROGRAM_NAME, DOCUMENTATION_URL
-from dbt_contracts.contracts_old import CONTRACTS, Contract, ParentContract
+from dbt_contracts.contracts import CONTRACT_CLASSES, Contract, ParentContract
 import docs.reference as docs
 
 SRC_FILENAME = "README.template.md"
@@ -14,7 +14,8 @@ TRG_FILENAME = SRC_FILENAME.replace(".template", "")
 
 
 def format_contract_title(contract: type[Contract], parent_key: str = "") -> str:
-    key = f"{parent_key.rstrip('s')}_{str(contract.config_key)}"
+    """Format the title for a contract"""
+    key = f"{parent_key.rstrip('s')}_{contract.config_key}"
     return key.replace("_", " ").title().strip()
 
 
@@ -24,13 +25,14 @@ def format_contract_reference(contract: type[Contract], parent_key: str = "") ->
 
     lines = []
 
-    key = str(contract.config_key)
+    key = contract.config_key
     title = format_contract_title(contract, parent_key)
     lines.extend((f"### {title}", ""))
 
+    # noinspection PyTypeChecker
     method_map = {
-        "Filters": sorted(contract.__filtermethods__),
-        "Enforcements": sorted(contract.__enforcementmethods__),
+        "Filters": sorted(contract.__supported_conditions__),
+        "Enforcements": sorted(contract.__supported_terms__),
     }
 
     for header, methods in method_map.items():
@@ -50,7 +52,7 @@ def format_contract_reference(contract: type[Contract], parent_key: str = "") ->
     lines.append("")
 
     if issubclass(contract, ParentContract):
-        lines.extend(format_contract_reference(contract.child_type, key))
+        lines.extend(format_contract_reference(contract.__child_contract__, key))
 
     return lines
 
@@ -58,7 +60,7 @@ def format_contract_reference(contract: type[Contract], parent_key: str = "") ->
 def format_contracts_reference() -> str:
     """Format the readme template for the contracts reference"""
     lines = []
-    for contract in CONTRACTS:
+    for contract in CONTRACT_CLASSES:
         lines.extend(format_contract_reference(contract))
 
     return "\n".join(lines)
@@ -74,11 +76,10 @@ def format_contracts_reference_toc() -> str:
     """Format the readme template for the contracts reference table of contents"""
     lines = []
 
-    for contract in CONTRACTS:
+    for contract in CONTRACT_CLASSES:
         lines.append(format_contracts_reference_toc_entry(contract))
         if issubclass(contract, ParentContract):
-            key = str(contract.config_key)
-            lines.append(format_contracts_reference_toc_entry(contract.child_type, key))
+            lines.append(format_contracts_reference_toc_entry(contract.__child_contract__, contract.config_key))
 
     return "\n".join(lines)
 

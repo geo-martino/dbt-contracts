@@ -136,6 +136,7 @@ class TestTableRowBuilder:
 
     @pytest.fixture
     def builder(self, cells: list[TableCellBuilder]) -> TableRowBuilder:
+        """Fixture for a table row builder."""
         return TableRowBuilder(cells=cells)
 
     def test_validate_cells(self, cells: list[TableCellBuilder]):
@@ -576,7 +577,7 @@ class TestGroupedTableFormatter:
 
     def test_add_results_with_sort(self, formatter: GroupedTableFormatter, results: list[Result]):
         assert not formatter.header_key
-        formatter.sort_key = "name"
+        formatter.sort_key = ["name"]
 
         with (
                 mock.patch.object(TableFormatter, "add_header") as mock_header,

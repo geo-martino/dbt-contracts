@@ -25,6 +25,7 @@ def faker() -> Faker:
 
 @pytest.fixture(scope="session")
 def context(manifest: Manifest, catalog: CatalogArtifact) -> ContractContext:
+    """Fixture for a ContractContext object."""
     return ContractContext(manifest=manifest, catalog=catalog)
 
 
@@ -35,6 +36,7 @@ def manifest(
         macros: list[Macro],
         tests: list[TestNode]
 ) -> Manifest:
+    """Fixture for a Manifest object."""
     manifest = Manifest()
     manifest.nodes |= {model.unique_id: model for model in models}
     manifest.nodes |= {test.unique_id: test for test in tests}
@@ -45,6 +47,7 @@ def manifest(
 
 @pytest.fixture(scope="session")
 def catalog(models: list[ModelNode], sources: list[SourceDefinition]) -> CatalogArtifact:
+    """Fixture for a CatalogArtifact object."""
     def _generate_catalog_table(node: ParsedResource | SourceDefinition) -> CatalogTable:
         metadata = TableMetadata(type="table", schema=node.schema, name=node.name, comment=node.description)
         columns = {
@@ -62,6 +65,7 @@ def catalog(models: list[ModelNode], sources: list[SourceDefinition]) -> Catalog
 
 @pytest.fixture
 def simple_resource(faker: Faker) -> BaseResource:
+    """Fixture for a simple BaseResource object."""
     path = faker.file_path(extension=choice(("yml", "yaml", "py")), absolute=False)
     return BaseResource(
         name="_".join(faker.words()),
@@ -75,16 +79,19 @@ def simple_resource(faker: Faker) -> BaseResource:
 
 @pytest.fixture(params=["model", "source"])
 def node(request: FixtureRequest) -> CompiledNode:
+    """Fixture for a CompiledNode object."""
     return request.getfixturevalue(request.param)
 
 
 @pytest.fixture
 def node_column(node: CompiledNode) -> ColumnInfo:
+    """Fixture for a ColumnInfo object."""
     return choice(list(node.columns.values()))
 
 
 @pytest.fixture
 def node_table(node: CompiledNode, catalog: CatalogArtifact) -> CatalogTable:
+    """Fixture for the CatalogTable object matching the current node fixture."""
     if isinstance(node, SourceDefinition):
         return catalog.sources[node.unique_id]
     return catalog.nodes[node.unique_id]
@@ -92,6 +99,7 @@ def node_table(node: CompiledNode, catalog: CatalogArtifact) -> CatalogTable:
 
 @pytest.fixture(scope="session")
 def models(faker: Faker, columns: list[ColumnInfo]) -> list[ModelNode]:
+    """Fixture for the ModelNodes that can be found in the manifest."""
     def _generate() -> ModelNode:
         path = faker.file_path(extension=choice(("sql", "py")), absolute=False)
         return ModelNode(
@@ -118,11 +126,13 @@ def models(faker: Faker, columns: list[ColumnInfo]) -> list[ModelNode]:
 
 @pytest.fixture
 def model(models: list[ModelNode], column: ColumnInfo) -> ModelNode:
+    """Fixture for a single ModelNode that can be found in the manifest."""
     return deepcopy(choice(models))
 
 
 @pytest.fixture(scope="session")
 def sources(faker: Faker, columns: list[ColumnInfo]) -> list[SourceDefinition]:
+    """Fixture for the SourceDefinitions that can be found in the manifest."""
     def _generate() -> SourceDefinition:
         path = faker.file_path(extension=choice(("yml", "yaml")), absolute=False)
         return SourceDefinition(
@@ -148,12 +158,14 @@ def sources(faker: Faker, columns: list[ColumnInfo]) -> list[SourceDefinition]:
 
 @pytest.fixture
 def source(sources: list[SourceDefinition]) -> SourceDefinition:
+    """Fixture for a single SourceDefinition that can be found in the manifest."""
     return deepcopy(choice(sources))
 
 
 @pytest.fixture(scope="session")
 def columns(faker: Faker) -> list[ColumnInfo]:
-    def generate():
+    """Fixture for the ColumnInfos that can be found in the manifest."""
+    def _generate():
         data_types = (None, "varchar", "int", "timestamp", "boolean")
 
         return ColumnInfo(
@@ -164,17 +176,19 @@ def columns(faker: Faker) -> list[ColumnInfo]:
             description=faker.sentence(),
         )
 
-    return [generate() for _ in range(faker.random_int(20, 30))]
+    return [_generate() for _ in range(faker.random_int(20, 30))]
 
 
 @pytest.fixture
 def column(columns: list[ColumnInfo]) -> ColumnInfo:
+    """Fixture for a single ColumnInfo that can be found in the manifest."""
     return deepcopy(choice([col for col in columns if col.name not in ("col1", "col2", "col3")]))
 
 
 @pytest.fixture(scope="session")
 def tests(models: list[ModelNode], sources: list[SourceDefinition], faker: Faker) -> list[TestNode]:
-    def generate(item: BaseResource, column: ColumnInfo = None) -> TestNode:
+    """Fixture for the TestNodes that can be found in the manifest."""
+    def _generate(item: BaseResource, column: ColumnInfo = None) -> TestNode:
         path = faker.file_path(extension=choice(("yml", "yaml", "py")), absolute=False)
         test = GenericTestNode(
             name="_".join(faker.words()),
@@ -196,10 +210,10 @@ def tests(models: list[ModelNode], sources: list[SourceDefinition], faker: Faker
         return test
 
     return [
-        generate(item)
+        _generate(item)
         for item in models + sources for _ in range(faker.random_int(1, 5))
     ] + [
-        generate(item, column=column)
+        _generate(item, column=column)
         for item in models + sources for _ in range(faker.random_int(1, 5))
         for column in item.columns.values()
     ]
@@ -207,7 +221,8 @@ def tests(models: list[ModelNode], sources: list[SourceDefinition], faker: Faker
 
 @pytest.fixture(scope="session")
 def macros(faker: Faker, arguments: list[MacroArgument]) -> list[Macro]:
-    def generate() -> Macro:
+    """Fixture for the Macros that can be found in the manifest."""
+    def _generate() -> Macro:
         path = faker.file_path(extension="sql", absolute=False)
         return Macro(
             name="_".join(faker.words()),
@@ -220,24 +235,27 @@ def macros(faker: Faker, arguments: list[MacroArgument]) -> list[Macro]:
             arguments=sample(arguments, k=faker.random_int(3, 8)),
         )
 
-    return [generate() for _ in range(faker.random_int(10, 20))]
+    return [_generate() for _ in range(faker.random_int(10, 20))]
 
 
 @pytest.fixture
 def macro(macros: list[Macro]) -> Macro:
+    """Fixture for a single Macro that can be found in the manifest."""
     return deepcopy(choice(macros))
 
 
 @pytest.fixture(scope="session")
 def arguments(faker: Faker) -> list[MacroArgument]:
-    def generate() -> MacroArgument:
+    """Fixture for the MacroArguments that can be found in the manifest."""
+    def _generate() -> MacroArgument:
         return MacroArgument(
             name="_".join(faker.words()),
         )
 
-    return [generate() for _ in range(faker.random_int(20, 30))]
+    return [_generate() for _ in range(faker.random_int(20, 30))]
 
 
 @pytest.fixture
 def argument(arguments: list[MacroArgument]) -> MacroArgument:
+    """Fixture for a single MacroArguments that can be found in the manifest."""
     return deepcopy(choice([arg for arg in arguments if arg.name not in ("arg1", "arg2", "arg3")]))

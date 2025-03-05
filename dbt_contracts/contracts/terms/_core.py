@@ -59,7 +59,9 @@ validator_type = Callable[[ContractTerm, ItemT, ContractContext, ParentT | None]
 
 
 def validate_context(func: validator_type) -> validator_type:
+    """Decorator to validate the context before running a term."""
     def wrapper(term: ContractTerm, item: ItemT, context: ContractContext, parent: ParentT = None) -> bool:
+        """Validate the context before running the term."""
         if term.needs_manifest and (context.manifest is None or not isinstance(context.manifest, Manifest)):
             raise Exception(
                 "This term requires a manifest to execute. Provide a manifest through the ContractContext."

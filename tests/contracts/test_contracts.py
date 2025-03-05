@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from collections.abc import Collection
+from collections.abc import MutableSequence
 from random import sample, choice
 from typing import Any
 
@@ -124,12 +124,12 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
         raise NotImplementedError
 
     @abstractmethod
-    def child_conditions(self) -> Collection[ContractCondition]:
+    def child_conditions(self) -> MutableSequence[ContractCondition]:
         """Fixture for child conditions."""
         raise NotImplementedError
 
     @abstractmethod
-    def child_terms(self) -> Collection[ContractTerm]:
+    def child_terms(self) -> MutableSequence[ContractTerm]:
         """Fixture for child terms."""
         raise NotImplementedError
 
@@ -144,6 +144,8 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
     @staticmethod
     def test_validate_terms(contract: ParentContract[I, P]):
         assert contract.validate_terms(contract.terms)
+        if contract.__supported_terms__:
+            assert not contract.validate_terms([])
 
         invalid_classes = [
             cls for cls in contract.create_child_contract().__supported_terms__
@@ -161,6 +163,8 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
     @staticmethod
     def test_validate_conditions(contract: ParentContract[I, P]):
         assert contract.validate_conditions(contract.conditions)
+        if contract.__supported_conditions__:
+            assert not contract.validate_conditions([])
 
         invalid_classes = [
             cls for cls in contract.create_child_contract().__supported_conditions__
@@ -178,8 +182,8 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
     @staticmethod
     def test_create_child_contract(
             contract: ParentContract[I, P],
-            child_conditions: Collection[ContractCondition],
-            child_terms: Collection[ContractTerm]
+            child_conditions: MutableSequence[ContractCondition],
+            child_terms: MutableSequence[ContractTerm]
     ):
         child = contract.create_child_contract(conditions=child_conditions, terms=child_terms)
         assert child.parent == contract
@@ -197,7 +201,7 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
                 [cls._name() for cls in contract.__supported_terms__],
                 k=min(len(contract.__supported_terms__), 3)
             ),
-            contract.__child_contract__.__config_key__: {
+            contract.__child_contract__.config_key: {
                 "filter": sample(
                     [cls._name() for cls in contract.__child_contract__.__supported_conditions__],
                     k=min(len(contract.__child_contract__.__supported_conditions__), 2)
@@ -387,14 +391,14 @@ class TestModelContract(ParentContractTester[ColumnInfo, ModelNode]):
         return ModelContract(manifest=manifest, catalog=catalog, conditions=conditions, terms=terms)
 
     @pytest.fixture(scope="class")
-    def child_conditions(self) -> Collection[ContractCondition]:
+    def child_conditions(self) -> MutableSequence[ContractCondition]:
         return [
             c_properties.NameCondition(include=["col1", "col2"]),
             c_properties.TagCondition(tags=["valid"])
         ]
 
     @pytest.fixture(scope="class")
-    def child_terms(self) -> Collection[ContractTerm]:
+    def child_terms(self) -> MutableSequence[ContractTerm]:
         return [
             t_column.HasDataType(min_count=3),
         ]
@@ -436,14 +440,14 @@ class TestSourceContract(ParentContractTester[ColumnInfo, SourceDefinition]):
         return SourceContract(manifest=manifest, catalog=catalog, conditions=conditions, terms=terms)
 
     @pytest.fixture(scope="class")
-    def child_conditions(self) -> Collection[ContractCondition]:
+    def child_conditions(self) -> MutableSequence[ContractCondition]:
         return [
             c_properties.NameCondition(include=["col1", "col2"]),
             c_properties.TagCondition(tags=["valid"])
         ]
 
     @pytest.fixture(scope="class")
-    def child_terms(self) -> Collection[ContractTerm]:
+    def child_terms(self) -> MutableSequence[ContractTerm]:
         return [
             t_column.HasDataType(min_count=3),
         ]
@@ -519,13 +523,13 @@ class TestMacroContract(ParentContractTester[MacroArgument, Macro]):
         return MacroContract(manifest=manifest, catalog=catalog, conditions=conditions, terms=terms)
 
     @pytest.fixture(scope="class")
-    def child_conditions(self) -> Collection[ContractCondition]:
+    def child_conditions(self) -> MutableSequence[ContractCondition]:
         return [
             c_properties.NameCondition(include=["arg1", "arg2"]),
         ]
 
     @pytest.fixture(scope="class")
-    def child_terms(self) -> Collection[ContractTerm]:
+    def child_terms(self) -> MutableSequence[ContractTerm]:
         return [
             t_macro.HasType(),
         ]
