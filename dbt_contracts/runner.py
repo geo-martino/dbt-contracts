@@ -151,9 +151,6 @@ class ContractsRunner:
         path = Path(path).resolve()
         if path.is_dir():
             path = path.joinpath(cls.default_config_file_name)
-        if not path.is_file():
-            raise FileNotFoundError(f"Could not find config file at path: {path!r}")
-
         return path
 
     @classmethod
@@ -186,6 +183,8 @@ class ContractsRunner:
         :return: The configured runner.
         """
         path = Path(path)
+        if path.is_dir():
+            path = cls._resolve_config_path(path)
         if not path.suffix:
             path = path.with_suffix(".yml")
 
@@ -307,9 +306,8 @@ class ContractsRunner:
         return results
 
     def _set_artifacts_on_contracts(self, contracts: Collection[Contract]) -> None:
-        if any(contract.needs_manifest for contract in contracts):
-            for contract in self._contracts:
-                contract.manifest = self.manifest
+        for contract in self._contracts:
+            contract.manifest = self.manifest
         if any(contract.needs_catalog for contract in contracts):
             for contract in self._contracts:
                 contract.catalog = self.catalog

@@ -64,7 +64,7 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
         return any(term.needs_catalog for term in self.terms)
 
     @classmethod
-    def from_dict(cls, config: Mapping[str, Any], manifest: Manifest, catalog: CatalogArtifact) -> Self:
+    def from_dict(cls, config: Mapping[str, Any], manifest: Manifest = None, catalog: CatalogArtifact = None) -> Self:
         """
         Create a contract from a given configuration.
 

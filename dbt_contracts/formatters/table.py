@@ -60,9 +60,10 @@ class TableCellBuilder[T: Result](BaseModel):
         return f"{self.colour.replace("m", ";1m")}{self.prefix}{Fore.RESET.replace("m", ";0m")}"
 
     def _get_value(self, result: T) -> str:
-        if callable(self.key):
-            return self.key(result)
-        return getattr(result, self.key, "") or ""
+        value = self.key(result) if callable(self.key) else getattr(result, self.key, "")
+        if value is None:
+            return ""
+        return str(value)
 
     def _apply_prefix(self, value: str) -> str:
         if not self.prefix:

@@ -296,16 +296,15 @@ class TestContractsRunner:
             mock_column.assert_called_once()
 
     def test_set_artifacts_on_contracts_skips_artifacts(self, runner: ContractsRunner):
+        # manifest is set by default as it will always be available
+        runner.__dict__["manifest"] = "manifest"
+
         runner._set_artifacts_on_contracts(runner._contracts)
 
         # cached properties were not set
-        assert "manifest" not in runner.__dict__
         assert "catalog" not in runner.__dict__
 
         for contract in runner._contracts:
-            assert not contract.needs_manifest
-            assert contract.manifest is None
-
             assert not contract.needs_catalog
             assert contract.catalog is None
 
@@ -330,6 +329,7 @@ class TestContractsRunner:
             assert c.catalog == "catalog"
 
     def test_set_artifacts_on_contracts_sets_paths(self, runner: ContractsRunner):
+        runner.__dict__["manifest"] = "manifest"
         runner._paths = c_properties.PathCondition(include="path/to/model.sql")
         runner._set_artifacts_on_contracts(runner._contracts)
 
@@ -361,6 +361,8 @@ class TestContractsRunner:
             mock_column.assert_called_once()
 
     def test_validate_runs_selected_contract(self, runner: ContractsRunner):
+        runner.__dict__["manifest"] = "manifest"
+
         with (
             mock.patch.object(ModelContract, "validate") as mock_model,
             mock.patch.object(SourceContract, "validate") as mock_source,
@@ -375,6 +377,7 @@ class TestContractsRunner:
             mock_column.assert_called_once_with(terms=terms)
 
     def test_validate_logs_results(self, runner: ContractsRunner, results: list[Result]):
+        runner.__dict__["manifest"] = "manifest"
         assert all(not contract.context.results for contract in runner._contracts)
 
         with (
