@@ -157,7 +157,6 @@ def main():
         args.output = Path(conf.project_root, conf.target_path)
 
     runner = ContractsRunner.from_config(conf)
-    runner.config = conf
     if args.files:
         runner.paths = args.files
 

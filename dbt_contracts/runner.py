@@ -108,23 +108,20 @@ class ContractsRunner:
     @property
     def config(self) -> RuntimeConfig:
         """The dbt runtime config"""
-        if self._config is None:
-            raise Exception("You must set the RuntimeConfig first.")
         return self._config
-
-    @config.setter
-    def config(self, value: RuntimeConfig) -> None:
-        self._config = value
 
     @cached_property
     def dbt(self) -> dbtRunner:
         """The dbt runner"""
-        return dbtRunner(manifest=self.manifest)
+        manifest = self.__dict__.get("manifest")
+        return dbtRunner(manifest=manifest)
 
     @cached_property
     def manifest(self) -> Manifest:
         """The dbt manifest"""
-        return dbt_cli.get_manifest(runner=self.__dict__.get("dbt"), config=self.config)
+        manifest = dbt_cli.get_manifest(runner=self.dbt, config=self.config)
+        self.dbt.manifest = manifest
+        return manifest
 
     @cached_property
     def catalog(self) -> CatalogArtifact:
@@ -152,30 +149,6 @@ class ContractsRunner:
         self._paths = PathCondition(include=paths)
 
     @classmethod
-    def from_config(cls, config: RuntimeConfig) -> Self:
-        """
-        Set up a new runner from the dbt runtime config with custom args parsed from CLI.
-
-        :param config: The dbt runtime config with args associated.
-        :return: The configured runner.
-        """
-        obj = cls.from_yaml(config.args.config)
-        obj._config = config
-        return obj
-
-    @classmethod
-    def from_args(cls, args: Namespace) -> Self:
-        """
-        Set up a new runner from the args parsed from CLI.
-
-        :param args: The parsed CLI args.
-        :return: The configured runner.
-        """
-        obj = cls.from_yaml(args.config)
-        obj._config = args
-        return obj
-
-    @classmethod
     def _resolve_config_path(cls, path: str | Path) -> Path:
         path = Path(path).resolve()
         if path.is_dir():
@@ -186,49 +159,90 @@ class ContractsRunner:
         return path
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> Self:
+    def from_config(cls, config: RuntimeConfig) -> Self:
+        """
+        Set up a new runner from the dbt runtime config with custom args parsed from CLI.
+
+        :param config: The dbt runtime config with args associated.
+        :return: The configured runner.
+        """
+        return cls.from_file(config.args.config, config=config)
+
+    @classmethod
+    def from_args(cls, args: Namespace) -> Self:
+        """
+        Set up a new runner from the args parsed from CLI.
+
+        :param args: The parsed CLI args.
+        :return: The configured runner.
+        """
+        return cls.from_file(args.config, config=dbt_cli.get_config(args))
+
+    @classmethod
+    def from_file(cls, path: str | Path, config: RuntimeConfig):
+        """
+        Set up a new runner from the config in a file at the given `path`.
+
+        :param path: The path to the config file. Must be a path to a valid file.
+        :param config: The dbt runtime config.
+        :return: The configured runner.
+        """
+        path = Path(path)
+        if path.suffix.casefold() in {".yml", ".yaml"}:
+            return cls.from_yaml(path, config=config)
+        elif path.suffix.casefold() in {".json"}:
+            return cls.from_json(path, config=config)
+
+        raise Exception(f"Unrecognised config file extension: {path.suffix}")
+
+    @classmethod
+    def from_yaml(cls, path: str | Path, config: RuntimeConfig) -> Self:
         """
         Set up a new runner from the config in a yaml file at the given `path`.
 
         :param path: The path to the yaml file.
             May either be a path to a yaml file or a path to the directory where the file is located.
             If a directory is given, the default file name will be appended.
+        :param config: The dbt runtime config.
         :return: The configured runner.
         """
         with cls._resolve_config_path(path).open("r") as file:
-            config = yaml.full_load(file)
-        return cls.from_dict(config)
+            mapping = yaml.full_load(file)
+        return cls.from_dict(mapping, config=config)
 
     @classmethod
-    def from_json(cls, path: str | Path) -> Self:
+    def from_json(cls, path: str | Path, config: RuntimeConfig) -> Self:
         """
         Set up a new runner from the config in a json file at the given `path`.
 
         :param path: The path to the json file.
             May either be a path to a json file or a path to the directory where the file is located.
             If a directory is given, the default file name will be appended.
+        :param config: The dbt runtime config.
         :return: The configured runner.
         """
         with cls._resolve_config_path(path).open("r") as file:
-            config = json.load(file)
-        return cls.from_dict(config)
+            mapping = json.load(file)
+        return cls.from_dict(mapping, config=config)
 
     @classmethod
-    def from_dict(cls, config: Mapping[str, Any]) -> Self:
+    def from_dict(cls, mapping: Mapping[str, Any], config: RuntimeConfig) -> Self:
         """
         Set up a new runner from the given `config`.
 
-        :param config: The config to configure the runner with.
+        :param mapping: The config to configure the runner with.
+        :param config: The dbt runtime config.
         :return: The configured runner.
         """
         contracts = [
             contract
-            for key, contract_configs in config.items()
+            for key, contract_configs in mapping.items()
             for conf in contract_configs
             for contract in cls._create_contracts_from_config(key, config=conf)
         ]
 
-        obj = cls(contracts)
+        # noinspection PyTypeChecker
+        obj = cls(contracts, config=config)
         obj.logger.debug(f"Configured {len(contracts)} sets of contracts from config")
         return obj
 
@@ -249,15 +263,15 @@ class ContractsRunner:
     def __init__(
             self,
             contracts: Collection[Contract],
+            config: RuntimeConfig,
             results_formatter: ResultsFormatter = DEFAULT_TERMINAL_LOG_FORMATTER,
-            config: RuntimeConfig | None = None,
     ):
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
         self._contracts = contracts
+        self._config = config
         self._results_formatter = results_formatter
 
-        self._config: RuntimeConfig | None = config
         self._paths: PathCondition | None = None
 
     def validate(self, contract_key: str = None, terms: Collection[str] = ()) -> list[Result]:

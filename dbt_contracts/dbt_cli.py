@@ -3,7 +3,7 @@ Invoke various dbt CLI commands needed for hooks to function and return their re
 """
 import json
 import os
-from argparse import Namespace, ArgumentParser
+from argparse import Namespace
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -22,7 +22,7 @@ DEFAULT_GLOBAL_ARGS = [
 ]
 
 
-def get_config(args: Namespace | ArgumentParser) -> RuntimeConfig:
+def get_config(args: Namespace) -> RuntimeConfig:
     """
     Get the dbt config for the current runtime.
     The runtime config can be used to extract common dbt args for the current runtime
@@ -31,15 +31,12 @@ def get_config(args: Namespace | ArgumentParser) -> RuntimeConfig:
     :param args: The parsed CLI args.
     :return: The runtime config.
     """
-    if isinstance(args, ArgumentParser):
-        args = args.parse_args()
-
     set_invocation_context(os.environ)
     set_from_args(args, {})
     return RuntimeConfig.from_args(args)
 
 
-def add_default_args(*args: str, config: RuntimeConfig | Namespace | ArgumentParser | None = None) -> list[str]:
+def add_default_args(*args: str, config: RuntimeConfig | Namespace | None = None) -> list[str]:
     """
     Gets the default args to give to all commands.
 
@@ -48,7 +45,7 @@ def add_default_args(*args: str, config: RuntimeConfig | Namespace | ArgumentPar
     """
     if config is None:
         return list(args)
-    if isinstance(config, (Namespace, ArgumentParser)):
+    if isinstance(config, Namespace):
         config = get_config(config)
 
     defaults = {
@@ -65,7 +62,7 @@ def add_default_args(*args: str, config: RuntimeConfig | Namespace | ArgumentPar
     return args
 
 
-def load_artifact(filename: str, config: RuntimeConfig | Namespace | ArgumentParser) -> Mapping[str, Any] | None:
+def load_artifact(filename: str, config: RuntimeConfig | Namespace) -> Mapping[str, Any] | None:
     """
     Load an artifact from the currently configured dbt target directory.
 
@@ -73,7 +70,7 @@ def load_artifact(filename: str, config: RuntimeConfig | Namespace | ArgumentPar
     :param config: The runtime config to use when trying to load the artifact from the target path.
     :return: The loaded artifact if found. None otherwise.
     """
-    if isinstance(config, (Namespace, ArgumentParser)):
+    if isinstance(config, Namespace):
         config = get_config(config)
 
     target_dir = Path(config.project_target_path)
@@ -109,9 +106,7 @@ def get_result(*args, runner: dbtRunner = None) -> dbtRunnerResult:
     return result
 
 
-def clean_paths(
-        *args, runner: dbtRunner = None, config: RuntimeConfig | Namespace | ArgumentParser = None
-) -> None:
+def clean_paths(*args, runner: dbtRunner = None, config: RuntimeConfig | Namespace = None) -> None:
     """
     Clean the configured paths i.e. run the `dbt clean` command.
 
@@ -124,9 +119,7 @@ def clean_paths(
     return get_result("clean", "--no-clean-project-files-only", *args, runner=runner).result
 
 
-def install_dependencies(
-        *args, runner: dbtRunner = None, config: RuntimeConfig | Namespace | ArgumentParser = None
-) -> None:
+def install_dependencies(*args, runner: dbtRunner = None, config: RuntimeConfig | Namespace = None) -> None:
     """
     Install additional dbt dependencies i.e. run the `dbt deps` command.
 
@@ -139,9 +132,7 @@ def install_dependencies(
     return get_result("deps", *args, runner=runner).result
 
 
-def get_manifest(
-        *args, runner: dbtRunner = None, config: RuntimeConfig | Namespace | ArgumentParser = None
-) -> Manifest:
+def get_manifest(*args, runner: dbtRunner = None, config: RuntimeConfig | Namespace = None) -> Manifest:
     """
     Generate and return the dbt manifest for a project i.e. run the `dbt parse` command.
 
@@ -159,9 +150,7 @@ def get_manifest(
     return get_result("parse", *args, runner=runner).result
 
 
-def get_catalog(
-        *args, runner: dbtRunner = None, config: RuntimeConfig | Namespace | ArgumentParser = None
-) -> CatalogArtifact:
+def get_catalog(*args, runner: dbtRunner = None, config: RuntimeConfig | Namespace = None) -> CatalogArtifact:
     """
     Generate and return the dbt catalog for a project i.e. run the `dbt docs generate` command.
 
