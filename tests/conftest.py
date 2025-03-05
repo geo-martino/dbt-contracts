@@ -24,6 +24,12 @@ def faker() -> Faker:
 
 
 @pytest.fixture(scope="session")
+def project_name(faker: Faker) -> str:
+    """Fixture for the name to assign to the test project."""
+    return faker.word()
+
+
+@pytest.fixture(scope="session")
 def context(manifest: Manifest, catalog: CatalogArtifact) -> ContractContext:
     """Fixture for a ContractContext object."""
     return ContractContext(manifest=manifest, catalog=catalog)
@@ -34,7 +40,8 @@ def manifest(
         models: list[ModelNode],
         sources: list[SourceDefinition],
         macros: list[Macro],
-        tests: list[TestNode]
+        tests: list[TestNode],
+        project_name: str,
 ) -> Manifest:
     """Fixture for a Manifest object."""
     manifest = Manifest()
@@ -42,6 +49,7 @@ def manifest(
     manifest.nodes |= {test.unique_id: test for test in tests}
     manifest.sources |= {source.unique_id: source for source in sources}
     manifest.macros |= {macro.unique_id: macro for macro in macros}
+    manifest.metadata.project_name = project_name
     return manifest
 
 
@@ -220,7 +228,7 @@ def tests(models: list[ModelNode], sources: list[SourceDefinition], faker: Faker
 
 
 @pytest.fixture(scope="session")
-def macros(faker: Faker, arguments: list[MacroArgument]) -> list[Macro]:
+def macros(faker: Faker, arguments: list[MacroArgument], project_name: str) -> list[Macro]:
     """Fixture for the Macros that can be found in the manifest."""
     def _generate() -> Macro:
         path = faker.file_path(extension="sql", absolute=False)
@@ -228,7 +236,7 @@ def macros(faker: Faker, arguments: list[MacroArgument]) -> list[Macro]:
             name="_".join(faker.words()),
             path=path,
             original_file_path=str(Path("macros", path)),
-            package_name=faker.word(),
+            package_name=project_name,
             resource_type=NodeType.Macro,
             unique_id=".".join(("macro", *Path(path).with_suffix("").parts)),
             macro_sql="SELECT * FROM table",

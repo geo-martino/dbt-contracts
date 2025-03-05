@@ -506,8 +506,6 @@ class TestColumnContract(ChildContractTester[ColumnInfo, ModelNode]):
 class TestMacroContract(ParentContractTester[MacroArgument, Macro]):
     @pytest.fixture(scope="class")
     def items(self, macros: list[Macro], manifest: Manifest) -> list[Macro]:
-        for item in macros:
-            item.package_name = manifest.metadata.project_name
         return macros
 
     @pytest.fixture(scope="class")
