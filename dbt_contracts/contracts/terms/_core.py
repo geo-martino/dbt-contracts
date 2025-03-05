@@ -7,7 +7,7 @@ from typing import ClassVar
 
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.types import ItemT, ParentT
@@ -20,16 +20,13 @@ class ContractTerm[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
     May also process an item while also taking into account its parent item
     e.g. a Column (child item) within a Model (parent item)
     """
-    needs_manifest: ClassVar[bool] = Field(
-        description="Mark if this term requires a loaded manifest to operate. "
-                    "The manifest must then be provided by the ContractContext for the term to execute successfully.",
-        default=False
-    )
-    needs_catalog: ClassVar[bool] = Field(
-        description="Mark if this term requires a loaded catalog to operate. "
-                    "The catalog must then be provided by the ContractContext for the term to execute successfully.",
-        default=False
-    )
+    #: Mark if this term requires a loaded manifest to operate.
+    #: The manifest must then be provided by the ContractContext for the term to execute successfully.
+    needs_manifest: ClassVar[bool] = False
+
+    #: Mark if this term requires a loaded catalog to operate.
+    #: The catalog must then be provided by the ContractContext for the term to execute successfully.
+    needs_catalog: ClassVar[bool] = False
 
     @property
     def name(self) -> str:

@@ -94,6 +94,11 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
         result = contract.validate()
         assert sorted(result, key=self._items_sort_key) == sorted(filtered_items, key=self._items_sort_key)
 
+    def test_validate_on_selected_terms(self, contract: Contract[I], filtered_items: list[I]):
+        name = choice(contract.terms).name
+        contract.validate(terms=[name])
+        # TODO
+
     @staticmethod
     def test_from_dict(contract: Contract[I]):
         config = {

@@ -19,7 +19,7 @@ from dbt_contracts import dbt_cli
 from dbt_contracts.contracts import Contract, CONTRACT_MAP, ParentContract
 from dbt_contracts.contracts.conditions.properties import PathCondition
 from dbt_contracts.contracts.result import Result
-from dbt_contracts.contracts.utils import get_absolute_project_path
+from dbt_contracts.contracts.utils import get_absolute_project_path, to_tuple
 from dbt_contracts.formatters import ResultsFormatter
 from dbt_contracts.formatters.table import TableCellBuilder, GroupedTableFormatter, TableFormatter, TableRowBuilder
 
@@ -33,8 +33,7 @@ def _get_default_table_header(result: Result) -> str:
         f"{Fore.LIGHTBLUE_EX}{path}{Fore.RESET}"
     )
 
-    patch_path = result.patch_path
-    if patch_path and patch_path != path:
+    if (patch_path := result.patch_path) and patch_path != path:
         header_path += f" @ {Fore.LIGHTCYAN_EX}{patch_path}{Fore.RESET}"
 
     return f"{result.result_type}: {header_path}"
@@ -70,7 +69,7 @@ DEFAULT_TERMINAL_LOG_BUILDER_CELLS = [
 ]
 
 DEFAULT_TERMINAL_LOG_FORMATTER_TABLE = TableFormatter(
-    builder=TableRowBuilder(cells=DEFAULT_TERMINAL_LOG_BUILDER_CELLS, colour=Fore.WHITE),
+    builder=TableRowBuilder(cells=DEFAULT_TERMINAL_LOG_BUILDER_CELLS, colour=Fore.LIGHTWHITE_EX),
     consistent_widths=True,
 )
 
@@ -113,8 +112,7 @@ class ContractsRunner:
     @cached_property
     def dbt(self) -> dbtRunner:
         """The dbt runner"""
-        manifest = self.__dict__.get("manifest")
-        return dbtRunner(manifest=manifest)
+        return dbtRunner()
 
     @cached_property
     def manifest(self) -> Manifest:
@@ -134,10 +132,10 @@ class ContractsRunner:
         return self._paths
 
     @paths.setter
-    def paths(self, value: Collection[str]):
+    def paths(self, value: str | Path | Collection[str | Path]):
         """Set the path patterns to filter on. Expects a collection regex patterns."""
         paths = []
-        for path in value:
+        for path in to_tuple(value):
             path = Path(path)
             if not (project_root := Path(self.config.project_root)).is_absolute():
                 project_root = Path(os.getcwd(), project_root)
@@ -146,7 +144,7 @@ class ContractsRunner:
             if path.is_relative_to(project_root):
                 paths.append(str(path.relative_to(project_root)))
 
-        self._paths = PathCondition(include=paths)
+        self._paths = PathCondition(include=paths) if paths else None
 
     @classmethod
     def _resolve_config_path(cls, path: str | Path) -> Path:
@@ -188,6 +186,9 @@ class ContractsRunner:
         :return: The configured runner.
         """
         path = Path(path)
+        if not path.suffix:
+            path = path.with_suffix(".yml")
+
         if path.suffix.casefold() in {".yml", ".yaml"}:
             return cls.from_yaml(path, config=config)
         elif path.suffix.casefold() in {".json"}:
@@ -241,7 +242,6 @@ class ContractsRunner:
             for contract in cls._create_contracts_from_config(key, config=conf)
         ]
 
-        # noinspection PyTypeChecker
         obj = cls(contracts, config=config)
         obj.logger.debug(f"Configured {len(contracts)} sets of contracts from config")
         return obj
@@ -289,13 +289,15 @@ class ContractsRunner:
         for contract in contracts:
             contract.validate(terms=terms)
 
-            if not (results := contract.context.results):
+            if not contract.context.results:
                 log = f"All {contract.config_key} contracts passed successfully"
                 self.logger.info(f"{Fore.LIGHTGREEN_EX}{log}{Fore.RESET}")
                 continue
 
-            self.log_results(contract.context.results)
-            results.extend(results)
+            # copy needed to assert that the results are logged in tests when mocking
+            self.log_results(contract.context.results.copy())
+            results.extend(contract.context.results)
+            contract.context.results.clear()
 
         if not results:
             self.logger.info(f"{Fore.LIGHTGREEN_EX}All contracts passed successfully{Fore.RESET}")
@@ -313,7 +315,7 @@ class ContractsRunner:
                 contract.catalog = self.catalog
 
         for contract in contracts:
-            if contract.validate_conditions(self.paths):
+            if self.paths is not None and contract.validate_conditions(self.paths):
                 contract.conditions.append(self.paths)
 
     def _get_contract_by_key(self, contract_key: str = None) -> Contract:
@@ -355,7 +357,7 @@ class ContractsRunner:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         output_type = output_type.replace("_", "-")
-        output_path = self.output_writers_map.get(output_type)(results, path)
+        output_path = self.output_writers_map.get(output_type)(self, results, path)
 
         log = f"Wrote {output_type} output to {str(output_path)!r}"
         self.logger.info(f"{Fore.LIGHTBLUE_EX}{log}{Fore.RESET}")
@@ -368,16 +370,16 @@ class ContractsRunner:
 
         return path
 
-    @staticmethod
-    def _write_results_as_json(results: Collection[Result], output_path: Path) -> Path:
+    # noinspection PyMethodMayBeStatic
+    def _write_results_as_json(self, results: Collection[Result], output_path: Path) -> Path:
         output = [result.model_dump_json() for result in results]
         with (path := output_path.with_suffix(".json")).open("w") as file:
             json.dump(output, file, indent=2)
 
         return path
 
-    @staticmethod
-    def _write_results_as_jsonl(results: Collection[Result], output_path: Path) -> Path:
+    # noinspection PyMethodMayBeStatic
+    def _write_results_as_jsonl(self, results: Collection[Result], output_path: Path) -> Path:
         output = [result.model_dump_json() for result in results]
         with (path := output_path.with_suffix(".json")).open("w") as file:
             for result in output:
@@ -386,9 +388,9 @@ class ContractsRunner:
 
         return path
 
-    @staticmethod
-    def _write_results_as_github_annotations(results: Collection[Result], output_path: Path) -> Path:
-        output = [result.as_github_annotation() for result in results]
+    # noinspection PyMethodMayBeStatic
+    def _write_results_as_github_annotations(self, results: Collection[Result], output_path: Path) -> Path:
+        output = [result.as_github_annotation() for result in results if result.can_format_to_github_annotation]
         with (path := output_path.with_suffix(".json")).open("w") as file:
             json.dump(output, file, indent=2)
 

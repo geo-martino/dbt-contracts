@@ -154,7 +154,6 @@ class TestTableRowBuilder:
         with pytest.raises(Exception):
             TableRowBuilder(cells=[cells_row_2])
         with pytest.raises(Exception):
-            print(len(cells), len(cells[:-1]))
             TableRowBuilder(cells=[cells, cells[:-1]])
 
     def test_separator_coloured(self, cells: list[TableCellBuilder]):

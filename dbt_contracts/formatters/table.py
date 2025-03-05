@@ -388,7 +388,6 @@ class GroupedTableFormatter[T: Result](ResultsFormatter[T]):
             header = self._get_value(result=group[0], getter=self.header_key) if self.header_key else group_key
 
             self.formatter.add_header(header)
-            print(group)
             self.formatter.add_results(group)
 
             self._tables[group_key] = self.formatter.build()

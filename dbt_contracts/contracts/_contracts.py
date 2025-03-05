@@ -148,10 +148,14 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
     @classmethod
     def validate_conditions(cls, conditions: ContractCondition | Collection[ContractCondition]) -> bool:
         """.Validate that all the given ``conditions`` are supported by this contract."""
-        if not cls.__supported_conditions__ and len(conditions := to_tuple(conditions)) > 0:
+        if isinstance(conditions, ContractCondition):
+            conditions = [conditions]
+
+        if not cls.__supported_conditions__ and len(conditions) > 0:
             return False
         elif cls.__supported_conditions__ and len(conditions) == 0:
             return False
+
         return all(condition.__class__ in cls.__supported_conditions__ for condition in conditions)
 
     @abstractmethod
@@ -240,8 +244,8 @@ class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMe
             parent: ParentContract[I, P] = None,
     ):
         super().__init__(
-            manifest=manifest or parent.manifest,
-            catalog=catalog or parent.catalog,
+            manifest=manifest or (parent.manifest if parent is not None else None),
+            catalog=catalog or (parent.catalog if parent is not None else None),
             conditions=conditions,
             terms=terms,
         )
