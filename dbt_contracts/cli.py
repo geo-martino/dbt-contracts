@@ -5,7 +5,7 @@ from pathlib import Path
 from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 
 from dbt_contracts import PROGRAM_NAME
-from dbt_contracts.contracts import CONTRACT_CLASSES
+from dbt_contracts.contracts import CONTRACT_CLASSES, ParentContract
 from dbt_contracts.dbt_cli import get_config, clean_paths, install_dependencies
 from dbt_contracts.runner import ContractsRunner
 
@@ -119,13 +119,16 @@ contract = CORE_PARSER.add_argument(
          "Specify granular contracts by separating keys by a '.' e.g. 'model', 'model.columns'",
     nargs="?",
     default=None,
-    choices=sorted(contract.config_key for contract in CONTRACT_CLASSES),
+    choices=sorted(
+        *(contract.__config_key__ for contract in CONTRACT_CLASSES if isinstance(contract, ParentContract)),
+        *(contract.child_config_key for contract in CONTRACT_CLASSES if isinstance(contract, ParentContract)),
+    ),
     type=str,
 )
 
-enforcements = CORE_PARSER.add_argument(
-    "--enforce",
-    help="Apply only these enforcements. If none given, apply all configured enforcements.",
+terms = CORE_PARSER.add_argument(
+    "--terms",
+    help="Apply only these terms. If none given, apply all configured terms.",
     nargs="+",
     default=None,
     type=str,
@@ -160,7 +163,7 @@ def main():
     if args.files:
         runner.paths = args.files
 
-    results = runner.validate(contract_key=args.contract, terms=args.enforce)
+    results = runner.validate(contract_key=args.contract, terms=args.terms)
 
     if args.format:
         runner.write_results(results, path=args.output, output_type=args.format)

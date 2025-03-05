@@ -1,28 +1,27 @@
 """
 Handles automatic generation of contracts reference documentation from docstrings.
 """
-import inspect
-import re
 import shutil
-import types
-from collections.abc import Collection, Iterable, Callable
+from collections.abc import Collection, Iterable, Callable, Mapping
 from pathlib import Path
-from typing import TypeVar, Any
+from types import GenericAlias, UnionType
+from typing import Any
 
 import docstring_parser
-from dbt_common.dataclass_schema import dbtClassMixin
-from docstring_parser import DocstringParam
+import yaml
+from pydantic import BaseModel
+# noinspection PyProtectedMember
+from pydantic.fields import FieldInfo
 
-from dbt_contracts.contracts_old import Contract, ParentContract, ProcessorMethod, CONTRACTS, CompiledNodeT, NodeT
-from dbt_contracts.contracts_old import PatchT, MetaT, TagT
-from dbt_contracts.contracts_old.column import ColumnParentT
-from dbt_contracts.types import T, ChildT, ParentT
+from dbt_contracts.contracts import Contract, ParentContract, ChildContract, CONTRACT_CLASSES
+from dbt_contracts.contracts.conditions import ContractCondition
+from dbt_contracts.contracts.terms import ContractTerm
 
 HEADER_SECTION_CHARS = ["=", "-", "^", '"']
 
-SECTIONS = {
-    "Filters": lambda contract: contract.__filtermethods__,
-    "Enforcements": lambda contract: contract.__enforcementmethods__,
+SECTIONS: dict[str, Callable[[type[Contract]], Collection[type[ContractTerm | ContractCondition]]]] = {
+    "Filters": lambda contract: contract.__supported_conditions__,
+    "Terms": lambda contract: contract.__supported_terms__,
 }
 SECTION_DESCRIPTIONS = {
     "Filters": [
@@ -30,20 +29,13 @@ SECTION_DESCRIPTIONS = {
         "You may limit the number of {kind} processed by the rules of this contract "
         "by defining one or more of the following filters."
     ],
-    "Enforcements": [
-        "Enforcements to apply to the resources of this contract.",
+    "Terms": [
+        "Terms to apply to the resources of this contract.",
         "These enforce certain standards that must be followed in order for the contract to be fulfilled."
     ]
 }
 
 URL_PATH = ("reference",)
-
-IGNORE_ARG_TYPES = [T, ChildT, ParentT, NodeT, CompiledNodeT, PatchT, MetaT, TagT, ColumnParentT, dbtClassMixin]
-
-VAR_KWARG_KEY_MAP = {
-    "has_expected_name": "data_type",
-    "has_expected_columns": "column_name",
-}
 
 
 class ReferencePageBuilder:
@@ -79,7 +71,7 @@ class ReferencePageBuilder:
     def make_title(value: str) -> str:
         return value.replace("_", " ").replace("-", " ").capitalize()
 
-    def add_header(self, value: str, section: int | None) -> None:
+    def add_header(self, value: str, section: int | None = None) -> None:
         if section is None:
             header_char = HEADER_SECTION_CHARS[0]
             self.add_lines(header_char * len(value))
@@ -94,36 +86,8 @@ class ReferencePageBuilder:
         self.add_empty_lines()
 
     @staticmethod
-    def _format_type_to_str(kind) -> str:
-        if isinstance(kind, type):
-            return f"``{kind.__name__}``"
-        elif isinstance(kind, TypeVar):
-            if kind.__bound__.__name__ is not None:
-                return f"``{kind.__bound__.__name__}``"
-            else:
-                return " | ".join(map(lambda cls: f"``{cls.__name__}``", kind.__constraints__))
-        elif isinstance(kind, types.UnionType):
-            def _get_type_name(cls: Any) -> str:
-                if isinstance(cls, types.GenericAlias):
-                    params = ", ".join(map(_get_type_name, cls.__args__))
-                    return f"``{cls.__origin__.__name__}``[{params}]"
-                elif isinstance(cls, types.UnionType):
-                    return " | ".join(map(_get_type_name, cls.__args__))
-                return f"``{cls.__name__}``"
-
-            return " | ".join(map(_get_type_name, kind.__args__))
-
-        return f"``{kind}``"
-
-    def _format_type_to_example(self, kind) -> str:
-        if isinstance(kind, types.GenericAlias):
-            types_list = list(map(self._format_type_to_example, kind.__args__))
-            types_doc = " | ".join(types_list)
-            return f"[{types_doc}, ...]"
-        elif isinstance(kind, types.UnionType):
-            return " OR ".join(self._format_type_to_example(k) for k in kind.__args__)
-
-        return f"<{self._format_type_to_str(kind).strip("`")}>"
+    def _get_description(key: str, format_map: Mapping[str, Any]) -> Iterable[str]:
+        return (line.format(**format_map) for line in SECTION_DESCRIPTIONS[key])
 
     @staticmethod
     def _get_dropdown_block(title: str, colour: str = "primary", icon: str = None) -> list[str]:
@@ -138,169 +102,86 @@ class ReferencePageBuilder:
         block.append("")
         return block
 
-    def generate_ref_for_vararg(
-            self, method_name: str, arg_name: str, kind: str | type | TypeVar = None, param: DocstringParam = None
-    ) -> None:
-        doc = [
-            f"**{arg_name}**",
-            "",
-            f"*You may define the {self.make_title(arg_name).lower().rstrip('s')}s as a list of values i.e.*",
-            "",
-        ]
-
-        if param:
-            description = re.sub(r"\s*\n\s*", " ", param.description.strip().rstrip('.')).split(". ", 1)
-            doc[0] = f"{doc[0]} - {description[0]}"
-            if len(description) > 1:
-                doc.insert(1, description[1])
-
-        self.add_code_block_lines(doc, 1)
-
-        example = [
-            ".. code-block:: yaml",
-            "",
-            f"{method_name}:"
-        ]
-        kind_doc = self._format_type_to_example(kind) if kind is not None else "..."
-
-        indent = " " * 2
-        example.extend(f"{indent}- {kind_doc}" for _ in range(2))
-        example.append(f"{indent}- ...")
-
-        self.add_code_block_lines(example, 2)
-        self.add_empty_lines()
-
-    def generate_ref_for_varkwarg(
-            self, method_name: str, arg_name: str, kind: str | type | TypeVar = None, param: DocstringParam = None
-    ) -> None:
-        doc = [
-            f"**{arg_name}**",
-            "",
-            f"*You may define the {self.make_title(arg_name).lower().rstrip('s')}s as a map of values i.e.*",
-            "",
-        ]
-
-        if param:
-            description = re.sub(r"\s*\n\s*", " ", param.description.strip().rstrip('.')).split(". ", 1)
-            doc[0] = f"{doc[0]} - {description[0]}"
-            if len(description) > 1:
-                doc.insert(1, description[1])
-
-        self.add_code_block_lines(doc, indent=1)
-
-        example = [
-            ".. code-block:: yaml",
-            "",
-            f"{method_name}:"
-        ]
-        kind_doc = self._format_type_to_example(kind) if kind is not None else "..."
-
-        indent = " " * 2
-        key_doc = VAR_KWARG_KEY_MAP.get(method_name, 'key')
-        example.extend(f"{indent}<{key_doc}>: {kind_doc}" for _ in range(2))
-        example.append(f"{indent}...")
-
-        self.add_code_block_lines(example, 2)
-        self.add_empty_lines()
-
-    def generate_ref_for_kwargs(
-            self, kwarg_names: Iterable[str], spec: inspect.FullArgSpec, params: Iterable[DocstringParam]
-    ):
-        kwarg_info = "You may define the following keyword arguments: "
-        self.add_lines(self.indent + kwarg_info)
-
-        for kwarg_name in kwarg_names:
-            kind = spec.annotations.get(kwarg_name)
-            default = spec.kwonlydefaults.get(kwarg_name) if spec.kwonlydefaults else None
-            param = next((param for param in params if param.arg_name == kwarg_name), None)
-
-            self.generate_ref_for_kwarg(kwarg_name, kind=kind, default=default, param=param)
-
-        self.add_empty_lines()
-
-    def generate_ref_for_kwarg(
-            self, name: str, kind: str | type | TypeVar = None, param: DocstringParam = None, default: str = None
-    ) -> None:
-        line = f"`{name}`"
-
-        if kind is not None:
-            kind = self._format_type_to_str(kind)
-
-        if kind and default:
-            line += f" ({kind} = ``{default}``)"
-        elif kind:
-            line += f" ({kind})"
-
-        if param:
-            line += f" - {re.sub(r"\s*\n\s*", " ", param.description.strip().rstrip('.'))}"
-
-        line = f"  - {line}"
-        self.add_lines(self.indent + line)
-
-    def generate_ref_for_args(self, method: Callable, params: Iterable[DocstringParam]):
-        arg_spec = inspect.getfullargspec(method)
-        kwarg_names = [
-            arg_name for arg_name in arg_spec.args
-            if (kind := arg_spec.annotations.get(arg_name)) not in IGNORE_ARG_TYPES
-            and arg_name != "self"
-            and (
-                       type(kind) is not type
-                       or not any(issubclass(kind, cls) for cls in IGNORE_ARG_TYPES if type(cls) is type)
-               )
-        ]
-
-        if not any((kwarg_names, arg_spec.varargs, arg_spec.varkw)):
+    def generate_args(self, model: type[BaseModel], name: str):
+        if not model.model_fields:
             no_args_doc = [
                 ".. note::",
                 "This method does not need further configuration. "
                 "Simply define the method name in your configuration."
             ]
             self.add_code_block_lines(no_args_doc)
+            self.add_empty_lines()
             return
 
-        self.add_code_block_lines(self._get_dropdown_block("Arguments", icon="gear"))
+        self.generate_schema_ref(model, name=name)
+        self.generate_example_ref(model, name=name)
 
-        if arg_spec.varargs:
-            name = arg_spec.varargs
-            kind = arg_spec.annotations.get(name)
-            param = next((param for param in params if param.arg_name == name), None)
-            self.generate_ref_for_vararg(method_name=method.__name__, arg_name=name, kind=kind, param=param)
+    def generate_schema_ref(self, model: type[BaseModel], name: str) -> None:
+        schema = self.generate_schema_dict(model)
+        if not schema:
+            return
 
-        if arg_spec.varkw:
-            name = arg_spec.varkw
-            kind = arg_spec.annotations.get(name)
-            param = next((param for param in params if param.arg_name == name), None)
-            self.generate_ref_for_varkwarg(method_name=method.__name__, arg_name=name, kind=kind, param=param)
+        self.add_code_block_lines(self._get_dropdown_block("Schema", icon="gear"))
 
-        if kwarg_names:
-            self.generate_ref_for_kwargs(kwarg_names, arg_spec, params)
-
-    def generate_ref_for_method(self, contract: type[Contract], method_name: str) -> None:
-        method: ProcessorMethod = getattr(contract, method_name)
-        self.add_header(method_name, section=1)
-
-        description_split_on = "Example:"
-
-        doc = docstring_parser.parse(method.func.__doc__)
-        description_split = iter(doc.description.split(description_split_on, 1))
-
-        self.add_lines(next(description_split).strip())
+        schema_block = [".. code-block:: yaml", "", *yaml.dump({name: schema}).splitlines()]
+        self.add_code_block_lines(schema_block, indent=1)
         self.add_empty_lines()
 
-        self.generate_ref_for_args(method.func, doc.params)
+    def generate_schema_dict(self, model: type[BaseModel]) -> dict[str, Any]:
+        schema = model.model_json_schema()["properties"]
+        self._trim_schema(schema)
+        return schema
 
-        example = next(description_split, None)
-        if example:
-            self.add_code_block_lines(self._get_dropdown_block("Example", colour="info", icon="code"))
-            self.add_lines(example.strip())
+    @staticmethod
+    def _trim_schema(schema: dict[str, Any]) -> None:
+        for value in schema.values():
+            value.pop("examples", "")
+            value.pop("title", "")
 
+    def generate_example_ref(self, model: type[BaseModel], name: str) -> None:
+        example = self.generate_example_dict(model)
+        if not example:
+            return
+
+        self.add_code_block_lines(self._get_dropdown_block("Example", colour="info", icon="code"))
+
+        example_block = [".. code-block:: yaml", "", *yaml.dump({name: example}).splitlines()]
+        self.add_code_block_lines(example_block, indent=1)
         self.add_empty_lines()
 
-    def generate_ref_for_methods(
+        # noinspection PyTypeChecker
+        first_field = next(iter(model.model_fields))
+        if first_field not in example:
+            return
+
+        first_field_example_desc = (
+            f"You may also define the parameters for ``{first_field}`` directly on the term definition like below."
+        )
+        self.add_code_block_lines(first_field_example_desc, indent=1)
+        self.add_empty_lines()
+
+        example_block = [".. code-block:: yaml", "", *yaml.dump({name: example[first_field]}).splitlines()]
+        self.add_code_block_lines(example_block, indent=1)
+        self.add_empty_lines()
+
+    def generate_example_dict(self, model: type[BaseModel]) -> dict[str, Any]:
+        examples = {}
+        # noinspection PyUnresolvedReferences
+        for name, field in model.model_fields.items():
+            field: FieldInfo
+            if field.examples:
+                examples[name] = field.examples[0]
+            elif isinstance(field.annotation, (GenericAlias, UnionType)):
+                continue
+            elif issubclass(field.annotation, BaseModel):
+                examples[name] = self.generate_example_dict(field.annotation)
+
+        return examples
+
+    def generate_contract_parts(
             self,
-            contract: type[Contract],
             kind: str,
-            method_names: Collection[str],
+            parts: Collection[type[ContractTerm | ContractCondition]],
             description: str | Iterable[str] = None
     ) -> None:
         self.add_header(self.make_title(kind), section=0)
@@ -308,26 +189,36 @@ class ReferencePageBuilder:
             self.add_lines(description)
             self.add_empty_lines()
 
-        for method_name in method_names:
-            self.generate_ref_for_method(contract, method_name)
+        list(map(self.generate_contract_part, parts))
 
-    def generate_ref_for_contract_body(self, contract: type[Contract]) -> None:
-        title = self.make_title(str(contract.config_key))
+    def generate_contract_part(self, part: type[ContractTerm | ContractCondition]) -> None:
+        # noinspection PyProtectedMember
+        name = part._name()
+        self.add_header(name, section=1)
 
-        for key, method_getter in SECTIONS.items():
-            method_names = method_getter(contract)
-            description = map(lambda line: line.format(kind=title.lower()), SECTION_DESCRIPTIONS[key])
-            self.generate_ref_for_methods(contract, key, method_names=method_names, description=description)
+        doc = docstring_parser.parse(part.__doc__)
+        if doc.description:
+            self.add_lines(doc.description.strip())
+            self.add_empty_lines()
 
-    def generate_ref_for_child(self, contract: ParentContract, parent_title: str) -> None:
-        key = str(contract.config_key)
+        self.generate_args(part, name=name)
+
+    def generate_contract_body(self, contract: type[Contract]) -> None:
+        title = self.make_title(contract.__config_key__)
+
+        for key, getter in SECTIONS.items():
+            description = self._get_description(key, format_map={"kind": title.lower()})
+            self.generate_contract_parts(key, parts=getter(contract), description=description)
+
+    def generate_ref_to_child_page(self, contract: type[ChildContract], parent_title: str) -> None:
+        key = contract.__config_key__
         title = self.make_title(key)
         self.add_header(title, section=0)
 
         link_ref = f":ref:`{title.lower()} <{key}>`"
         description = (
             f"You may also define {title.lower().rstrip('s')}s contracts as a child set of contracts "
-            f"on {parent_title.lower().rstrip('s')}s. "
+            f"on {parent_title.lower().rstrip('s')}s. ",
             f"Refer to the {link_ref} reference for more info."
         )
 
@@ -337,22 +228,21 @@ class ReferencePageBuilder:
     def build(self, contract: type[Contract], description: str | Iterable[str] = None) -> None:
         self.lines.clear()
 
-        contract.__new__(contract)  # needed to populate contract methods lists
-        key = str(contract.config_key)
+        key = contract.__config_key__
         title = self.make_title(key)
         self.add_lines(f".. _{key}:")
-        self.add_header(title, section=None)
+        self.add_header(title)
 
         if description:
             self.add_lines(description)
             self.add_empty_lines()
 
-        self.generate_ref_for_contract_body(contract=contract)
+        self.generate_contract_body(contract=contract)
 
         if issubclass(contract, ParentContract):
-            self.generate_ref_for_child(contract.child_type, parent_title=title)
+            self.generate_ref_to_child_page(contract.__child_contract__, parent_title=title)
 
-        self._save(str(contract.config_key))
+        self._save(contract.__config_key__)
 
     def _save(self, filename: str) -> None:
         output_path = self.output_dir.joinpath(filename).with_suffix(".rst")
@@ -368,8 +258,7 @@ if __name__ == "__main__":
         shutil.rmtree(reference_pages_dir)
 
     builder = ReferencePageBuilder(reference_pages_dir)
-    for c in CONTRACTS:
-        builder.build(c)
-
-        if issubclass(c, ParentContract):
-            builder.build(c.child_type)
+    for contract_cls in CONTRACT_CLASSES:
+        builder.build(contract_cls)
+        if issubclass(contract_cls, ParentContract):
+            builder.build(contract_cls.__child_contract__)

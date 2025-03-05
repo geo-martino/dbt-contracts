@@ -85,10 +85,10 @@ class HasExpectedName[T: NodeT](ColumnContractTerm[T], StringMatcher):
             "A map of data types to regex patterns for which to "
             "validate names of columns which have the matching data type."
             "To define a generic contract which can apply to all unmatched data types, "
-            "specify the data type key as an empty key."
+            "specify the data type key as `null`."
         ),
         default_factory=dict,
-        examples=[{"BOOLEAN": ["(is|has|do)_.*"], "TIMESTAMP": [".*_at"], "": ["name_.*"]}]
+        examples=[{"BOOLEAN": ["(is|has|do)_.*"], "TIMESTAMP": [".*_at"], None: ["name_.*"]}]
     )
 
     # noinspection PyNestedDecorators
@@ -124,7 +124,7 @@ class HasExpectedName[T: NodeT](ColumnContractTerm[T], StringMatcher):
         if not (data_type := self._get_column_data_type(column=item, node=parent, context=context)):
             return False
 
-        data_type = next((key for key in self.patterns if self._match(key, data_type)), "")
+        data_type = next((key for key in self.patterns if self._match(key, data_type)), None)
         patterns = self.patterns.get(data_type)
         if not patterns:  # no patterns defined for this data type
             return True

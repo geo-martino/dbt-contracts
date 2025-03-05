@@ -25,15 +25,12 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
     Composes the terms and conditions that make a contract for specific types of dbt objects within a manifest.
     """
     __config_key__: str
-    __supported_terms__: frozenset[type[ContractTerm]]
-    __supported_conditions__: frozenset[type[ContractCondition]]
+    __supported_terms__: tuple[type[ContractTerm]]
+    __supported_conditions__: tuple[type[ContractCondition]]
 
-    # noinspection PyMethodParameters
-    @classproperty
-    @abstractmethod
-    def config_key(cls) -> str:
-        """The key used to identify this contract type."""
-        raise NotImplementedError
+    @property
+    def config_key(self) -> str:
+        return self.__config_key__
 
     @property
     @abstractmethod
@@ -111,6 +108,8 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
 
         if part_cls is None:
             return
+        if not isinstance(kwargs, Mapping):
+            kwargs = {next(iter(part_cls.model_fields)): kwargs}
 
         return part_cls(**kwargs)
 
@@ -174,7 +173,8 @@ class ParentContract[I: ItemT, P: ParentT](Contract[P], metaclass=ABCMeta):
 
     # noinspection PyMethodParameters
     @classproperty
-    def config_key(cls) -> str:
+    def child_config_key(cls) -> str:
+        """The key used to identify the child contract for this contract type."""
         return f"{cls.__config_key__}.{cls.__child_contract__.__config_key__}"
 
     @property
@@ -218,10 +218,9 @@ class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMe
     """
     Composes the terms and conditions that make a contract for specific types of dbt child objects within a manifest.
     """
-    # noinspection PyMethodParameters
-    @classproperty
-    def config_key(cls) -> str:
-        return cls.__config_key__
+    @property
+    def config_key(self) -> str:
+        return self.parent.child_config_key
 
     @property
     @abstractmethod
@@ -269,7 +268,7 @@ class ColumnContract[T: NodeT](ChildContract[ColumnInfo, T]):
 
     __config_key__ = "columns"
 
-    __supported_terms__ = frozenset({
+    __supported_terms__ = (
         t_properties.HasDescription,
         t_properties.HasRequiredTags,
         t_properties.HasAllowedTags,
@@ -283,12 +282,12 @@ class ColumnContract[T: NodeT](ChildContract[ColumnInfo, T]):
         t_column.HasMatchingDescription,
         t_column.HasMatchingDataType,
         t_column.HasMatchingIndex,
-    })
-    __supported_conditions__ = frozenset({
+    )
+    __supported_conditions__ = (
         c_properties.NameCondition,
         c_properties.TagCondition,
         c_properties.MetaCondition,
-    })
+    )
 
     @property
     def items(self) -> Iterable[tuple[ColumnInfo, T]]:
@@ -301,13 +300,13 @@ class MacroArgumentContract(ChildContract[MacroArgument, Macro]):
 
     __config_key__ = "arguments"
 
-    __supported_terms__ = frozenset({
+    __supported_terms__ = (
         t_properties.HasDescription,
         t_macro.HasType,
-    })
-    __supported_conditions__ = frozenset({
-        c_properties.NameCondition
-    })
+    )
+    __supported_conditions__ = (
+        c_properties.NameCondition,
+    )
 
     @property
     def items(self) -> Iterable[tuple[MacroArgument, Macro]]:
@@ -323,7 +322,7 @@ class ModelContract(ParentContract[ColumnInfo, ModelNode]):
     __config_key__ = "models"
     __child_contract__ = ColumnContract
 
-    __supported_terms__ = frozenset({
+    __supported_terms__ = (
         t_properties.HasProperties,
         t_properties.HasDescription,
         t_properties.HasRequiredTags,
@@ -343,14 +342,14 @@ class ModelContract(ParentContract[ColumnInfo, ModelNode]):
         t_node.HasNoFinalSemiColon,
         t_node.HasNoHardcodedRefs,
         t_model.HasConstraints,
-    })
-    __supported_conditions__ = frozenset({
+    )
+    __supported_conditions__ = (
         c_properties.NameCondition,
         c_properties.PathCondition,
         c_properties.TagCondition,
         c_properties.MetaCondition,
         c_properties.IsMaterializedCondition,
-    })
+    )
 
     @property
     def items(self) -> Iterable[ModelNode]:
@@ -362,7 +361,7 @@ class SourceContract(ParentContract[ColumnInfo, SourceDefinition]):
     __config_key__ = "sources"
     __child_contract__ = ColumnContract
 
-    __supported_terms__ = frozenset({
+    __supported_terms__ = (
         t_properties.HasProperties,
         t_properties.HasDescription,
         t_properties.HasRequiredTags,
@@ -378,14 +377,14 @@ class SourceContract(ParentContract[ColumnInfo, SourceDefinition]):
         t_source.HasLoader,
         t_source.HasFreshness,
         t_source.HasDownstreamDependencies,
-    })
-    __supported_conditions__ = frozenset({
+    )
+    __supported_conditions__ = (
         c_properties.NameCondition,
         c_properties.PathCondition,
         c_properties.TagCondition,
         c_properties.MetaCondition,
         c_source.IsEnabledCondition,
-    })
+    )
 
     @property
     def items(self) -> Iterable[SourceDefinition]:
@@ -397,14 +396,14 @@ class MacroContract(ParentContract[MacroArgument, Macro]):
     __config_key__ = "macros"
     __child_contract__ = MacroArgumentContract
 
-    __supported_terms__ = frozenset({
+    __supported_terms__ = (
         t_properties.HasProperties,
         t_properties.HasDescription,
-    })
-    __supported_conditions__ = frozenset({
+    )
+    __supported_conditions__ = (
         c_properties.NameCondition,
-        c_properties.PathCondition
-    })
+        c_properties.PathCondition,
+    )
 
     @property
     def items(self) -> Iterable[Macro]:

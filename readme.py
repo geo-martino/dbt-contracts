@@ -15,17 +15,15 @@ TRG_FILENAME = SRC_FILENAME.replace(".template", "")
 
 def format_contract_title(contract: type[Contract], parent_key: str = "") -> str:
     """Format the title for a contract"""
-    key = f"{parent_key.rstrip('s')}_{contract.config_key}"
+    key = f"{parent_key.rstrip('s')}_{contract.__config_key__}"
     return key.replace("_", " ").title().strip()
 
 
 def format_contract_reference(contract: type[Contract], parent_key: str = "") -> list[str]:
     """Format the readme template for the contracts reference"""
-    contract.__new__(contract)  # needed to populate contract methods lists
-
     lines = []
 
-    key = contract.config_key
+    key = contract.__config_key__
     title = format_contract_title(contract, parent_key)
     lines.extend((f"### {title}", ""))
 
@@ -79,7 +77,7 @@ def format_contracts_reference_toc() -> str:
     for contract in CONTRACT_CLASSES:
         lines.append(format_contracts_reference_toc_entry(contract))
         if issubclass(contract, ParentContract):
-            lines.append(format_contracts_reference_toc_entry(contract.__child_contract__, contract.config_key))
+            lines.append(format_contracts_reference_toc_entry(contract.__child_contract__, contract.__config_key__))
 
     return "\n".join(lines)
 

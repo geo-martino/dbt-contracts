@@ -250,7 +250,7 @@ class ContractsRunner:
     def _create_contracts_from_config(cls, key: str, config: Mapping[str, Any]) -> list[Contract]:
         key = key.replace(" ", "_").casefold().rstrip("s") + "s"
         if key not in CONTRACT_MAP:
-            raise Exception(f"Unrecognised enforcement key: {key}")
+            raise Exception(f"Unrecognised term key: {key}")
 
         contract = CONTRACT_MAP[key].from_dict(config=config)
 
@@ -290,7 +290,7 @@ class ContractsRunner:
             contract.validate(terms=terms)
 
             if not contract.context.results:
-                log = f"All {contract.config_key} contracts passed successfully"
+                log = f"All {contract.config_key.replace(".", " ")} contracts passed successfully"
                 self.logger.info(f"{Fore.LIGHTGREEN_EX}{log}{Fore.RESET}")
                 continue
 

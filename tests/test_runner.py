@@ -291,7 +291,7 @@ class TestContractsRunner:
             mock_source.assert_called_once()
             mock_column.assert_not_called()
 
-            sources_config[ColumnContract.config_key] = columns_config
+            sources_config[ColumnContract.__config_key__] = columns_config
             ContractsRunner._create_contracts_from_config("source", sources_config)
             mock_column.assert_called_once()
 
@@ -366,7 +366,7 @@ class TestContractsRunner:
             mock.patch.object(SourceContract, "validate") as mock_source,
             mock.patch.object(ColumnContract, "validate") as mock_column,
         ):
-            key = ModelContract.__child_contract__.config_key
+            key = ModelContract.child_config_key
             terms = ["term_1", "term_2"]
             runner.validate(key, terms=terms)
 
