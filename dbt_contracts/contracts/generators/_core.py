@@ -4,7 +4,7 @@ import re
 from abc import ABCMeta, abstractmethod
 from collections.abc import Sequence, Mapping
 from pathlib import Path
-from random import sample, choice
+from random import choice
 from typing import Literal, Annotated, get_args, Any
 
 import yaml
@@ -16,9 +16,7 @@ from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.types import ItemT, PropertiesT
 
 
-AVAILABLE_FIELDS = Literal[
-    "description",
-]
+CORE_FIELDS = Literal["description"]
 
 
 class ContractGenerator[I: ItemT](ContractPart, metaclass=ABCMeta):
@@ -28,10 +26,10 @@ class ContractGenerator[I: ItemT](ContractPart, metaclass=ABCMeta):
     May also process an item while also taking into account its parent item
     e.g. a Column (child item) within a Model (parent item)
     """
-    exclude: Annotated[Sequence[AVAILABLE_FIELDS], BeforeValidator(to_tuple)] = Field(
+    exclude: Annotated[Sequence[CORE_FIELDS], BeforeValidator(to_tuple)] = Field(
         description="The fields to exclude from the generated properties.",
         default=(),
-        examples=[choice(AVAILABLE_FIELDS), sample(get_args(AVAILABLE_FIELDS), k=2)]
+        examples=[choice(get_args(CORE_FIELDS)), list(get_args(CORE_FIELDS))]
     )
     description_terminator: str | None = Field(
         description=(
@@ -49,6 +47,8 @@ class ContractGenerator[I: ItemT](ContractPart, metaclass=ABCMeta):
         return re.sub(r"([a-z])([A-Z])", r"\1_\2", class_name).lower()
 
     def _set_description(self, item: ItemT, description: str | None) -> bool:
+        if "description" in self.exclude:
+            return False
         if not description:
             return False
         if item.description and not self.overwrite:

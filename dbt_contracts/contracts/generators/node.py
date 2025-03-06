@@ -1,23 +1,37 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
+from random import choice
+from typing import Literal, Annotated, get_args
 
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt_common.contracts.metadata import ColumnMetadata
-from pydantic import Field
+from pydantic import Field, BeforeValidator
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.generators._core import ParentGenerator
-from dbt_contracts.contracts.utils import get_matching_catalog_table
+from dbt_contracts.contracts.generators._core import ParentGenerator, CORE_FIELDS
+from dbt_contracts.contracts.utils import get_matching_catalog_table, to_tuple
 from dbt_contracts.types import NodeT
+
+NODE_FIELDS = Literal[CORE_FIELDS, "columns"]
 
 
 class NodeGenerator[I: NodeT](ParentGenerator[I]):
+    exclude: Annotated[Sequence[NODE_FIELDS], BeforeValidator(to_tuple)] = Field(
+        description="The fields to exclude from the generated properties.",
+        default=(),
+        examples=[choice(get_args(NODE_FIELDS)), list(get_args(NODE_FIELDS))]
+    )
     ordered_columns: bool = Field(
-        description="Reorder the columns to match the order found in the database object.",
+        description=(
+            "Reorder the columns to match the order found in the database object. "
+            "Ignored when 'columns' is excluded."
+        ),
         default=False,
         examples=[True, False],
     )
 
     def _set_columns(self, item: I, columns: Mapping[str, ColumnMetadata]) -> bool:
+        if "columns" in self.exclude:
+            return False
         if not columns:
             return False
 
@@ -32,6 +46,8 @@ class NodeGenerator[I: NodeT](ParentGenerator[I]):
         return True
 
     def _reorder_columns(self, item: I, columns: Mapping[str, ColumnMetadata]) -> bool:
+        if "columns" in self.exclude:
+            return False
         if not self.ordered_columns or not columns:
             return False
 
