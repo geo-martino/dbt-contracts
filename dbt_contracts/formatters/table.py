@@ -23,7 +23,10 @@ class TableCellBuilder[T: Result](BaseModel):
                     "or a callable object which returns a formatted string for the value",
     )
     prefix: str | None = Field(
-        description="The prefix to prepend to the value.",
+        description=(
+            "The prefix to prepend to the value. "
+            "This prefix will always be left aligned regardless of the alignment setting."
+        ),
         default=None
     )
     alignment: str = Field(
