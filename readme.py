@@ -28,21 +28,23 @@ def format_contract_reference(contract: type[Contract], parent_key: str = "") ->
     lines.extend((f"### {title}", ""))
 
     # noinspection PyTypeChecker,PyProtectedMember
-    method_map = {
-        "Filters": sorted(condition._name() for condition in contract.__supported_conditions__),
-        "Terms": sorted(term._name() for term in contract.__supported_terms__),
+    contract_parts_map = {
+        "Filters": contract.__supported_conditions__,
+        "Terms": contract.__supported_terms__,
     }
 
-    for header, methods in method_map.items():
+    for header, parts in contract_parts_map.items():
         lines.extend((f"#### {header}", ""))
 
-        for method_name in methods:
-            url = f"{DOCUMENTATION_URL}/{'/'.join(docs.URL_PATH)}/{key}.html#{method_name.replace('_', '-')}"
-            method = getattr(contract, method_name).func
-            doc = docstring_parser.parse(method.__doc__).short_description.strip()
+        for part in parts:
+            # noinspection PyProtectedMember
+            name = part._name()
+            url = f"{DOCUMENTATION_URL}/{'/'.join(docs.URL_PATH)}/{key}.html#{name.replace('_', '-')}"
+            doc = docstring_parser.parse(part.__doc__).short_description.strip().format(kind=title.lower())
             doc = re.sub(r"\s*\n\s+", " ", doc)
 
-            method_line = f"- [`{method_name}`]({url}): {doc}"
+
+            method_line = f"- [`{name}`]({url}): {doc}"
             lines.append(method_line)
 
         lines.append("")

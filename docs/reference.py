@@ -204,7 +204,7 @@ class ReferencePageBuilder:
 
         doc = docstring_parser.parse(part.__doc__)
         if doc.description:
-            self.add_lines(doc.description.strip().format(**{"kind": title.lower()}))
+            self.add_lines(doc.description.strip().format(kind=title.lower()))
             self.add_empty_lines()
 
         self.generate_args(part, name=name)
