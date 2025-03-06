@@ -21,6 +21,8 @@ class ColumnGenerator[P: NodeT](ChildGenerator[ColumnInfo, P]):
     )
 
     def _set_data_type(self, item: ColumnInfo, data_type: str | None) -> bool:
+        if "data_type" in self.exclude:
+            return False
         if not data_type:
             return False
         if item.data_type and not self.overwrite:
