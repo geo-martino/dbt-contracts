@@ -23,7 +23,11 @@ from dbt_contracts.types import ItemT, ParentT, NodeT
 
 class Contract[I: Any, T: ContractTerm](metaclass=ABCMeta):
     """
-    Composes the terms and conditions that make a contract for specific types of dbt objects within a manifest.
+    Composes the various :py:class:`.ContractPart` objects that make a contract for specific types
+    of dbt objects within a manifest.
+
+    A Contract gets the dbt objects from the dbt artifacts and passes them to the :py:class:`.ContractPart` objects
+    for processing.
     """
     __config_key__: str
     __supported_terms__: tuple[type[T]]

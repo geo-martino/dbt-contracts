@@ -36,11 +36,11 @@ class ColumnGenerator[P: NodeT](ChildGenerator[ColumnInfo, P]):
     def merge(self, item: ColumnInfo, context: ContractContext, parent: P = None) -> bool:
         if (table := get_matching_catalog_table(parent, catalog=context.catalog)) is None:
             return False
-        if (column := next(col for col in table.columns.values() if col.name == item.name)) is None:
+        if (column := next((col for col in table.columns.values() if col.name == item.name), None)) is None:
             return False
 
         modified = False
-        modified |= self._set_description(item, column.comment)
-        modified |= self._set_data_type(item, column.type)
+        modified |= self._set_description(item, description=column.comment)
+        modified |= self._set_data_type(item, data_type=column.type)
 
         return modified

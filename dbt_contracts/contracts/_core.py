@@ -14,7 +14,13 @@ from dbt_contracts.types import ItemT, ParentT
 
 
 class ContractPart(BaseModel, metaclass=ABCMeta):
-    """A part of a contract."""
+    """
+    A part of a contract.
+
+    A ContractPart may only process the items it is given.
+    It does not know how to get those items from any dbt artifacts.
+    These items must be provided by a :py:class:`.Contract` object.
+    """
 
     @property
     def name(self) -> str:

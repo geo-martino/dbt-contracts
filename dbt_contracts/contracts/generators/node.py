@@ -1,3 +1,4 @@
+from abc import ABCMeta
 from collections.abc import Mapping, Sequence
 from random import choice, sample
 from typing import Literal, Annotated, get_args
@@ -14,15 +15,23 @@ from dbt_contracts.types import NodeT
 NODE_FIELDS = Literal[CORE_FIELDS, "columns"]
 
 
-class NodeGenerator[I: NodeT](ParentGenerator[I]):
+class NodeGenerator[I: NodeT](ParentGenerator[I], metaclass=ABCMeta):
     exclude: Annotated[Sequence[NODE_FIELDS], BeforeValidator(to_tuple)] = Field(
         description="The fields to exclude from the generated properties.",
         default=(),
         examples=[choice(get_args(NODE_FIELDS)), sample(get_args(NODE_FIELDS), k=2)]
     )
-    ordered_columns: bool = Field(
+    remove_columns: bool = Field(
         description=(
-            "Reorder the columns to match the order found in the database object. "
+            "Remove columns from the properties file which are not found in the database object. "
+            "Ignored when 'columns' is excluded."
+        ),
+        default=False,
+        examples=[True, False],
+    )
+    order_columns: bool = Field(
+        description=(
+            "Reorder columns in the properties file to match the order found in the database object. "
             "Ignored when 'columns' is excluded."
         ),
         default=False,
@@ -35,7 +44,11 @@ class NodeGenerator[I: NodeT](ParentGenerator[I]):
         if not columns:
             return False
 
-        return any(self._set_column(item, column) for column in columns.values())
+        added = any([self._set_column(item, column=column) for column in columns.values()])
+        removed = any([
+            self._drop_column(item, column=column, columns=columns) for column in list(item.columns.values())
+        ])
+        return added or removed
 
     @staticmethod
     def _set_column(item: I, column: ColumnMetadata) -> bool:
@@ -45,20 +58,28 @@ class NodeGenerator[I: NodeT](ParentGenerator[I]):
         item.columns[column.name] = ColumnInfo(name=column.name)
         return True
 
+    def _drop_column(self, item: I, column: ColumnInfo, columns: Mapping[str, ColumnMetadata]) -> bool:
+        if not self.remove_columns or any(col.name == column.name for col in columns.values()):
+            return False
+
+        item.columns.pop(column.name)
+        return True
+
     def _reorder_columns(self, item: I, columns: Mapping[str, ColumnMetadata]) -> bool:
         if "columns" in self.exclude:
             return False
-        if not self.ordered_columns or not columns:
+        if not self.order_columns or not columns:
             return False
 
         index_map = {col.name: col.index for col in columns.values()}
         columns_in_order = dict(
             sorted(item.columns.items(), key=lambda col: index_map.get(col[1].name, len(index_map)))
         )
-        if columns_in_order == item.columns:
+        if list(columns_in_order) == list(item.columns):
             return False
 
-        item.columns = columns_in_order
+        item.columns.clear()
+        item.columns.update(columns_in_order)
         return True
 
     def merge(self, item: I, context: ContractContext) -> bool:
@@ -66,8 +87,8 @@ class NodeGenerator[I: NodeT](ParentGenerator[I]):
             return False
 
         modified = False
-        modified |= self._set_description(item, table.metadata.comment)
-        modified |= self._set_columns(item, table.columns)
-        modified |= self._reorder_columns(item, table.columns)
+        modified |= self._set_description(item, description=table.metadata.comment)
+        modified |= self._set_columns(item, columns=table.columns)
+        modified |= self._reorder_columns(item, columns=table.columns)
 
         return modified

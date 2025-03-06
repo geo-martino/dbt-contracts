@@ -1,1 +1,1 @@
-from ._core import ContractGenerator
+from ._core import ContractGenerator, ParentGenerator, ChildGenerator
