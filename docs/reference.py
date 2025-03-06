@@ -13,13 +13,13 @@ from pydantic import BaseModel
 # noinspection PyProtectedMember
 from pydantic.fields import FieldInfo
 
-from dbt_contracts.contracts import Contract, ParentContract, ChildContract, CONTRACT_CLASSES
+from dbt_contracts.contracts import Contract, ParentContract, ChildContract, CONTRACT_CLASSES, ContractPart
 from dbt_contracts.contracts.conditions import ContractCondition
 from dbt_contracts.contracts.terms import ContractTerm
 
 HEADER_SECTION_CHARS = ("=", "-", "^", '"')
 
-SECTIONS: dict[str, Callable[[type[Contract]], Collection[type[ContractTerm | ContractCondition]]]] = {
+SECTIONS: dict[str, Callable[[type[Contract]], Collection[type[ContractPart]]]] = {
     "Filters": lambda contract: contract.__supported_conditions__,
     "Terms": lambda contract: contract.__supported_terms__,
 }
@@ -180,12 +180,7 @@ class ReferencePageBuilder:
 
         return examples
 
-    def generate_contract_parts(
-            self,
-            parts: Collection[type[ContractTerm | ContractCondition]],
-            kind: str,
-            title: str,
-    ) -> None:
+    def generate_contract_parts(self, parts: Collection[type[ContractPart]], kind: str, title: str) -> None:
         description = self._get_description(kind, format_map={"kind": title.lower()})
 
         kind = self.make_title(kind)
@@ -197,7 +192,7 @@ class ReferencePageBuilder:
         for part in parts:
             self.generate_contract_part(part, title=title)
 
-    def generate_contract_part(self, part: type[ContractTerm | ContractCondition], title: str) -> None:
+    def generate_contract_part(self, part: type[ContractPart], title: str) -> None:
         # noinspection PyProtectedMember
         name = part._name()
         self.add_header(name, section=1)

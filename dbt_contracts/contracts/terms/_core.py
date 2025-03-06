@@ -9,11 +9,11 @@ from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 from pydantic import BaseModel
 
-from dbt_contracts.contracts import ContractContext
+from dbt_contracts.contracts import ContractContext, ContractPart
 from dbt_contracts.types import ItemT, ParentT
 
 
-class ContractTerm[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
+class ContractTerm[I: ItemT, P: ParentT](ContractPart, metaclass=ABCMeta):
     """
     A part of a contract meant to apply checks on a specific item according to a set of rules.
 
@@ -27,11 +27,6 @@ class ContractTerm[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
     #: Mark if this term requires a loaded catalog to operate.
     #: The catalog must then be provided by the ContractContext for the term to execute successfully.
     needs_catalog: ClassVar[bool] = False
-
-    @property
-    def name(self) -> str:
-        """The name of this condition in snake_case."""
-        return self._name()
 
     @classmethod
     def _name(cls) -> str:

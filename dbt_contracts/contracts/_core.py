@@ -1,14 +1,31 @@
 from __future__ import annotations
 
+from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
+from pydantic import BaseModel
 
 from dbt_contracts.contracts.result import Result, RESULT_PROCESSOR_MAP
 from dbt_contracts.types import ItemT, ParentT
+
+
+class ContractPart(BaseModel, metaclass=ABCMeta):
+    """A part of a contract."""
+
+    @property
+    def name(self) -> str:
+        """The name of this contract part in snake_case."""
+        return self._name()
+
+    @classmethod
+    @abstractmethod
+    def _name(cls) -> str:
+        """The name of this contract part in snake_case."""
+        raise NotImplementedError
 
 
 @dataclass

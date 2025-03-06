@@ -12,7 +12,7 @@ from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 
-from dbt_contracts.contracts import ContractContext
+from dbt_contracts.contracts import ContractContext, ContractPart
 from dbt_contracts.contracts.conditions import ContractCondition, properties as c_properties, source as c_source
 from dbt_contracts.contracts.terms import ContractTerm, properties as t_properties, node as t_node, model as t_model, \
     source as t_source, column as t_column, macro as t_macro
@@ -95,7 +95,7 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
         )
 
     @classmethod
-    def _create_contract_part_from_dict[T: ContractTerm | ContractCondition](
+    def _create_contract_part_from_dict[T: ContractPart](
             cls, config: str | Mapping[str, Any], part_map: Mapping[str, Type[T]]
     ) -> T | None:
         if isinstance(config, str):

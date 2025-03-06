@@ -5,19 +5,15 @@ from abc import ABCMeta, abstractmethod
 
 from pydantic import BaseModel
 
+from dbt_contracts.contracts import ContractPart
 from dbt_contracts.types import ItemT
 
 
-class ContractCondition[T: ItemT](BaseModel, metaclass=ABCMeta):
+class ContractCondition[T: ItemT](ContractPart, metaclass=ABCMeta):
     """
     Conditional logic to apply to items within the manifest to determine
     whether they should be processed by subsequent terms.
     """
-    @property
-    def name(self) -> str:
-        """The name of this condition in snake_case."""
-        return self._name()
-
     @classmethod
     def _name(cls) -> str:
         """The name of this condition in snake_case."""
