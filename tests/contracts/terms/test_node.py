@@ -111,7 +111,7 @@ def contract_node(compiled_node: CompiledNode) -> CompiledNode:
 def test_has_valid_contract(contract_node: CompiledNode, context: ContractContext):
     with mock.patch.object(HasAllColumns, "run", return_value=True) as mock_has_all_columns:
         assert HasContract().run(contract_node, context=context)
-        mock_has_all_columns.assert_called_once_with(contract_node, parent=None, context=context)
+        mock_has_all_columns.assert_called_once_with(contract_node, context=context)
 
 
 def test_has_invalid_contract_not_enforced(contract_node: CompiledNode, context: ContractContext):

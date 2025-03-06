@@ -12,12 +12,12 @@ from pydantic import Field, field_validator
 
 from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.matchers import StringMatcher, RangeMatcher
-from dbt_contracts.contracts.terms._core import ContractTerm, validate_context
+from dbt_contracts.contracts.terms._core import ChildContractTerm, validate_context
 from dbt_contracts.contracts.utils import get_matching_catalog_table
 from dbt_contracts.types import NodeT
 
 
-class ColumnContractTerm[T: NodeT](ContractTerm[ColumnInfo, T], metaclass=ABCMeta):
+class ColumnContractTerm[T: NodeT](ChildContractTerm[ColumnInfo, T], metaclass=ABCMeta):
     def _validate_node(self, column: ColumnInfo, node: NodeT, context: ContractContext) -> bool:
         missing_column = column not in node.columns.values()
         if missing_column:

@@ -34,26 +34,26 @@ class TestResult:
     def test_get_patch_path_with_patch_path(self, model: ModelNode):
         assert model.patch_path
         with mock.patch("dbt_contracts.contracts.result.get_absolute_project_path") as mock_func:
-            assert Result._get_patch_path(model) == Path(model.patch_path.split("://")[1])
+            assert Result.get_patch_path(model) == Path(model.patch_path.split("://")[1])
             mock_func.assert_not_called()
 
     def test_get_patch_path_without_patch_path(self, source: SourceDefinition):
         source.patch_path = None
         with mock.patch("dbt_contracts.contracts.result.get_absolute_project_path") as mock_func:
-            assert Result._get_patch_path(source) == Path(source.original_file_path)
+            assert Result.get_patch_path(source) == Path(source.original_file_path)
             mock_func.assert_not_called()
 
     def test_get_absolute_patch_path(self, source: SourceDefinition):
         with mock.patch("dbt_contracts.contracts.result.get_absolute_project_path") as mock_func:
-            assert Result._get_patch_path(source, to_absolute=True)
+            assert Result.get_patch_path(source, to_absolute=True)
             mock_func.assert_called_once()
 
-    def test_get_patch_object_for_invalid_patch_path(self, model: ModelNode, tmp_path: Path):
-        assert not Result._get_patch_object(model)  # patch file doesn't exist
+    def test_get_patch_file_for_invalid_patch_path(self, model: ModelNode, tmp_path: Path):
+        assert not Result.get_patch_file(model)  # patch file doesn't exist
         model.patch_path = None
-        assert not Result._get_patch_object(model)  # patch path is None
+        assert not Result.get_patch_file(model)  # patch path is None
 
-    def test_get_patch_object_for_valid_patch_path(self, model: ModelNode, tmp_path: Path):
+    def test_get_patch_file_for_valid_patch_path(self, model: ModelNode, tmp_path: Path):
         path = tmp_path.joinpath(model.original_file_path)
         model.patch_path = f"{model.package_name}://{path}"
 
@@ -64,12 +64,12 @@ class TestResult:
 
         patches = {}
         with mock.patch.object(Result, "_read_patch_file", return_value=expected) as read_patch_file:
-            assert Result._get_patch_object(model, patches=patches) == expected
+            assert Result.get_patch_file(model, patches=patches) == expected
             read_patch_file.assert_called_once_with(path)
             assert patches == {path: expected}  # loaded patch is stored
 
             # patch is pulled from loaded patches and file is not read again
-            assert Result._get_patch_object(model, patches=patches) == expected
+            assert Result.get_patch_file(model, patches=patches) == expected
             read_patch_file.assert_called_once_with(path)
 
     def test_read_patch_file(self, source: SourceDefinition, tmp_path: Path):
@@ -98,7 +98,7 @@ class TestResult:
             "__end_col__": 15,
         }
         with (
-                mock.patch.object(ResultMock, "_get_patch_object", return_value={}),
+                mock.patch.object(ResultMock, "get_patch_file", return_value={}),
                 mock.patch.object(ResultMock, "_extract_patch_object_for_item", return_value=patch_object),
         ):
             result = ResultMock.from_resource(

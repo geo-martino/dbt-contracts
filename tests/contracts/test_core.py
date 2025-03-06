@@ -30,6 +30,14 @@ class TestContractContext:
         assert any(result.parent_id == parent.unique_id for result in results)
         assert any(result.parent_name == parent.name for result in results)
 
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_get_patch_path(self):
+        pass
+
+    @pytest.mark.skip(reason="Not yet implemented")
+    def test_get_patch(self):
+        pass
+
     def test_add_result_on_item(self, context: ContractContext, model: ModelNode):
         expected_name = "test_name"
         expected_message = "this test has failed"

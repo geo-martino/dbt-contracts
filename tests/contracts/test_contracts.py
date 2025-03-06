@@ -16,14 +16,14 @@ from dbt_contracts.contracts import Contract, ParentContract, ChildContract, \
     ModelContract, SourceContract, ColumnContract, MacroContract, MacroArgumentContract
 from dbt_contracts.contracts.conditions import properties as c_properties, ContractCondition
 from dbt_contracts.contracts.terms import properties as t_properties, source as t_source, column as t_column, \
-    macro as t_macro, ContractTerm
+    macro as t_macro, ContractTerm, ChildContractTerm
 from dbt_contracts.types import ItemT, ParentT
 
 
 class ContractTester[I: ItemT](metaclass=ABCMeta):
     """Base class for testing contracts."""
     @abstractmethod
-    def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> Contract[I]:
+    def contract(self, manifest: Manifest, catalog: CatalogArtifact) -> Contract[I, ContractTerm]:
         """Fixture for creating a contract."""
         raise NotImplementedError
 
@@ -43,7 +43,7 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
         raise NotImplementedError
 
     @staticmethod
-    def test_needs_manifest(contract: Contract[I]):
+    def test_needs_manifest(contract: Contract[I, ContractTerm]):
         contract.terms = [term() for term in contract.__supported_terms__ if not term.needs_manifest]
         assert not contract.needs_manifest
 
@@ -53,7 +53,7 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
         assert contract.needs_manifest
 
     @staticmethod
-    def test_needs_catalog(contract: Contract[I]):
+    def test_needs_catalog(contract: Contract[I, ContractTerm]):
         contract.terms = [term() for term in contract.__supported_terms__ if not term.needs_catalog]
         assert not contract.needs_catalog
 
@@ -63,7 +63,7 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
         assert contract.needs_catalog
 
     @staticmethod
-    def test_create_context(contract: Contract[I]):
+    def test_create_context(contract: Contract[I, ContractTerm]):
         assert contract.manifest is not None
         assert contract.catalog is not None
 
@@ -76,33 +76,33 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
     def _items_sort_key(self, item: I) -> Any:
         raise NotImplementedError
 
-    def test_get_items(self, contract: Contract[I], items: list[I], filtered_items: list[I]):
+    def test_get_items(self, contract: Contract[I, ContractTerm], items: list[I], filtered_items: list[I]):
         assert sorted(contract.items, key=self._items_sort_key) == sorted(items, key=self._items_sort_key)
         assert sorted(contract.filtered_items, key=self._items_sort_key) == sorted(
             filtered_items, key=self._items_sort_key
         )
 
-    def test_validate_items(self, contract: Contract[I], filtered_items: list[I], valid_items: list[I]):
+    def test_validate_items(self, contract: Contract[I, ContractTerm], filtered_items: list[I], valid_items: list[I]):
         result = contract.validate()
         assert sorted(result, key=self._items_sort_key) == sorted(valid_items, key=self._items_sort_key)
 
         if len(filtered_items) < len(valid_items):
             assert contract.context.results
 
-    def test_validate_items_on_no_terms(self, contract: Contract[I], filtered_items: list[I]):
+    def test_validate_items_on_no_terms(self, contract: Contract[I, ContractTerm], filtered_items: list[I]):
         contract.terms = []
         result = contract.validate()
         assert sorted(result, key=self._items_sort_key) == sorted(filtered_items, key=self._items_sort_key)
 
     @staticmethod
     @pytest.mark.skip(reason="Not yet implemented")
-    def test_validate_on_selected_terms(contract: Contract[I], filtered_items: list[I]):
+    def test_validate_on_selected_terms(contract: Contract[I, ContractTerm], filtered_items: list[I]):
         name = choice(contract.terms).name
         contract.validate(terms=[name])
         # TODO
 
     @staticmethod
-    def test_from_dict(contract: Contract[I]):
+    def test_from_dict(contract: Contract[I, ContractTerm]):
         config = {
             "filter": sample(
                 [cls._name() for cls in contract.__supported_conditions__],
@@ -113,7 +113,7 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
                 k=min(len(contract.__supported_terms__), 3)
             ),
         }
-        new_contract: Contract[I] = contract.__class__.from_dict(
+        new_contract: Contract[I, ContractTerm] = contract.__class__.from_dict(
             config, manifest=contract.manifest, catalog=contract.catalog
         )
 
@@ -125,7 +125,7 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
 
     @staticmethod
     @pytest.mark.skip(reason="Not yet implemented")
-    def test_create_contract_part_from_dict(contract: Contract[I]):
+    def test_create_contract_part_from_dict(contract: Contract[I, ContractTerm]):
         pass  # TODO
 
 
@@ -141,7 +141,7 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
         raise NotImplementedError
 
     @abstractmethod
-    def child_terms(self) -> MutableSequence[ContractTerm]:
+    def child_terms(self) -> MutableSequence[ChildContractTerm]:
         """Fixture for child terms."""
         raise NotImplementedError
 
@@ -195,7 +195,7 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
     def test_create_child_contract(
             contract: ParentContract[I, P],
             child_conditions: MutableSequence[ContractCondition],
-            child_terms: MutableSequence[ContractTerm]
+            child_terms: MutableSequence[ChildContractTerm]
     ):
         child = contract.create_child_contract(conditions=child_conditions, terms=child_terms)
         assert child.parent == contract
@@ -236,7 +236,7 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
         assert [term.name for term in child.terms] == child_config["terms"]
 
     @staticmethod
-    def test_validate_context_for_manifest(contract: Contract[I], items: list[I], manifest: Manifest):
+    def test_validate_context_for_manifest(contract: ParentContract[I, P], items: list[I], manifest: Manifest):
         contract.terms = [term() for term in contract.__supported_terms__ if term.needs_manifest]
         context = contract.context
         context.manifest = None
@@ -249,7 +249,7 @@ class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):
             term.run(choice(items), context=context)
 
     @staticmethod
-    def test_validate_context_for_catalog(contract: Contract[I], items: list[I], catalog: CatalogArtifact):
+    def test_validate_context_for_catalog(contract: ParentContract[I, P], items: list[I], catalog: CatalogArtifact):
         contract.terms = [term() for term in contract.__supported_terms__ if not term.needs_catalog]
         assert not contract.needs_catalog
 
@@ -332,7 +332,7 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
             contract.__class__(conditions=list(contract.conditions) + [invalid_cls()])
 
     @staticmethod
-    def test_validate_context_for_manifest(contract: Contract[I], items: list[tuple[I, P]], manifest: Manifest):
+    def test_validate_context_for_manifest(contract: ChildContract[I, P], items: list[tuple[I, P]], manifest: Manifest):
         contract.terms = [term() for term in contract.__supported_terms__ if term.needs_manifest]
         context = contract.context
         context.manifest = None
@@ -347,7 +347,9 @@ class ChildContractTester[I: ItemT, P: ParentT](ContractTester[I]):
             term.run(item, parent=parent, context=context)
 
     @staticmethod
-    def test_validate_context_for_catalog(contract: Contract[I], items: list[tuple[I, P]], catalog: CatalogArtifact):
+    def test_validate_context_for_catalog(
+            contract: ChildContract[I, P], items: list[tuple[I, P]], catalog: CatalogArtifact
+    ):
         contract.terms = [term() for term in contract.__supported_terms__ if not term.needs_catalog]
         assert not contract.needs_catalog
 

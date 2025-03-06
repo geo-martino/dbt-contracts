@@ -73,7 +73,7 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
         """
         # noinspection PyUnresolvedReferences
         field_names: set[str] = set(cls.model_fields.keys())
-        patch = cls._get_patch_object(item=parent or item, patches=patches)
+        patch = cls.get_patch_file(item=parent or item, patches=patches)
         patch_object = cls._extract_patch_object_for_item(patch=patch, item=item, parent=parent) or {}
 
         if parent is not None:
@@ -91,7 +91,7 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
             name=item.name,
             path=path,
             result_type=cls._get_result_type(item=item, parent=parent),
-            patch_path=cls._get_patch_path(item=parent if parent is not None else item, to_absolute=False),
+            patch_path=cls.get_patch_path(item=parent if parent is not None else item, to_absolute=False),
             patch_start_line=patch_object.get("__start_line__"),
             patch_start_col=patch_object.get("__start_col__"),
             patch_end_line=patch_object.get("__end_line__"),
@@ -107,7 +107,14 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
         return result_type
 
     @staticmethod
-    def _get_patch_path(item: I | P, to_absolute: bool = False) -> Path | None:
+    def get_patch_path(item: I | P, to_absolute: bool = False) -> Path | None:
+        """
+        Get the patch path for a given item from its properties.
+
+        :param item: The item to get a patch path for.
+        :param to_absolute: Format the path to be absolute.
+        :return: The patch path if found.
+        """
         patch_path = None
         if isinstance(item, ParsedResource) and item.patch_path:
             patch_path = Path(item.patch_path.split("://")[1])
@@ -119,10 +126,17 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
         return get_absolute_project_path(patch_path)
 
     @classmethod
-    def _get_patch_object(
+    def get_patch_file(
             cls, item: I, patches: MutableMapping[Path, dict[str, Any]] = None
     ) -> dict[str, Any]:
-        patch_path = cls._get_patch_path(item=item, to_absolute=True)
+        """
+        Get the patch file by either extracting from the given patches or loading from disk.
+
+        :param item: The item to get the patch object for.
+        :param patches: The loaded patches to search through.
+        :return: The loaded patch file if found.
+        """
+        patch_path = cls.get_patch_path(item=item, to_absolute=True)
         if patch_path is None or not patch_path.is_file():
             return {}
 

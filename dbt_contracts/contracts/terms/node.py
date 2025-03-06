@@ -10,12 +10,12 @@ from pydantic import Field
 
 from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.matchers import RangeMatcher, StringMatcher
-from dbt_contracts.contracts.terms._core import ContractTerm, validate_context
+from dbt_contracts.contracts.terms._core import ParentContractTerm, validate_context
 from dbt_contracts.contracts.utils import get_matching_catalog_table
 from dbt_contracts.types import NodeT
 
 
-class NodeContractTerm[T: NodeT](ContractTerm[T, None], metaclass=ABCMeta):
+class NodeContractTerm[T: NodeT](ParentContractTerm[T], metaclass=ABCMeta):
     pass
 
 
@@ -24,11 +24,11 @@ class Exists[T: NodeT](NodeContractTerm[T]):
     needs_catalog = True
 
     @validate_context
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: T, context: ContractContext) -> bool:
         table = get_matching_catalog_table(item, catalog=context.catalog)
         if table is None:
             message = f"The {item.resource_type.lower()} cannot be found in the database"
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         return table is not None
 
@@ -48,12 +48,12 @@ class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
         return filter(_filter_nodes, manifest.nodes.values())
 
     @validate_context
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: T, context: ContractContext) -> bool:
         count = len(tuple(self._get_tests(item, manifest=context.manifest)))
         log_message = self._match(count=count, kind="tests")
 
         if log_message:
-            context.add_result(name=self.name, message=log_message, item=item, parent=parent)
+            context.add_result(name=self.name, message=log_message, item=item)
         return not log_message
 
 
@@ -65,7 +65,7 @@ class HasAllColumns[T: NodeT](NodeContractTerm[T]):
     needs_catalog = True
 
     @validate_context
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: T, context: ContractContext) -> bool:
         table = get_matching_catalog_table(item, catalog=context.catalog)
         if not table:
             return False
@@ -79,7 +79,7 @@ class HasAllColumns[T: NodeT](NodeContractTerm[T]):
                 f"{item.resource_type.title()} config does not contain all columns. "
                 f"Missing {', '.join(missing_columns)}"
             )
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         extra_columns = actual_columns - expected_columns
         if extra_columns:
@@ -87,7 +87,7 @@ class HasAllColumns[T: NodeT](NodeContractTerm[T]):
                 f"{item.resource_type.title()} config contains too many columns. "
                 f"Extra {', '.join(missing_columns)}"
             )
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         return not missing_columns
 
@@ -105,7 +105,7 @@ class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
     )
 
     @validate_context
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: T, context: ContractContext) -> bool:
         node_column_types = {column.name: column.data_type for column in item.columns.values()}
 
         missing_columns = set()
@@ -116,7 +116,7 @@ class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
                 f"{item.resource_type.title()} does not have all expected columns. "
                 f"Missing: {', '.join(missing_columns)}"
             )
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         unexpected_types = {}
         if isinstance(self.columns, Mapping):
@@ -129,7 +129,7 @@ class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
             for name, (actual, expected) in unexpected_types.items():
                 message += f"\n- {actual!r} should be {expected!r}"
 
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         return not missing_columns and not unexpected_types
 
@@ -139,7 +139,7 @@ class HasMatchingDescription[T: NodeT](NodeContractTerm[T], StringMatcher):
     needs_catalog = True
 
     @validate_context
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: T, context: ContractContext) -> bool:
         table = get_matching_catalog_table(item, catalog=context.catalog)
         if not table:
             return False
@@ -147,7 +147,7 @@ class HasMatchingDescription[T: NodeT](NodeContractTerm[T], StringMatcher):
         unmatched_description = not self._match(item.description, table.metadata.comment)
         if unmatched_description:
             message = f"Description does not match remote entity: {item.description!r} != {table.metadata.comment!r}"
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         return not unmatched_description
 
@@ -155,19 +155,19 @@ class HasMatchingDescription[T: NodeT](NodeContractTerm[T], StringMatcher):
 class HasContract[T: CompiledNode](NodeContractTerm[T]):
     """Check whether {kind} have appropriate configuration for a contract in their properties."""
     @validate_context
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: T, context: ContractContext) -> bool:
         missing_contract = not item.contract.enforced
         if missing_contract:
             message = "Contract not enforced"
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         # node must have all columns defined for contract to be valid
-        missing_columns = not HasAllColumns().run(item, parent=parent, context=context)
+        missing_columns = not HasAllColumns().run(item, context=context)
 
         missing_data_types = any(not column.data_type for column in item.columns.values())
         if missing_data_types:
             message = "To enforce a contract, all data types must be declared"
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         return not any((missing_contract, missing_columns, missing_data_types))
 
@@ -196,7 +196,7 @@ class HasValidRefDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
     i.e. the number of `ref` macros present in the query.
     """
     @validate_context
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: T, context: ContractContext) -> bool:
         upstream_dependencies = {ref for ref in item.depends_on_nodes if ref.startswith("model")}
         missing_dependencies = upstream_dependencies - set(context.manifest.nodes.keys())
 
@@ -211,7 +211,7 @@ class HasValidSourceDependencies[T: CompiledNode](HasValidUpstreamDependencies[T
     i.e. the number of `source` macros present in the query.
     """
     @validate_context
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: T, context: ContractContext) -> bool:
         upstream_dependencies = {ref for ref in item.depends_on_nodes if ref.startswith("source")}
         missing_dependencies = upstream_dependencies - set(context.manifest.sources.keys())
 
@@ -226,7 +226,7 @@ class HasValidMacroDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]
     i.e. the number of custom macros present in the query.
     """
     @validate_context
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: T, context: ContractContext) -> bool:
         upstream_dependencies = set(item.depends_on_macros)
         missing_dependencies = upstream_dependencies - set(context.manifest.macros.keys())
 
@@ -238,7 +238,7 @@ class HasValidMacroDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]
 class HasNoFinalSemiColon[T: CompiledNode](NodeContractTerm[T]):
     """Check if {kind} have a final semicolon present in their queries."""
     @validate_context
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: T, context: ContractContext) -> bool:
         # ignore non-SQL models
         if Path(item.path).suffix.casefold() != ".sql":
             return True
@@ -246,7 +246,7 @@ class HasNoFinalSemiColon[T: CompiledNode](NodeContractTerm[T]):
         has_final_semicolon = item.raw_code.strip().endswith(";")
         if has_final_semicolon:
             message = "Script has a final semicolon"
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         return not has_final_semicolon
 
@@ -309,7 +309,7 @@ class HasNoHardcodedRefs[T: CompiledNode](NodeContractTerm[T]):
             return prev_token
 
     @validate_context
-    def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: T, context: ContractContext) -> bool:
         # ignore non-SQL models
         if Path(item.path).suffix.casefold() != ".sql":
             return True
@@ -328,6 +328,6 @@ class HasNoHardcodedRefs[T: CompiledNode](NodeContractTerm[T]):
         hardcoded_refs = refs - ctes
         if hardcoded_refs:
             message = f"Script has hardcoded refs: {', '.join(hardcoded_refs)}"
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         return not hardcoded_refs

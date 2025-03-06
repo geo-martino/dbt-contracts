@@ -14,18 +14,19 @@ from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 
 from dbt_contracts.contracts._core import ContractContext, ContractPart
 from dbt_contracts.contracts.conditions import ContractCondition, properties as c_properties, source as c_source
-from dbt_contracts.contracts.terms import ContractTerm, properties as t_properties, node as t_node, model as t_model, \
+from dbt_contracts.contracts.terms import ContractTerm, ChildContractTerm, \
+    properties as t_properties, node as t_node, model as t_model, \
     source as t_source, column as t_column, macro as t_macro
 from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.types import ItemT, ParentT, NodeT
 
 
-class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
+class Contract[I: Any, T: ContractTerm](metaclass=ABCMeta):
     """
     Composes the terms and conditions that make a contract for specific types of dbt objects within a manifest.
     """
     __config_key__: str
-    __supported_terms__: tuple[type[ContractTerm]]
+    __supported_terms__: tuple[type[T]]
     __supported_conditions__: tuple[type[ContractCondition]]
 
     @property
@@ -119,7 +120,7 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
             manifest: Manifest = None,
             catalog: CatalogArtifact = None,
             conditions: MutableSequence[ContractCondition] = (),
-            terms: MutableSequence[ContractTerm] = ()
+            terms: MutableSequence[T] = ()
     ):
         if len(terms) > 0 and not self.validate_terms(terms):
             raise Exception("Unsupported terms for this contract.")
@@ -169,7 +170,7 @@ class Contract[I: ItemT | tuple[ItemT, ParentT]](metaclass=ABCMeta):
         raise NotImplementedError
 
 
-class ParentContract[I: ItemT, P: ParentT](Contract[P], metaclass=ABCMeta):
+class ParentContract[I: ItemT, P: ParentT](Contract[P, ContractTerm], metaclass=ABCMeta):
     __child_contract__: type[ChildContract[I, P]] | None = None
 
     # noinspection PyMethodParameters
@@ -185,7 +186,7 @@ class ParentContract[I: ItemT, P: ParentT](Contract[P], metaclass=ABCMeta):
                 yield item
 
     def create_child_contract(
-            self, conditions: MutableSequence[ContractCondition] = (), terms: MutableSequence[ContractTerm] = ()
+            self, conditions: MutableSequence[ContractCondition] = (), terms: MutableSequence[ChildContractTerm] = ()
     ) -> ChildContract[I, P] | None:
         """Create a child contract from this parent contract."""
         if self.__child_contract__ is None:
@@ -215,7 +216,7 @@ class ParentContract[I: ItemT, P: ParentT](Contract[P], metaclass=ABCMeta):
         ]
 
 
-class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMeta):
+class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P], ChildContractTerm], metaclass=ABCMeta):
     """
     Composes the terms and conditions that make a contract for specific types of dbt child objects within a manifest.
     """
@@ -240,7 +241,7 @@ class ChildContract[I: ItemT, P: ParentT](Contract[tuple[I, P]], metaclass=ABCMe
             manifest: Manifest = None,
             catalog: CatalogArtifact = None,
             conditions: MutableSequence[ContractCondition] = (),
-            terms: MutableSequence[ContractTerm] = (),
+            terms: MutableSequence[ChildContractTerm] = (),
             parent: ParentContract[I, P] = None,
     ):
         super().__init__(

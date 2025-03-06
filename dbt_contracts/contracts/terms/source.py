@@ -9,11 +9,11 @@ from dbt_contracts.contracts.terms.node import NodeContractTerm
 class HasLoader(NodeContractTerm[SourceDefinition]):
     """Check whether sources have appropriate configuration for a loader in their properties."""
     @validate_context
-    def run(self, item: SourceDefinition, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: SourceDefinition, context: ContractContext) -> bool:
         missing_loader = not item.loader
         if missing_loader:
             message = "Loader is not correctly configured"
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         return not missing_loader
 
@@ -21,11 +21,11 @@ class HasLoader(NodeContractTerm[SourceDefinition]):
 class HasFreshness(NodeContractTerm[SourceDefinition]):
     """Check whether sources have freshness configured in their properties."""
     @validate_context
-    def run(self, item: SourceDefinition, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: SourceDefinition, context: ContractContext) -> bool:
         missing_freshness = not bool(item.loaded_at_field) or not item.has_freshness
         if missing_freshness:
             message = "Freshness is not correctly configured"
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         return not missing_freshness
 
@@ -35,10 +35,10 @@ class HasDownstreamDependencies(NodeContractTerm[SourceDefinition], RangeMatcher
     needs_manifest = True
 
     @validate_context
-    def run(self, item: SourceDefinition, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: SourceDefinition, context: ContractContext) -> bool:
         count = sum(item.unique_id in node.depends_on_nodes for node in context.manifest.nodes.values())
         log_message = self._match(count=count, kind="downstream dependencies")
 
         if log_message:
-            context.add_result(name=self.name, message=log_message, item=item, parent=parent)
+            context.add_result(name=self.name, message=log_message, item=item)
         return not log_message

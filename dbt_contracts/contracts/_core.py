@@ -46,6 +46,33 @@ class ContractContext:
     def __post_init__(self) -> None:
         self._results = []
 
+    @staticmethod
+    def get_patch_path(item: ItemT) -> Path | None:
+        """
+        Get the patch path for a given item from its properties.
+
+        :param item: The item to get a patch path for.
+        :return: The patch path if found.
+        """
+        processor = RESULT_PROCESSOR_MAP.get(type(item))
+        if processor is None:
+            raise Exception(f"Unexpected item to get patch for: {type(item)}")
+
+        return processor.get_patch_path(item)
+
+    def get_patch_file(self, item: ItemT) -> dict[str, Any]:
+        """
+        Get the patch file by either extracting from the stored patches or loading from disk.
+
+        :param item: The item to get the patch object for.
+        :return: The loaded patch file if found.
+        """
+        processor = RESULT_PROCESSOR_MAP.get(type(item))
+        if processor is None:
+            raise Exception(f"Unexpected item to get patch for: {type(item)}")
+
+        return processor.get_patch_file(item, self.patches)
+
     def add_result(self, name: str, message: str, item: ItemT, parent: ParentT = None, **kwargs) -> None:
         """
         Create and add a new :py:class:`.Result` to the current list

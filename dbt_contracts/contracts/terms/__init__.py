@@ -1,1 +1,1 @@
-from ._core import ContractTerm
+from ._core import ContractTerm, ChildContractTerm, ParentContractTerm

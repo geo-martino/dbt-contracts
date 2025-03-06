@@ -6,27 +6,27 @@ from dbt.contracts.graph.nodes import SourceDefinition
 from pydantic import BeforeValidator, Field, field_validator
 
 from dbt_contracts.contracts._core import ContractContext
-from dbt_contracts.contracts.terms._core import ContractTerm, validate_context
+from dbt_contracts.contracts.terms._core import ParentContractTerm, ChildContractTerm, validate_context
 from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.types import ParentT, PropertiesT, DescriptionT, TagT, MetaT
 
 
-class HasProperties[I: PropertiesT](ContractTerm[I, None]):
+class HasProperties[I: PropertiesT](ParentContractTerm[I]):
     """Check whether the {kind} have properties files defined."""
     @validate_context
-    def run(self, item: I, context: ContractContext, parent: None = None) -> bool:
+    def run(self, item: I, context: ContractContext) -> bool:
         if isinstance(item, SourceDefinition):  # sources always have properties files defined
             return True
 
         missing_properties = item.patch_path is None
         if missing_properties:
             message = "No properties file found"
-            context.add_result(name=self.name, message=message, item=item, parent=parent)
+            context.add_result(name=self.name, message=message, item=item)
 
         return not missing_properties
 
 
-class HasDescription[I: DescriptionT, P: ParentT](ContractTerm[I, P]):
+class HasDescription[I: DescriptionT, P: ParentT](ChildContractTerm[I, P]):
     """Check whether the {kind} have descriptions defined in their properties."""
     @validate_context
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
@@ -38,7 +38,7 @@ class HasDescription[I: DescriptionT, P: ParentT](ContractTerm[I, P]):
         return not missing_description
 
 
-class HasRequiredTags[I: TagT, P: ParentT](ContractTerm[I, P]):
+class HasRequiredTags[I: TagT, P: ParentT](ChildContractTerm[I, P]):
     """Check whether the {kind} have the expected set of required tags set."""
     tags: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The required tags",
@@ -56,7 +56,7 @@ class HasRequiredTags[I: TagT, P: ParentT](ContractTerm[I, P]):
         return not missing_tags
 
 
-class HasAllowedTags[I: TagT, P: ParentT](ContractTerm[I, P]):
+class HasAllowedTags[I: TagT, P: ParentT](ChildContractTerm[I, P]):
     """Check whether the {kind} have only tags set from a configured permitted list."""
     tags: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The allowed tags",
@@ -74,7 +74,7 @@ class HasAllowedTags[I: TagT, P: ParentT](ContractTerm[I, P]):
         return len(invalid_tags) == 0
 
 
-class HasRequiredMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
+class HasRequiredMetaKeys[I: MetaT, P: ParentT](ChildContractTerm[I, P]):
     """Check whether the {kind} have the expected set of required meta keys set."""
     keys: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The required meta keys",
@@ -92,7 +92,7 @@ class HasRequiredMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
         return not missing_keys
 
 
-class HasAllowedMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
+class HasAllowedMetaKeys[I: MetaT, P: ParentT](ChildContractTerm[I, P]):
     """Check whether the {kind} have only meta keys set from a configured permitted list."""
     keys: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The allowed meta keys",
@@ -110,7 +110,7 @@ class HasAllowedMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
         return len(invalid_keys) == 0
 
 
-class HasAllowedMetaValues[I: MetaT, P: ParentT](ContractTerm[I, P]):
+class HasAllowedMetaValues[I: MetaT, P: ParentT](ChildContractTerm[I, P]):
     """Check whether the {kind} have only meta values set from a configured permitted mapping of keys to values."""
     meta: Mapping[str, Sequence[str]] = Field(
         description="The mapping of meta keys to their allowed values",
