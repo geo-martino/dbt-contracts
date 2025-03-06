@@ -5,28 +5,28 @@ import pytest
 from dbt.contracts.graph.nodes import SourceDefinition
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.generators.source import SourceGenerator
-from tests.contracts.generators.test_node import NodeGeneratorTester
+from dbt_contracts.contracts.generators.source import SourcePropertiesGenerator
+from tests.contracts.generators.test_node import NodePropertiesGeneratorTester
 
 
-class TestSourceGenerator(NodeGeneratorTester[SourceDefinition]):
+class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefinition]):
     @pytest.fixture
-    def generator(self) -> SourceGenerator:
-        return SourceGenerator()
+    def generator(self) -> SourcePropertiesGenerator:
+        return SourcePropertiesGenerator()
 
     @pytest.fixture
     def item(self, source: SourceDefinition) -> SourceDefinition:
         return source
 
-    def test_generate_source_patch(self, generator: SourceGenerator, item: SourceDefinition):
+    def test_generate_source_patch(self, generator: SourcePropertiesGenerator, item: SourceDefinition):
         table = generator._generate_source_patch(item)
         assert all(val for val in table.values())
 
-    def test_generate_table_patch(self, generator: SourceGenerator, item: SourceDefinition):
+    def test_generate_table_patch(self, generator: SourcePropertiesGenerator, item: SourceDefinition):
         table = generator._generate_table_patch(item)
         assert all(val for val in table.values())
 
-    def test_generate_new_patch(self, generator: SourceGenerator, item: SourceDefinition):
+    def test_generate_new_patch(self, generator: SourcePropertiesGenerator, item: SourceDefinition):
         patch = generator._generate_new_patch(item)
         assert item.resource_type.pluralize() in patch
 
@@ -36,7 +36,7 @@ class TestSourceGenerator(NodeGeneratorTester[SourceDefinition]):
             assert patch[key] == val
 
     def test_update_existing_patch_with_empty_patch(
-            self, generator: SourceGenerator, item: SourceDefinition, context: ContractContext
+            self, generator: SourcePropertiesGenerator, item: SourceDefinition, context: ContractContext
     ):
         key = item.resource_type.pluralize()
         patch = {}
@@ -49,7 +49,7 @@ class TestSourceGenerator(NodeGeneratorTester[SourceDefinition]):
 
     def test_update_existing_patch_with_new_source(
             self,
-            generator: SourceGenerator,
+            generator: SourcePropertiesGenerator,
             item: SourceDefinition,
             sources: list[SourceDefinition],
             context: ContractContext
@@ -69,7 +69,7 @@ class TestSourceGenerator(NodeGeneratorTester[SourceDefinition]):
 
     def test_update_existing_patch_with_new_table(
             self,
-            generator: SourceGenerator,
+            generator: SourcePropertiesGenerator,
             item: SourceDefinition,
             sources: list[SourceDefinition],
             context: ContractContext
@@ -93,7 +93,7 @@ class TestSourceGenerator(NodeGeneratorTester[SourceDefinition]):
 
     def test_update_existing_patch_with_existing_table(
             self,
-            generator: SourceGenerator,
+            generator: SourcePropertiesGenerator,
             item: SourceDefinition,
             sources: list[SourceDefinition],
             context: ContractContext

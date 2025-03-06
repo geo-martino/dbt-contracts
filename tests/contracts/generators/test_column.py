@@ -7,15 +7,15 @@ from dbt.contracts.graph.nodes import CompiledNode
 from dbt_common.contracts.metadata import CatalogTable
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.generators.column import ColumnGenerator
-from tests.contracts.generators.test_core import ChildGeneratorTester
+from dbt_contracts.contracts.generators.column import ColumnPropertiesGenerator
+from tests.contracts.generators.test_core import ChildPropertiesGeneratorTester
 
 
-class TestColumnGenerator(ChildGeneratorTester):
+class TestColumnPropertiesGenerator(ChildPropertiesGeneratorTester):
 
     @pytest.fixture
-    def generator(self) -> ColumnGenerator:
-        return ColumnGenerator()
+    def generator(self) -> ColumnPropertiesGenerator:
+        return ColumnPropertiesGenerator()
 
     @pytest.fixture
     def item(self, node_column: ColumnInfo) -> ColumnInfo:
@@ -26,7 +26,7 @@ class TestColumnGenerator(ChildGeneratorTester):
         return node
 
     def test_set_data_type_skips_on_exclude(
-            self, generator: ColumnGenerator, item: ColumnInfo, parent: CompiledNode
+            self, generator: ColumnPropertiesGenerator, item: ColumnInfo, parent: CompiledNode
     ) -> None:
         original_data_type = "str"
         item.data_type = original_data_type
@@ -40,7 +40,7 @@ class TestColumnGenerator(ChildGeneratorTester):
         assert item.data_type == original_data_type
 
     def test_set_data_type_skips_on_empty_data_type(
-            self, generator: ColumnGenerator, item: ColumnInfo, parent: CompiledNode
+            self, generator: ColumnPropertiesGenerator, item: ColumnInfo, parent: CompiledNode
     ) -> None:
         original_data_type = item.data_type
 
@@ -52,7 +52,7 @@ class TestColumnGenerator(ChildGeneratorTester):
         assert item.data_type == original_data_type
 
     def test_set_data_type_skips_on_not_overwrite(
-            self, generator: ColumnGenerator, item: ColumnInfo, parent: CompiledNode
+            self, generator: ColumnPropertiesGenerator, item: ColumnInfo, parent: CompiledNode
     ) -> None:
         original_data_type = "old data_type"
         item.data_type = original_data_type
@@ -65,7 +65,7 @@ class TestColumnGenerator(ChildGeneratorTester):
         assert item.data_type == original_data_type
 
     def test_set_data_type_skips_on_matching_data_type(
-            self, generator: ColumnGenerator, item: ColumnInfo, parent: CompiledNode
+            self, generator: ColumnPropertiesGenerator, item: ColumnInfo, parent: CompiledNode
     ) -> None:
         original_data_type = "int"
         item.data_type = original_data_type
@@ -77,7 +77,7 @@ class TestColumnGenerator(ChildGeneratorTester):
         assert item.data_type == original_data_type
 
     def test_set_data_type(
-            self, generator: ColumnGenerator, item: ColumnInfo, parent: CompiledNode
+            self, generator: ColumnPropertiesGenerator, item: ColumnInfo, parent: CompiledNode
     ) -> None:
         original_data_type = "int"
         item.data_type = original_data_type
@@ -91,7 +91,7 @@ class TestColumnGenerator(ChildGeneratorTester):
 
     def test_merge_skips_on_no_table_in_database(
             self,
-            generator: ColumnGenerator,
+            generator: ColumnPropertiesGenerator,
             item: ColumnInfo,
             parent: CompiledNode,
             context: ContractContext,
@@ -108,7 +108,7 @@ class TestColumnGenerator(ChildGeneratorTester):
 
     def test_merge_skips_on_no_column_in_database(
             self,
-            generator: ColumnGenerator,
+            generator: ColumnPropertiesGenerator,
             item: ColumnInfo,
             parent: CompiledNode,
             context: ContractContext,
@@ -129,7 +129,7 @@ class TestColumnGenerator(ChildGeneratorTester):
 
     def test_merge(
             self,
-            generator: ColumnGenerator,
+            generator: ColumnPropertiesGenerator,
             item: ColumnInfo,
             parent: CompiledNode,
             context: ContractContext,

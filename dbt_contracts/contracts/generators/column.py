@@ -6,14 +6,14 @@ from dbt.artifacts.resources.v1.components import ColumnInfo
 from pydantic import BeforeValidator, Field
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.generators._core import ChildGenerator, CORE_FIELDS
+from dbt_contracts.contracts.generators._core import ChildPropertiesGenerator, CORE_FIELDS
 from dbt_contracts.contracts.utils import get_matching_catalog_table, to_tuple
 from dbt_contracts.types import NodeT
 
 COLUMN_FIELDS = Literal[CORE_FIELDS, "data_type"]
 
 
-class ColumnGenerator[P: NodeT](ChildGenerator[ColumnInfo, P]):
+class ColumnPropertiesGenerator[P: NodeT](ChildPropertiesGenerator[ColumnInfo, P]):
     exclude: Annotated[Sequence[COLUMN_FIELDS], BeforeValidator(to_tuple)] = Field(
         description="The fields to exclude from the generated properties.",
         default=(),

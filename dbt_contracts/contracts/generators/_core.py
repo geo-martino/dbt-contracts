@@ -18,7 +18,7 @@ from dbt_contracts.types import ItemT, PropertiesT
 CORE_FIELDS = Literal["description"]
 
 
-class ContractGenerator[I: ItemT](ContractPart, metaclass=ABCMeta):
+class PropertiesGenerator[I: ItemT](ContractPart, metaclass=ABCMeta):
     """
     A part of a contract meant to generate properties for a resource based on its related database object.
 
@@ -81,7 +81,7 @@ class ContractGenerator[I: ItemT](ContractPart, metaclass=ABCMeta):
         raise NotImplementedError
 
 
-class ParentGenerator[I: PropertiesT](ContractGenerator[I], metaclass=ABCMeta):
+class ParentPropertiesGenerator[I: PropertiesT](PropertiesGenerator[I], metaclass=ABCMeta):
     _patch_defaults: dict[str, Any] = {"version": 2}
 
     filename: str = Field(
@@ -151,7 +151,7 @@ class ParentGenerator[I: PropertiesT](ContractGenerator[I], metaclass=ABCMeta):
         return path
 
 
-class ChildGenerator[I: ItemT, P: PropertiesT](ContractGenerator[I], metaclass=ABCMeta):
+class ChildPropertiesGenerator[I: ItemT, P: PropertiesT](PropertiesGenerator[I], metaclass=ABCMeta):
     @abstractmethod
     def merge(self, item: I, context: ContractContext, parent: P = None) -> bool:
         """

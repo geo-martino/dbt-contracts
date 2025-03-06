@@ -6,14 +6,14 @@ import yaml
 from dbt.flags import GLOBAL_FLAGS
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.generators import ContractGenerator, ParentGenerator, ChildGenerator
+from dbt_contracts.contracts.generators import PropertiesGenerator, ParentPropertiesGenerator, ChildPropertiesGenerator
 from dbt_contracts.types import ItemT, PropertiesT
 
 
-class ContractGeneratorTester[I: ItemT](metaclass=ABCMeta):
+class ContractPropertiesGeneratorTester[I: ItemT](metaclass=ABCMeta):
     """Base class for testing contract generators."""
     @abstractmethod
-    def generator(self) -> ContractGenerator[I]:
+    def generator(self) -> PropertiesGenerator[I]:
         """Fixture for the contract generator to test."""
         raise NotImplementedError
 
@@ -23,7 +23,7 @@ class ContractGeneratorTester[I: ItemT](metaclass=ABCMeta):
         raise NotImplementedError
 
     @staticmethod
-    def test_set_description_skips_on_exclude(generator: ContractGenerator[I], item: ItemT) -> None:
+    def test_set_description_skips_on_exclude(generator: PropertiesGenerator[I], item: ItemT) -> None:
         original_description = item.description
         description = "description"
         assert item.description != description
@@ -36,7 +36,7 @@ class ContractGeneratorTester[I: ItemT](metaclass=ABCMeta):
         assert item.description == original_description
 
     @staticmethod
-    def test_set_description_skips_on_empty_description(generator: ContractGenerator[I], item: ItemT) -> None:
+    def test_set_description_skips_on_empty_description(generator: PropertiesGenerator[I], item: ItemT) -> None:
         original_description = item.description
 
         assert not generator.exclude
@@ -48,7 +48,7 @@ class ContractGeneratorTester[I: ItemT](metaclass=ABCMeta):
         assert item.description == original_description
 
     @staticmethod
-    def test_set_description_skips_on_not_overwrite(generator: ContractGenerator[I], item: ItemT) -> None:
+    def test_set_description_skips_on_not_overwrite(generator: PropertiesGenerator[I], item: ItemT) -> None:
         original_description = "old description"
         item.description = original_description
         description = "new description"
@@ -61,7 +61,7 @@ class ContractGeneratorTester[I: ItemT](metaclass=ABCMeta):
         assert item.description == original_description
 
     @staticmethod
-    def test_set_description_skips_on_matching_description(generator: ContractGenerator[I], item: ItemT) -> None:
+    def test_set_description_skips_on_matching_description(generator: PropertiesGenerator[I], item: ItemT) -> None:
         original_description = "description line 1\ndescription line 2"
         item.description = original_description
 
@@ -79,7 +79,7 @@ class ContractGeneratorTester[I: ItemT](metaclass=ABCMeta):
         assert item.description == original_description_line_1
 
     @staticmethod
-    def test_set_description(generator: ContractGenerator[I], item: ItemT) -> None:
+    def test_set_description(generator: PropertiesGenerator[I], item: ItemT) -> None:
         original_description = "old description"
         item.description = original_description
         description = "new description"
@@ -101,14 +101,14 @@ class ContractGeneratorTester[I: ItemT](metaclass=ABCMeta):
         assert item.description == description
 
 
-class ParentGeneratorTester[I: PropertiesT](ContractGeneratorTester[I], metaclass=ABCMeta):
+class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGeneratorTester[I], metaclass=ABCMeta):
     @abstractmethod
-    def generator(self) -> ParentGenerator[I]:
+    def generator(self) -> ParentPropertiesGenerator[I]:
         raise NotImplementedError
 
     @staticmethod
     def test_save_with_no_existing_patch(
-            generator: ParentGenerator[I], item: PropertiesT, context: ContractContext
+            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext
     ):
         item.original_file_path = ""
         item.patch_path = None
@@ -127,7 +127,7 @@ class ParentGeneratorTester[I: PropertiesT](ContractGeneratorTester[I], metaclas
 
     @staticmethod
     def test_save_with_existing_patch(
-            generator: ParentGenerator[I], item: PropertiesT, context: ContractContext
+            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext
     ):
         assert context.get_patch_path(item)
 
@@ -144,7 +144,7 @@ class ParentGeneratorTester[I: PropertiesT](ContractGeneratorTester[I], metaclas
 
     @staticmethod
     def test_save_patch(
-            generator: ParentGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
+            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
     ):
         patch_path = tmp_path.joinpath("patch.yml")
         patch = {"key": "value"}
@@ -156,7 +156,7 @@ class ParentGeneratorTester[I: PropertiesT](ContractGeneratorTester[I], metaclas
 
     @staticmethod
     def test_get_patch_path_on_existing_patch_path(
-            generator: ParentGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
+            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
     ):
         patch_path = tmp_path.joinpath("path", "to", "patch.yml")
         with mock.patch.object(ContractContext, "get_patch_path", return_value=patch_path):
@@ -164,7 +164,7 @@ class ParentGeneratorTester[I: PropertiesT](ContractGeneratorTester[I], metaclas
 
     @staticmethod
     def test_get_patch_path_generates_patch_path_with_no_set_depth(
-            generator: ParentGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
+            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
     ):
         GLOBAL_FLAGS.PROJECT_DIR = tmp_path
         assert generator.depth is None
@@ -177,7 +177,7 @@ class ParentGeneratorTester[I: PropertiesT](ContractGeneratorTester[I], metaclas
 
     @staticmethod
     def test_get_patch_path_generates_patch_path_with_depth(
-            generator: ParentGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
+            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
     ):
         GLOBAL_FLAGS.PROJECT_DIR = tmp_path
         item.path = str(tmp_path.joinpath("path", "to", "a", "model"))
@@ -191,9 +191,9 @@ class ParentGeneratorTester[I: PropertiesT](ContractGeneratorTester[I], metaclas
             assert generator._get_patch_path(item, context=context) == expected
 
 
-class ChildGeneratorTester[I: ItemT, P: PropertiesT](ContractGeneratorTester[I], metaclass=ABCMeta):
+class ChildPropertiesGeneratorTester[I: ItemT, P: PropertiesT](ContractPropertiesGeneratorTester[I], metaclass=ABCMeta):
     @abstractmethod
-    def generator(self) -> ChildGenerator[I, P]:
+    def generator(self) -> ChildPropertiesGenerator[I, P]:
         raise NotImplementedError
 
     @abstractmethod

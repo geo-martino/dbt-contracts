@@ -7,18 +7,18 @@ from dbt_common.contracts.metadata import CatalogTable, ColumnMetadata
 from faker import Faker
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.generators.node import NodeGenerator
+from dbt_contracts.contracts.generators.node import NodePropertiesGenerator
 from dbt_contracts.types import NodeT
-from tests.contracts.generators.test_core import ParentGeneratorTester
+from tests.contracts.generators.test_core import ParentPropertiesGeneratorTester
 
 
-class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
+class NodePropertiesGeneratorTester[I: NodeT](ParentPropertiesGeneratorTester, metaclass=ABCMeta):
     @abstractmethod
-    def generator(self) -> NodeGenerator[I]:
+    def generator(self) -> NodePropertiesGenerator[I]:
         raise NotImplementedError
 
     @staticmethod
-    def test_set_columns_skips_on_exclude(generator: NodeGenerator[I], item: I, faker: Faker):
+    def test_set_columns_skips_on_exclude(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         columns = {name: ColumnMetadata(name=name, index=i, type="int") for i, name in enumerate(faker.words())}
 
         generator.exclude = ["columns"]
@@ -33,7 +33,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
             mock_drop.assert_not_called()
 
     @staticmethod
-    def test_set_columns_skips_on_empty_columns(generator: NodeGenerator[I], item: I):
+    def test_set_columns_skips_on_empty_columns(generator: NodePropertiesGenerator[I], item: I):
         assert not generator.exclude
         generator.overwrite = True
 
@@ -46,7 +46,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
             mock_drop.assert_not_called()
 
     @staticmethod
-    def test_set_columns(generator: NodeGenerator[I], item: I, faker: Faker):
+    def test_set_columns(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         columns = {name: ColumnMetadata(name=name, index=i, type="int") for i, name in enumerate(faker.words())}
 
         assert not generator.exclude
@@ -61,7 +61,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
             assert len(mock_drop.mock_calls) == len(item.columns)
 
     @staticmethod
-    def test_set_column_skips_on_matched_column(generator: NodeGenerator[I], item: I, faker: Faker):
+    def test_set_column_skips_on_matched_column(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         item_column = choice(list(item.columns.values()))
         column = ColumnMetadata(name=item_column.name, index=faker.random_int(), type=item_column.data_type)
         assert column.name in item.columns
@@ -69,7 +69,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
         assert not generator._set_column(item, column=column)
 
     @staticmethod
-    def test_set_column(generator: NodeGenerator[I], item: I, faker: Faker):
+    def test_set_column(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         column = ColumnMetadata(name=faker.word(), index=faker.random_int(), type="int")
         assert column.name not in item.columns
 
@@ -78,7 +78,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
         assert item.columns[column.name].name == column.name
 
     @staticmethod
-    def test_drop_column_skips_on_exclude(generator: NodeGenerator[I], item: I, faker: Faker):
+    def test_drop_column_skips_on_exclude(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         columns = {name: ColumnMetadata(name=name, index=i, type="int") for i, name in enumerate(faker.words())}
         column = choice(list(item.columns.values()))
         assert column.name not in columns
@@ -90,7 +90,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
         assert column.name in item.columns
 
     @staticmethod
-    def test_drop_column_skips_on_matched_column(generator: NodeGenerator[I], item: I):
+    def test_drop_column_skips_on_matched_column(generator: NodePropertiesGenerator[I], item: I):
         columns = {
             col.name: ColumnMetadata(name=col.name, index=i, type="int")
             for i, col in enumerate(item.columns.values())
@@ -105,7 +105,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
         assert column.name in item.columns
 
     @staticmethod
-    def test_drop_column(generator: NodeGenerator[I], item: I, faker: Faker):
+    def test_drop_column(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         columns = {name: ColumnMetadata(name=name, index=i, type="int") for i, name in enumerate(faker.words())}
         column = choice(list(item.columns.values()))
         assert column.name not in columns
@@ -117,7 +117,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
         assert column.name not in item.columns
 
     @staticmethod
-    def test_reorder_columns_skips_on_exclude(generator: NodeGenerator[I], item: I, faker: Faker):
+    def test_reorder_columns_skips_on_exclude(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         original_order = list(item.columns)
         columns = {
             col.name: ColumnMetadata(name=col.name, index=faker.random_int(), type="int")
@@ -132,7 +132,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
         assert list(item.columns) == original_order
 
     @staticmethod
-    def test_reorder_columns_skips_on_empty_columns(generator: NodeGenerator[I], item: I):
+    def test_reorder_columns_skips_on_empty_columns(generator: NodePropertiesGenerator[I], item: I):
         original_order = list(item.columns)
 
         assert not generator.exclude
@@ -143,7 +143,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
         assert list(item.columns) == original_order
 
     @staticmethod
-    def test_reorder_columns_skips_when_columns_already_in_order(generator: NodeGenerator[I], item: I, faker: Faker):
+    def test_reorder_columns_skips_when_columns_already_in_order(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         original_order = list(item.columns)
         columns = {
             col.name: ColumnMetadata(name=col.name, index=faker.random_int(), type="int")
@@ -158,7 +158,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
         assert list(item.columns) == original_order
 
     @staticmethod
-    def test_reorder_columns(generator: NodeGenerator[I], item: I, faker: Faker):
+    def test_reorder_columns(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         item.columns |= {name: ColumnInfo(name=name) for name in faker.words()}
         original_order = list(item.columns)
         columns = {
@@ -176,7 +176,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
         assert list(item.columns) != original_order
 
     @staticmethod
-    def test_merge_skips_on_no_table_in_database(generator: NodeGenerator[I], item: I, context: ContractContext):
+    def test_merge_skips_on_no_table_in_database(generator: NodePropertiesGenerator[I], item: I, context: ContractContext):
         with (
             mock.patch("dbt_contracts.contracts.generators.node.get_matching_catalog_table", return_value=None),
             mock.patch.object(generator.__class__, "_set_description") as mock_description,
@@ -190,7 +190,7 @@ class NodeGeneratorTester[I: NodeT](ParentGeneratorTester, metaclass=ABCMeta):
             mock_reorder_columns.assert_not_called()
 
     @staticmethod
-    def test_merge(generator: NodeGenerator[I], item: I, context: ContractContext, node_table: CatalogTable):
+    def test_merge(generator: NodePropertiesGenerator[I], item: I, context: ContractContext, node_table: CatalogTable):
         with (
             mock.patch("dbt_contracts.contracts.generators.node.get_matching_catalog_table", return_value=node_table),
             mock.patch.object(generator.__class__, "_set_description", return_value=False) as mock_description,

@@ -8,14 +8,14 @@ from dbt_common.contracts.metadata import ColumnMetadata
 from pydantic import Field, BeforeValidator
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.generators._core import ParentGenerator, CORE_FIELDS
+from dbt_contracts.contracts.generators._core import ParentPropertiesGenerator, CORE_FIELDS
 from dbt_contracts.contracts.utils import get_matching_catalog_table, to_tuple
 from dbt_contracts.types import NodeT
 
 NODE_FIELDS = Literal[CORE_FIELDS, "columns"]
 
 
-class NodeGenerator[I: NodeT](ParentGenerator[I], metaclass=ABCMeta):
+class NodePropertiesGenerator[I: NodeT](ParentPropertiesGenerator[I], metaclass=ABCMeta):
     exclude: Annotated[Sequence[NODE_FIELDS], BeforeValidator(to_tuple)] = Field(
         description="The fields to exclude from the generated properties.",
         default=(),

@@ -3,10 +3,10 @@ from typing import Any
 from dbt.contracts.graph.nodes import ModelNode
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.generators.node import NodeGenerator
+from dbt_contracts.contracts.generators.node import NodePropertiesGenerator
 
 
-class ModelGenerator(NodeGenerator[ModelNode]):
+class ModelPropertiesGenerator(NodePropertiesGenerator[ModelNode]):
 
     def _update_existing_patch(self, item: ModelNode, context: ContractContext) -> dict[str, Any]:
         key = item.resource_type.pluralize()
