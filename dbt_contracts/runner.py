@@ -31,7 +31,7 @@ def _get_default_table_header(result: Result) -> str:
     if (patch_path := result.patch_path) and patch_path != path:
         header_path += f" @ {Fore.LIGHTCYAN_EX}{patch_path}{Fore.RESET}"
 
-    return f"{Fore.LIGHTWHITE_EX}{result.result_type}{Fore.RESET}: {header_path}"
+    return f"{Fore.LIGHTWHITE_EX}{result.result_type.rstrip("s")}s{Fore.RESET}: {header_path}"
 
 
 DEFAULT_TERMINAL_LOG_BUILDER_CELLS = (
