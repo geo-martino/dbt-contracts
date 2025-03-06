@@ -6,7 +6,6 @@ from unittest import mock
 
 import pytest
 import yaml
-from colorama import Fore
 from faker import Faker
 
 from dbt_contracts.contracts import ModelContract, SourceContract, ColumnContract
