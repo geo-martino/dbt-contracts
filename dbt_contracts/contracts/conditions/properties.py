@@ -14,11 +14,16 @@ from dbt_contracts.types import ItemT, TagT, MetaT
 
 
 class NameCondition(ContractCondition[ItemT], PatternMatcher):
+    """Filter {kind} based on their names."""
     def run(self, item: (BaseResource, ColumnInfo, MacroArgument)) -> bool:
         return self._match(item.name)
 
 
 class PathCondition(ContractCondition[BaseResource], PatternMatcher):
+    """
+    Filter {kind} based on their paths.
+    Paths must match patterns which are relative to the root directory of the dbt project.
+    """
     def run(self, item: BaseResource) -> bool:
         paths = [item.original_file_path, item.path]
         if isinstance(item, ParsedResource) and item.patch_path:
@@ -27,6 +32,7 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
 
 
 class TagCondition(ContractCondition[TagT]):
+    """Filter {kind} based on their tags."""
     tags: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The tags to match on",
         default=tuple(),
@@ -37,6 +43,7 @@ class TagCondition(ContractCondition[TagT]):
 
 
 class MetaCondition(ContractCondition[MetaT]):
+    """Filter {kind} based on their meta values."""
     meta: Mapping[str, Sequence[str]] = Field(
         description="The mapping of meta keys to their allowed values",
         default_factory=dict,
@@ -68,5 +75,6 @@ class MetaCondition(ContractCondition[MetaT]):
 
 
 class IsMaterializedCondition(ContractCondition[ParsedResource]):
+    """Filter {kind} taking only those which are not ephemeral."""
     def run(self, item: ParsedResource) -> bool:
         return item.config.materialized != "ephemeral"

@@ -7,6 +7,7 @@ from dbt_contracts.contracts.terms.node import NodeContractTerm
 
 
 class HasLoader(NodeContractTerm[SourceDefinition]):
+    """Check whether sources have appropriate configuration for a loader in their properties."""
     @validate_context
     def run(self, item: SourceDefinition, context: ContractContext, parent: None = None) -> bool:
         missing_loader = not item.loader
@@ -18,6 +19,7 @@ class HasLoader(NodeContractTerm[SourceDefinition]):
 
 
 class HasFreshness(NodeContractTerm[SourceDefinition]):
+    """Check whether sources have freshness configured in their properties."""
     @validate_context
     def run(self, item: SourceDefinition, context: ContractContext, parent: None = None) -> bool:
         missing_freshness = not bool(item.loaded_at_field) or not item.has_freshness
@@ -29,6 +31,7 @@ class HasFreshness(NodeContractTerm[SourceDefinition]):
 
 
 class HasDownstreamDependencies(NodeContractTerm[SourceDefinition], RangeMatcher):
+    """Check whether sources have an appropriate number of downstream dependencies."""
     needs_manifest = True
 
     @validate_context

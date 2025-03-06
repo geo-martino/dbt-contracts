@@ -7,6 +7,7 @@ from dbt_contracts.contracts.terms.node import NodeContractTerm
 
 
 class HasConstraints(NodeContractTerm[ModelNode], RangeMatcher):
+    """Check whether models have an appropriate number of constraints configured in their properties."""
     @validate_context
     def run(self, item: ModelNode, context: ContractContext, parent: None = None) -> bool:
         count = len(item.constraints)

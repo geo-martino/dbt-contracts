@@ -104,10 +104,12 @@ class ReferencePageBuilder:
 
     def generate_args(self, model: type[BaseModel], name: str):
         if not model.model_fields:
+            contract_cls = next(cls for cls in model.mro() if cls.__name__.startswith("Contract"))
+            kind = contract_cls.__name__.replace("Contract", "").split("[")[0].lower()
             no_args_doc = [
                 ".. note::",
-                "This method does not need further configuration. "
-                "Simply define the method name in your configuration."
+                f"This {kind} does not need further configuration. "
+                f"Simply define the {kind}'s name as an item in your configuration."
             ]
             self.add_code_block_lines(no_args_doc)
             self.add_empty_lines()
@@ -180,25 +182,29 @@ class ReferencePageBuilder:
 
     def generate_contract_parts(
             self,
-            kind: str,
             parts: Collection[type[ContractTerm | ContractCondition]],
-            description: str | Iterable[str] = None
+            kind: str,
+            title: str,
     ) -> None:
-        self.add_header(self.make_title(kind), section=0)
+        description = self._get_description(kind, format_map={"kind": title.lower()})
+
+        kind = self.make_title(kind)
+        self.add_header(kind, section=0)
         if description:
             self.add_lines(description)
             self.add_empty_lines()
 
-        list(map(self.generate_contract_part, parts))
+        for part in parts:
+            self.generate_contract_part(part, title=title)
 
-    def generate_contract_part(self, part: type[ContractTerm | ContractCondition]) -> None:
+    def generate_contract_part(self, part: type[ContractTerm | ContractCondition], title: str) -> None:
         # noinspection PyProtectedMember
         name = part._name()
         self.add_header(name, section=1)
 
         doc = docstring_parser.parse(part.__doc__)
         if doc.description:
-            self.add_lines(doc.description.strip())
+            self.add_lines(doc.description.strip().format(**{"kind": title.lower()}))
             self.add_empty_lines()
 
         self.generate_args(part, name=name)
@@ -207,8 +213,7 @@ class ReferencePageBuilder:
         title = self.make_title(contract.__config_key__)
 
         for key, getter in SECTIONS.items():
-            description = self._get_description(key, format_map={"kind": title.lower()})
-            self.generate_contract_parts(key, parts=getter(contract), description=description)
+            self.generate_contract_parts(parts=getter(contract), kind=key, title=title)
 
     def generate_ref_to_child_page(self, contract: type[ChildContract], parent_title: str) -> None:
         key = contract.__config_key__

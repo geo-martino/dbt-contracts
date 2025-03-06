@@ -43,6 +43,7 @@ class ColumnContractTerm[T: NodeT](ContractTerm[ColumnInfo, T], metaclass=ABCMet
 
 
 class Exists[T: NodeT](ColumnContractTerm[T]):
+    """Check whether the columns exist in the database."""
     needs_catalog = True
 
     @validate_context
@@ -54,6 +55,7 @@ class Exists[T: NodeT](ColumnContractTerm[T]):
 
 
 class HasTests[T: NodeT](ColumnContractTerm[T], RangeMatcher):
+    """Check whether columns have an appropriate number of tests configured."""
     needs_manifest = True
 
     @staticmethod
@@ -80,6 +82,10 @@ class HasTests[T: NodeT](ColumnContractTerm[T], RangeMatcher):
 
 
 class HasExpectedName[T: NodeT](ColumnContractTerm[T], StringMatcher):
+    """
+    Check whether columns have an expected name based on their data type.
+    Matches the column names against a set of patterns mapped to specific data types.
+    """
     patterns: Mapping[str, Sequence[str, ...]] = Field(
         description=(
             "A map of data types to regex patterns for which to "
@@ -140,6 +146,7 @@ class HasExpectedName[T: NodeT](ColumnContractTerm[T], StringMatcher):
 
 
 class HasDataType[T: NodeT](ColumnContractTerm[T]):
+    """Check whether columns have a data type configured in their properties."""
     @validate_context
     def run(self, item: ColumnInfo, context: ContractContext, parent: T = None) -> bool:
         if not self._validate_node(column=item, node=parent, context=context):
@@ -154,6 +161,7 @@ class HasDataType[T: NodeT](ColumnContractTerm[T]):
 
 
 class HasMatchingDescription[T: NodeT](ColumnContractTerm[T], StringMatcher):
+    """Check whether the descriptions configured in columns' properties matches the descriptions in the database."""
     needs_catalog = True
 
     @validate_context
@@ -175,6 +183,7 @@ class HasMatchingDescription[T: NodeT](ColumnContractTerm[T], StringMatcher):
 
 
 class HasMatchingDataType[T: NodeT](ColumnContractTerm[T], StringMatcher):
+    """Check whether the data type configured in a column's properties matches the data type in the database."""
     needs_catalog = True
 
     @validate_context
@@ -196,6 +205,10 @@ class HasMatchingDataType[T: NodeT](ColumnContractTerm[T], StringMatcher):
 
 
 class HasMatchingIndex[T: NodeT](ColumnContractTerm[T], StringMatcher):
+    """
+    Check whether the index position within the properties of a column's table
+    matches the index position in the database.
+    """
     needs_catalog = True
 
     @validate_context

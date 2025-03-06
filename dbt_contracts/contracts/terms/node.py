@@ -20,6 +20,7 @@ class NodeContractTerm[T: NodeT](ContractTerm[T, None], metaclass=ABCMeta):
 
 
 class Exists[T: NodeT](NodeContractTerm[T]):
+    """Check whether the {kind} exist in the database."""
     needs_catalog = True
 
     @validate_context
@@ -33,6 +34,7 @@ class Exists[T: NodeT](NodeContractTerm[T]):
 
 
 class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
+    """Check whether {kind} have an appropriate number of tests configured."""
     needs_manifest = True
 
     @staticmethod
@@ -56,6 +58,10 @@ class HasTests[T: NodeT](NodeContractTerm[T], RangeMatcher):
 
 
 class HasAllColumns[T: NodeT](NodeContractTerm[T]):
+    """
+    Check whether {kind} have all columns set in their properties.
+    Ensures that all columns present in the database are present in dbt project properties.
+    """
     needs_catalog = True
 
     @validate_context
@@ -87,6 +93,7 @@ class HasAllColumns[T: NodeT](NodeContractTerm[T]):
 
 
 class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
+    """Check whether {kind} have the expected names of columns set in their properties."""
     columns: str | Sequence[str] | Mapping[str, str] = Field(
         description="A sequence of the names of the columns that should exist in the node, "
                     "or a mapping of the column names and their associated data types that should exist.",
@@ -124,6 +131,7 @@ class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
 
 
 class HasMatchingDescription[T: NodeT](NodeContractTerm[T], StringMatcher):
+    """Check whether the descriptions configured in {kind}' properties match the descriptions in the database."""
     needs_catalog = True
 
     @validate_context
@@ -141,6 +149,7 @@ class HasMatchingDescription[T: NodeT](NodeContractTerm[T], StringMatcher):
 
 
 class HasContract[T: CompiledNode](NodeContractTerm[T]):
+    """Check whether {kind} have appropriate configuration for a contract in their properties."""
     @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         missing_contract = not item.contract.enforced
@@ -178,6 +187,10 @@ class HasValidUpstreamDependencies[T: CompiledNode](NodeContractTerm[T], metacla
 
 
 class HasValidRefDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
+    """
+    Check whether {kind} have an appropriate number of upstream dependencies
+    i.e. the number of `ref` macros present in the query.
+    """
     @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         upstream_dependencies = {ref for ref in item.depends_on_nodes if ref.startswith("model")}
@@ -189,6 +202,10 @@ class HasValidRefDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
 
 
 class HasValidSourceDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
+    """
+    Check whether {kind} have an appropriate number of upstream dependencies for sources
+    i.e. the number of `source` macros present in the query.
+    """
     @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         upstream_dependencies = {ref for ref in item.depends_on_nodes if ref.startswith("source")}
@@ -200,6 +217,10 @@ class HasValidSourceDependencies[T: CompiledNode](HasValidUpstreamDependencies[T
 
 
 class HasValidMacroDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
+    """
+    Check whether {kind} have an appropriate number of upstream dependencies for macros
+    i.e. the number of custom macros present in the query.
+    """
     @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         upstream_dependencies = set(item.depends_on_macros)
@@ -211,6 +232,7 @@ class HasValidMacroDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]
 
 
 class HasNoFinalSemiColon[T: CompiledNode](NodeContractTerm[T]):
+    """Check if {kind} have a final semicolon present in their queries."""
     @validate_context
     def run(self, item: T, context: ContractContext, parent: None = None) -> bool:
         # ignore non-SQL models
@@ -226,6 +248,7 @@ class HasNoFinalSemiColon[T: CompiledNode](NodeContractTerm[T]):
 
 
 class HasNoHardcodedRefs[T: CompiledNode](NodeContractTerm[T]):
+    """Check if {kind} have any hardcoded references to database objects in their queries."""
     comments_pattern: ClassVar[str] = r"(?<=(\/\*|\{#))((.|[\r\n])+?)(?=(\*+\/|#\}))|[ \t]*--.*"
 
     cte_keywords: ClassVar[frozenset[str]] = frozenset({"with"})

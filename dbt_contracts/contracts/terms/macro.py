@@ -6,6 +6,7 @@ from dbt_contracts.contracts.terms._core import ContractTerm, validate_context
 
 
 class HasType(ContractTerm[MacroArgument, Macro]):
+    """Check whether macro arguments have a data type configured in their properties."""
     @validate_context
     def run(self, item: MacroArgument, context: ContractContext, parent: Macro = None) -> bool:
         missing_type = not item.type

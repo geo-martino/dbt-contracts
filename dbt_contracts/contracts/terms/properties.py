@@ -12,6 +12,7 @@ from dbt_contracts.types import ParentT, PropertiesT, DescriptionT, TagT, MetaT
 
 
 class HasProperties[I: PropertiesT](ContractTerm[I, None]):
+    """Check whether the {kind} have properties files defined."""
     @validate_context
     def run(self, item: I, context: ContractContext, parent: None = None) -> bool:
         if isinstance(item, SourceDefinition):  # sources always have properties files defined
@@ -26,6 +27,7 @@ class HasProperties[I: PropertiesT](ContractTerm[I, None]):
 
 
 class HasDescription[I: DescriptionT, P: ParentT](ContractTerm[I, P]):
+    """Check whether the {kind} have descriptions defined in their properties."""
     @validate_context
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
         missing_description = not item.description
@@ -37,6 +39,7 @@ class HasDescription[I: DescriptionT, P: ParentT](ContractTerm[I, P]):
 
 
 class HasRequiredTags[I: TagT, P: ParentT](ContractTerm[I, P]):
+    """Check whether the {kind} have the expected set of required tags set."""
     tags: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The required tags",
         default=tuple(),
@@ -53,6 +56,7 @@ class HasRequiredTags[I: TagT, P: ParentT](ContractTerm[I, P]):
 
 
 class HasAllowedTags[I: TagT, P: ParentT](ContractTerm[I, P]):
+    """Check whether the {kind} have only tags set from a configured permitted list."""
     tags: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The allowed tags",
         default=tuple(),
@@ -69,6 +73,7 @@ class HasAllowedTags[I: TagT, P: ParentT](ContractTerm[I, P]):
 
 
 class HasRequiredMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
+    """Check whether the {kind} have the expected set of required meta keys set."""
     keys: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The required meta keys",
         default=tuple(),
@@ -85,6 +90,7 @@ class HasRequiredMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
 
 
 class HasAllowedMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
+    """Check whether the {kind} have only meta keys set from a configured permitted list."""
     keys: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The allowed meta keys",
         default=tuple(),
@@ -101,6 +107,7 @@ class HasAllowedMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
 
 
 class HasAllowedMetaValues[I: MetaT, P: ParentT](ContractTerm[I, P]):
+    """Check whether the {kind} have only meta values set from a configured permitted mapping of keys to values."""
     meta: Mapping[str, Sequence[str]] = Field(
         description="The mapping of meta keys to their allowed values",
         default_factory=dict,
