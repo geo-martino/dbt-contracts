@@ -3,8 +3,6 @@ from __future__ import annotations
 import re
 from abc import ABCMeta, abstractmethod
 
-from pydantic import BaseModel
-
 from dbt_contracts.contracts import ContractPart
 from dbt_contracts.types import ItemT
 

@@ -5,6 +5,7 @@ import json
 import os
 from argparse import Namespace
 from collections.abc import Mapping
+from logging import Logger
 from pathlib import Path
 from typing import Any
 
@@ -132,7 +133,9 @@ def install_dependencies(*args, runner: dbtRunner = None, config: RuntimeConfig 
     return get_result("deps", *args, runner=runner).result
 
 
-def get_manifest(*args, runner: dbtRunner = None, config: RuntimeConfig | Namespace = None) -> Manifest:
+def get_manifest(
+        *args, runner: dbtRunner = None, config: RuntimeConfig | Namespace = None, logger: Logger = None
+) -> Manifest:
     """
     Generate and return the dbt manifest for a project i.e. run the `dbt parse` command.
 
@@ -140,17 +143,23 @@ def get_manifest(*args, runner: dbtRunner = None, config: RuntimeConfig | Namesp
         If None, creates a new runner for this invocation.
     :param config: The runtime config to use.
     :param args: Args to pass to the `runner`.
+    :param logger: The logger to use for logging.
     :return: The manifest.
     """
     artifact = load_artifact(MANIFEST_FILE_NAME, config=config)
     if artifact:
         return Manifest.from_dict(artifact)
 
+    if logger is not None:
+        logger.info(f"Generating manifest for {config.project_name!r}...")
+
     args = add_default_args(*args, config=config)
     return get_result("parse", *args, runner=runner).result
 
 
-def get_catalog(*args, runner: dbtRunner = None, config: RuntimeConfig | Namespace = None) -> CatalogArtifact:
+def get_catalog(
+        *args, runner: dbtRunner = None, config: RuntimeConfig | Namespace = None, logger: Logger = None
+) -> CatalogArtifact:
     """
     Generate and return the dbt catalog for a project i.e. run the `dbt docs generate` command.
 
@@ -158,11 +167,15 @@ def get_catalog(*args, runner: dbtRunner = None, config: RuntimeConfig | Namespa
         If None, creates a new runner for this invocation.
     :param config: The runtime config to use.
     :param args: Args to pass to the `runner`.
+    :param logger: The logger to use for logging.
     :return: The catalog.
     """
     artifact = load_artifact(CATALOG_FILENAME, config=config)
     if artifact:
         return CatalogArtifact.from_dict(artifact)
+
+    if logger is not None:
+        logger.info(f"Generating catalog for {config.project_name!r}...")
 
     args = add_default_args(*args, config=config)
     return get_result("docs", "generate", *args, runner=runner).result

@@ -46,6 +46,10 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
     @field_validator("include", "exclude", mode="before")
     @classmethod
     def unify_chunked_path_values(cls, values: str | Sequence[str] | Sequence[Sequence[str]]) -> tuple[str, ...]:
+        """
+        Unify all path values into a tuple of strings.
+        Also merges path parts into a single path with the os-specific separator.
+        """
         if isinstance(values, str):
             return (values,)
         if not isinstance(values, Sequence):

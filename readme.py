@@ -43,9 +43,8 @@ def format_contract_reference(contract: type[Contract], parent_key: str = "") ->
             doc = docstring_parser.parse(part.__doc__).short_description.strip().format(kind=title.lower())
             doc = re.sub(r"\s*\n\s+", " ", doc)
 
-
-            method_line = f"- [`{name}`]({url}): {doc}"
-            lines.append(method_line)
+            line = f"- [`{name}`]({url}): {doc}"
+            lines.append(line)
 
         lines.append("")
 

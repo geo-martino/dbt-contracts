@@ -23,8 +23,6 @@ from dbt_contracts.contracts.utils import get_absolute_project_path, to_tuple
 from dbt_contracts.formatters import ResultsFormatter
 from dbt_contracts.formatters.table import TableCellBuilder, GroupedTableFormatter, TableFormatter, TableRowBuilder
 
-logging.basicConfig(level=logging.INFO, format="%(message)s")
-
 
 def _get_default_table_header(result: Result) -> str:
     path = result.path
@@ -117,14 +115,14 @@ class ContractsRunner:
     @cached_property
     def manifest(self) -> Manifest:
         """The dbt manifest"""
-        manifest = dbt_cli.get_manifest(runner=self.dbt, config=self.config)
+        manifest = dbt_cli.get_manifest(runner=self.dbt, config=self.config, logger=self.logger)
         self.dbt.manifest = manifest
         return manifest
 
     @cached_property
     def catalog(self) -> CatalogArtifact:
         """The dbt catalog"""
-        return dbt_cli.get_catalog(runner=self.dbt, config=self.config)
+        return dbt_cli.get_catalog(runner=self.dbt, config=self.config, logger=self.logger)
 
     @property
     def paths(self) -> PathCondition | None:

@@ -14,9 +14,7 @@ from pydantic import BaseModel
 # noinspection PyProtectedMember
 from pydantic.fields import FieldInfo
 
-from dbt_contracts.contracts import Contract, ParentContract, ChildContract, CONTRACT_CLASSES, ContractPart
-from dbt_contracts.contracts.conditions import ContractCondition
-from dbt_contracts.contracts.terms import ContractTerm
+from dbt_contracts.contracts import Contract, ParentContract, ChildContract, ContractPart, CONTRACT_CLASSES
 
 HEADER_SECTION_CHARS = ("=", "-", "^", '"')
 
@@ -105,8 +103,8 @@ class ReferencePageBuilder:
 
     def generate_args(self, model: type[BaseModel], name: str):
         if not model.model_fields:
-            contract_cls = next(cls for cls in model.mro() if cls.__name__.startswith("Contract"))
-            kind = contract_cls.__name__.replace("Contract", "").split("[")[0].lower()
+            cls = next(cls for cls in model.mro() if cls.__name__.startswith("Contract"))
+            kind = cls.__name__.replace("Contract", "").split("[")[0].lower()
             no_args_doc = [
                 ".. note::",
                 f"This {kind} does not need further configuration. "
@@ -157,7 +155,7 @@ class ReferencePageBuilder:
             self.add_code_block_lines(doc.description.strip().split("__EXAMPLE__")[1].splitlines())
             self.add_empty_lines()
 
-        # noinspection PyTypeChecker
+        # noinspection PyUnresolvedReferences
         field_1_name, field_1 = next(iter(model.model_fields.items()))
         if field_1_name not in example:
             return
