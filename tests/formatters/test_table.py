@@ -46,6 +46,8 @@ class TestTableCellBuilder:
         assert builder._apply_prefix("value") == "value"
 
         builder = TableCellBuilder(key="name", prefix="pre-")
+        assert builder._apply_prefix("") == ""
+        assert builder._apply_prefix(f"{Fore.CYAN}{Fore.RESET}") == f"{Fore.CYAN}{Fore.RESET}"
         assert builder._apply_prefix("value") == "pre-value"
 
         builder = TableCellBuilder(key="name", prefix="pre-", colour=Fore.CYAN)
@@ -97,10 +99,11 @@ class TestTableCellBuilder:
         builder = TableCellBuilder(
             key="name", prefix="pre-", alignment=">", min_width=15, max_width=10, wrap=True, colour=Fore.RED
         )
-        expected_width = builder.min_width + len(Fore.RED) + len(Fore.RESET)
-        expected_width_with_prefix = expected_width + len(builder.prefix_coloured) - len(builder.prefix)
+        expected_width = builder.min_width + len(Fore.RED + Fore.RESET)
+
+        expected_width_with_prefix = expected_width - len(builder.prefix)
         expected = (
-            f"{f"{builder.prefix_coloured}{builder.colour}this{Fore.RESET}":>{expected_width_with_prefix}}\n"
+            f"{builder.prefix_coloured}{f"{builder.colour}this{Fore.RESET}":>{expected_width_with_prefix}}\n"
             f"{f"{builder.colour}is a{Fore.RESET}":>{expected_width}}\n"
             f"{f"{builder.colour}result{Fore.RESET}":>{expected_width}}"
         )
@@ -219,34 +222,34 @@ class TestTableRowBuilder:
         lines[0] = "this\nis\na\ncell"
         assert TableRowBuilder._get_max_rows(lines) == 4
 
-    def test_pad_cell_lines(self):
+    def test_to_matrix(self):
         lines = ["this is a cell", "this is another cell", "this is the last cell"]
-        result = TableRowBuilder._pad_cell_lines(lines)
-        assert result == [lines]
+        result = TableRowBuilder._to_matrix(lines)
+        assert result == [tuple(lines)]
 
         lines[1] = "this is\nanother cell"
-        result = TableRowBuilder._pad_cell_lines(lines)
+        result = TableRowBuilder._to_matrix(lines)
         assert result == [
-            ["this is a cell", "this is", "this is the last cell"],
-            [" " * len(lines[0]), "another cell", " " * len(lines[2])],
+            ("this is a cell", "this is", "this is the last cell"),
+            ("", "another cell", ""),
         ]
 
         lines[2] = "this\nis\nthe\nlast cell"
-        result = TableRowBuilder._pad_cell_lines(lines)
+        result = TableRowBuilder._to_matrix(lines)
         assert result == [
-            ["this is a cell", "this is", "this"],
-            [" " * len(lines[0]), "another cell", "is"],
-            [" " * len(lines[0]), " " * len("another cell"), "the"],
-            [" " * len(lines[0]), " " * len("another cell"), "last cell"],
+            ("this is a cell", "this is", "this"),
+            ("", "another cell", "is"),
+            ("", "", "the"),
+            ("", "", "last cell"),
         ]
 
         lines[0] = "this is\na\ncell"
-        result = TableRowBuilder._pad_cell_lines(lines)
+        result = TableRowBuilder._to_matrix(lines)
         assert result == [
-            ["this is", "this is", "this"],
-            ["a", "another cell", "is"],
-            ["cell", " " * len("another cell"), "the"],
-            [" " * len("this is"), " " * len("another cell"), "last cell"],
+            ("this is", "this is", "this"),
+            ("a", "another cell", "is"),
+            ("cell", "", "the"),
+            ("", "", "last cell"),
         ]
 
     def test_remove_empty_lines(self):
@@ -594,3 +597,13 @@ class TestGroupedTableFormatter:
                 group = [result for result in results if result.result_level == key]
                 group = sorted(group, key=lambda r: r.name)
                 mock_results.assert_any_call(group)
+
+    def test_build(self, formatter: GroupedTableFormatter, results: list[Result]):
+        assert not formatter._tables
+        assert not formatter.build()
+
+        formatter.add_results(results)
+        assert formatter._tables
+
+        assert formatter.build()
+        assert not formatter._tables

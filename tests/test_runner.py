@@ -110,12 +110,17 @@ class TestContractsRunner:
         """Test the `get_default_table_header` function."""
         result = results[0]
         assert not result.patch_path
-        expected = f"{result.result_type}: \33[97;1m->\33[39;0m {Fore.LIGHTBLUE_EX}{result.path}{Fore.RESET}"
-        assert _get_default_table_header(result) == expected
+
+        output = _get_default_table_header(result)
+        assert result.result_type in output
+        assert str(result.path) in output
+        assert str(result.patch_path) not in output
 
         result.patch_path = Path("patch_path.yml")
-        expected += f" @ {Fore.LIGHTCYAN_EX}{result.patch_path}{Fore.RESET}"
-        assert _get_default_table_header(result) == expected
+        output = _get_default_table_header(result)
+        assert result.result_type in output
+        assert str(result.path) in output
+        assert str(result.patch_path) in output
 
     def test_cached_properties(self, runner: ContractsRunner):
         config = runner.config

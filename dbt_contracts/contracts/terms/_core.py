@@ -8,7 +8,7 @@ from typing import ClassVar
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 
-from dbt_contracts.contracts import ContractContext, ContractPart
+from dbt_contracts.contracts._core import ContractContext, ContractPart
 from dbt_contracts.types import ItemT, ParentT
 
 

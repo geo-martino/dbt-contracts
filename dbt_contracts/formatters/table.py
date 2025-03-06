@@ -1,4 +1,5 @@
 import itertools
+import re
 import textwrap
 from collections.abc import Sequence, Callable, Iterable, Collection
 from typing import Self, Any, Annotated
@@ -9,6 +10,11 @@ from pydantic import BaseModel, Field, model_validator, BeforeValidator
 from dbt_contracts.contracts.result import Result
 from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.formatters import ResultsFormatter
+
+
+def _get_print_length(value: str) -> int:
+    pattern = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return len(pattern.sub("", value))
 
 
 class TableCellBuilder[T: Result](BaseModel):
@@ -66,26 +72,26 @@ class TableCellBuilder[T: Result](BaseModel):
         return str(value)
 
     def _apply_prefix(self, value: str) -> str:
-        if not self.prefix:
+        if not self.prefix or not _get_print_length(value):
             return value
         return f"{self.prefix_coloured}{value}"
 
     def _truncate_value(self, value: str) -> str:
         width = self.max_width
-        if not width or len(value) <= width:
+        if not width or _get_print_length(value) <= width:
             return value
 
         if self.prefix_coloured:
             width -= len(self.prefix)
         return value[:width - 1] + "…"
 
-    def _apply_padding_and_alignment(self, value: str, width: int | None) -> str:
+    def _apply_padding_and_alignment(self, value: str, width: int | None, has_prefix: bool = True) -> str:
         if not self.alignment or not width:
             return value
 
+        if has_prefix and self.prefix_coloured:
+            width -= _get_print_length(self.prefix_coloured)
         if self.colour:
-            if self.prefix and value.startswith(self.prefix_coloured):
-                width += len(self.prefix_coloured) - len(self.prefix)
             width += len(self.colour + Fore.RESET)
 
         return f"{value:{self.alignment}{width}}"
@@ -124,14 +130,17 @@ class TableCellBuilder[T: Result](BaseModel):
         if self.wrap and self.max_width:
             lines = self._apply_wrap(value)
             lines = list(map(self._apply_colour, lines))
+            lines = [
+                self._apply_padding_and_alignment(line, width=min_width, has_prefix=i == 0)
+                for i, line in enumerate(lines)
+            ]
             lines[0] = self._apply_prefix(lines[0])
-            lines = (self._apply_padding_and_alignment(line, width=min_width) for line in lines)
             value = "\n".join(lines)
         else:
             value = self._truncate_value(value)
             value = self._apply_colour(value)
-            value = self._apply_prefix(value)
             value = self._apply_padding_and_alignment(value, width=min_width)
+            value = self._apply_prefix(value)
 
         return value
 
@@ -179,43 +188,35 @@ class TableRowBuilder[T: Result](BaseModel):
             ]
             values.append(line)
 
-            lines = [value.splitlines() for value in map("\n".join, zip(*values))]
-            min_widths = [
-                width if width is not None and width >= max(map(len, line)) else max(map(len, line))
-                for line, width in zip(lines, min_widths)
-            ]
+            lines = [value.splitlines() for value in map("\n".join, zip(*values, strict=True))]
+            min_widths = self.get_widths_from_lines(list(zip(*lines)))
 
-        return list(map("\n".join, zip(*values)))
+        return list(map("\n".join, zip(*values, strict=True)))
 
     @staticmethod
     def _get_max_rows(values: Sequence[str]) -> int:
         return max(len(value.splitlines()) for value in values)
 
     @classmethod
-    def _pad_cell_lines(cls, values: Sequence[str]) -> list[list[str]]:
+    def _to_matrix(cls, values: Sequence[str]) -> list[tuple[str]]:
         """
-        Pad the cell line count separately to match the line count of the cell with the most lines.
+        Expand the lines in the given values, ensuring that a valid NxM matrix of values is returned.
 
         :param values: The values of the cells in the row.
-        :return: The cells for each row with padding applied.
+        :return: The matrix of cells for each row.
         """
         row_count = cls._get_max_rows(values)
 
         columns = []
         for value in values:
             rows = value.splitlines()
-            if len(rows) >= row_count:
-                columns.append(rows)
-                continue
-
-            max_length = max(map(len, rows))
-            rows.extend([" " * max_length] * (row_count - len(rows)))
+            rows.extend([""] * (row_count - len(rows)))
             columns.append(rows)
 
-        return [[cell[i] for cell in columns] for i in range(row_count)]
+        return list(zip(*columns, strict=True))
 
     @staticmethod
-    def _remove_empty_lines(lines: Iterable[list[str]]) -> list[list[str]]:
+    def _remove_empty_lines[T: Collection[str]](lines: Iterable[T]) -> list[T]:
         """
         Remove empty lines from the given `values`.
 
@@ -226,7 +227,7 @@ class TableRowBuilder[T: Result](BaseModel):
     @staticmethod
     def get_widths_from_lines(lines: Collection[Collection[str]]) -> list[int]:
         """Get the maximum width for each column from the given `lines`."""
-        return [max(map(len, column)) for column in zip(*lines)]
+        return [max(map(_get_print_length, column)) for column in zip(*lines, strict=True)]
 
     def extend_line_widths(self, lines: Sequence[Sequence[str]], min_widths: Sequence[int | None]) -> list[list[str]]:
         """
@@ -247,7 +248,7 @@ class TableRowBuilder[T: Result](BaseModel):
         return [
             [
                 f"{value:{cell.alignment}{width}}" if width is not None else value
-                for cell, value, width in zip(self.cells[0], line, min_widths)
+                for cell, value, width in zip(self.cells[0], line, min_widths, strict=True)
             ]
             for line in lines
         ]
@@ -273,7 +274,7 @@ class TableRowBuilder[T: Result](BaseModel):
             )
 
         lines = self._get_lines(result, min_widths=min_widths)
-        lines = self._pad_cell_lines(lines)
+        lines = self._to_matrix(lines)
         lines = self._remove_empty_lines(lines)
         min_widths = self.get_widths_from_lines(lines)
         lines = self.extend_line_widths(lines, min_widths=min_widths)
@@ -394,4 +395,6 @@ class GroupedTableFormatter[T: Result](ResultsFormatter[T]):
             self._tables[group_key] = self.formatter.build()
 
     def build(self) -> str:
-        return "\n\n".join(self._tables.values())
+        output = "\n\n".join(self._tables.values())
+        self._tables.clear()
+        return output

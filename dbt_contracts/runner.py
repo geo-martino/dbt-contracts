@@ -26,15 +26,12 @@ from dbt_contracts.formatters.table import TableCellBuilder, GroupedTableFormatt
 
 def _get_default_table_header(result: Result) -> str:
     path = result.path
-    header_path = (
-        f"{Fore.LIGHTWHITE_EX.replace('m', ';1m')}->{Fore.RESET.replace('m', ';0m')} "
-        f"{Fore.LIGHTBLUE_EX}{path}{Fore.RESET}"
-    )
+    header_path = f"{Fore.LIGHTBLUE_EX}{path}{Fore.RESET}"
 
     if (patch_path := result.patch_path) and patch_path != path:
         header_path += f" @ {Fore.LIGHTCYAN_EX}{patch_path}{Fore.RESET}"
 
-    return f"{result.result_type}: {header_path}"
+    return f"{Fore.LIGHTWHITE_EX}{result.result_type}{Fore.RESET}: {header_path}"
 
 
 DEFAULT_TERMINAL_LOG_BUILDER_CELLS = (
@@ -287,8 +284,6 @@ class ContractsRunner:
             contract.validate(terms=terms)
 
             if not contract.context.results:
-                log = f"All {contract.config_key.replace(".", " ")} contracts passed successfully"
-                self.logger.info(f"{Fore.LIGHTGREEN_EX}{log}{Fore.RESET}")
                 continue
 
             # copy needed to assert that the results are logged in tests when mocking
@@ -329,8 +324,10 @@ class ContractsRunner:
         """
         if not results:
             return
+
         for line in self._build_results(results).split("\n"):
             self.logger.info(line)
+        print()
 
     def _build_results(self, results: Collection[Result]) -> str:
         self._results_formatter.add_results(results)

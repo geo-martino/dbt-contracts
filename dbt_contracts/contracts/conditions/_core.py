@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from abc import ABCMeta, abstractmethod
 
-from dbt_contracts.contracts import ContractPart
+from dbt_contracts.contracts._contracts import ContractPart
 from dbt_contracts.types import ItemT
 
 

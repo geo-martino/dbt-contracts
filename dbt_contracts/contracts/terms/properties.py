@@ -5,7 +5,7 @@ from typing import Annotated
 from dbt.contracts.graph.nodes import SourceDefinition
 from pydantic import BeforeValidator, Field, field_validator
 
-from dbt_contracts.contracts import ContractContext
+from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.terms._core import ContractTerm, validate_context
 from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.types import ParentT, PropertiesT, DescriptionT, TagT, MetaT
