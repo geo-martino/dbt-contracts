@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from random import choice
+from random import choice, sample
 from typing import Literal, Annotated, get_args
 
 from dbt.artifacts.resources.v1.components import ColumnInfo
@@ -18,7 +18,7 @@ class NodeGenerator[I: NodeT](ParentGenerator[I]):
     exclude: Annotated[Sequence[NODE_FIELDS], BeforeValidator(to_tuple)] = Field(
         description="The fields to exclude from the generated properties.",
         default=(),
-        examples=[choice(get_args(NODE_FIELDS)), list(get_args(NODE_FIELDS))]
+        examples=[choice(get_args(NODE_FIELDS)), sample(get_args(NODE_FIELDS), k=2)]
     )
     ordered_columns: bool = Field(
         description=(

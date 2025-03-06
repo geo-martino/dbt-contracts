@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from random import choice
+from random import choice, sample
 from typing import Literal, Annotated, get_args
 
 from dbt.artifacts.resources.v1.components import ColumnInfo
@@ -17,7 +17,7 @@ class ColumnGenerator[P: NodeT](ChildGenerator[ColumnInfo, P]):
     exclude: Annotated[Sequence[COLUMN_FIELDS], BeforeValidator(to_tuple)] = Field(
         description="The fields to exclude from the generated properties.",
         default=(),
-        examples=[choice(get_args(COLUMN_FIELDS)), list(get_args(COLUMN_FIELDS))]
+        examples=[choice(get_args(COLUMN_FIELDS)), sample(get_args(COLUMN_FIELDS), k=2)]
     )
 
     def _set_data_type(self, item: ColumnInfo, data_type: str | None) -> bool:
