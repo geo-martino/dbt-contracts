@@ -1,3 +1,4 @@
+from pathlib import Path
 from random import choice
 
 import pytest
@@ -24,6 +25,24 @@ def test_path_validation(model: ModelNode, faker: Faker):
     assert PathCondition().run(model)
     assert PathCondition(include=paths + [model.path]).run(model)
     assert not PathCondition(exclude=paths + [model.patch_path.split("://")[1]]).run(model)
+
+
+def test_path_condition_unifies_chunked_path_values():
+    # no remapping for these values
+    assert PathCondition.unify_chunked_path_values("path") == ("path",)
+    assert PathCondition.unify_chunked_path_values(["path1", "path2"]) == ("path1", "path2")
+    assert PathCondition.unify_chunked_path_values([["path1"], ["path2"]]) == ("path1", "path2")
+
+    paths = [["path", "to", "folder1"]]
+    assert PathCondition.unify_chunked_path_values(paths) == (str(Path(*paths[0])),)
+
+    paths = [["path", "to", "folder1"], ["path", "to", "folder2"], "path/to/folder3"]
+    expected = tuple(str(Path(*parts)) if not isinstance(parts, str) else parts for parts in paths)
+    assert PathCondition.unify_chunked_path_values(paths) == expected
+
+    condition = PathCondition(include=paths, exclude=paths)
+    assert condition.include == expected
+    assert condition.exclude == expected
 
 
 @pytest.mark.parametrize("item", ["model", "column"])

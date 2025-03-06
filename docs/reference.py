@@ -150,7 +150,12 @@ class ReferencePageBuilder:
 
         example_block = [".. code-block:: yaml", "", *yaml.dump({name: example}).splitlines()]
         self.add_code_block_lines(example_block, indent=1)
-        self.add_empty_lines()
+        self.add_empty_lines(2)
+
+        doc = docstring_parser.parse(model.__doc__)
+        if "__EXAMPLE__" in doc.description:
+            self.add_code_block_lines(doc.description.strip().split("__EXAMPLE__")[1].splitlines())
+            self.add_empty_lines()
 
         # noinspection PyTypeChecker
         field_1_name, field_1 = next(iter(model.model_fields.items()))
@@ -204,7 +209,7 @@ class ReferencePageBuilder:
 
         doc = docstring_parser.parse(part.__doc__)
         if doc.description:
-            self.add_lines(doc.description.strip().format(kind=title.lower()))
+            self.add_lines(doc.description.strip().split("__EXAMPLE__")[0].format(kind=title.lower()))
             self.add_empty_lines()
 
         self.generate_args(part, name=name)

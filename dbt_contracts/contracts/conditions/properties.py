@@ -1,5 +1,6 @@
 from collections.abc import Sequence, Collection, Mapping
 from copy import copy
+from pathlib import Path
 from typing import Annotated
 
 from dbt.artifacts.resources import BaseResource
@@ -23,7 +24,44 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
     """
     Filter {kind} based on their paths.
     Paths must match patterns which are relative to the root directory of the dbt project.
+
+    __EXAMPLE__
+
+    You may define the paths as a list of lists where each part is a subdirectory within the path.
+    These parts will then be unified by joining them with the os-specific path separator.
+    This allows for you define os-independent configuration as needed.
+
+    .. code-block:: yaml
+
+        include:
+        - ["path", "to", "folder1"]
+        - ["path", "to", "folder2"]
+        - ["path", "to", "folder3"]
+        exclude:
+        - ["path", "to", "another", "folder1"]
+        - ["path", "to", "another", "folder2"]
+        - ["path", "to", "another", "folder3"]
     """
+    # noinspection PyNestedDecorators
+    @field_validator("include", "exclude", mode="before")
+    @classmethod
+    def unify_chunked_path_values(cls, values: str | Sequence[str] | Sequence[Sequence[str]]) -> tuple[str, ...]:
+        if isinstance(values, str):
+            return (values,)
+        if not isinstance(values, Sequence):
+            raise Exception(f"Unrecognised path types given: {values}")
+
+        paths = []
+        for value in values:
+            if isinstance(value, str):
+                paths.append(value)
+                continue
+            if not isinstance(value, Sequence):
+                raise Exception(f"Unrecognised path types given: {values}")
+            paths.append(str(Path(*value)))
+
+        return tuple(paths)
+
     def run(self, item: BaseResource) -> bool:
         paths = [item.original_file_path, item.path]
         if isinstance(item, ParsedResource) and item.patch_path:
