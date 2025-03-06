@@ -18,6 +18,10 @@ class TestSourceGenerator(NodeGeneratorTester[SourceDefinition]):
     def item(self, source: SourceDefinition) -> SourceDefinition:
         return source
 
+    def test_generate_source_patch(self, generator: SourceGenerator, item: SourceDefinition):
+        table = generator._generate_source_patch(item)
+        assert all(val for val in table.values())
+
     def test_generate_table_patch(self, generator: SourceGenerator, item: SourceDefinition):
         table = generator._generate_table_patch(item)
         assert all(val for val in table.values())
