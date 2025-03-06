@@ -4,6 +4,7 @@ Handles automatic generation of contracts reference documentation from docstring
 import shutil
 from collections.abc import Collection, Iterable, Callable, Mapping
 from pathlib import Path
+from random import choice
 from types import GenericAlias, UnionType
 from typing import Any
 
@@ -152,17 +153,21 @@ class ReferencePageBuilder:
         self.add_empty_lines()
 
         # noinspection PyTypeChecker
-        first_field = next(iter(model.model_fields))
-        if first_field not in example:
+        field_1_name, field_1 = next(iter(model.model_fields.items()))
+        if field_1_name not in example:
+            return
+
+        example = self.generate_example_dict(model)[field_1_name]
+        if isinstance(example, Mapping):
             return
 
         first_field_example_desc = (
-            f"You may also define the parameters for ``{first_field}`` directly on the term definition like below."
+            f"You may also define the parameters for ``{field_1_name}`` directly on the term definition like below."
         )
         self.add_code_block_lines(first_field_example_desc, indent=1)
         self.add_empty_lines()
 
-        example_block = [".. code-block:: yaml", "", *yaml.dump({name: example[first_field]}).splitlines()]
+        example_block = [".. code-block:: yaml", "", *yaml.dump({name: example}).splitlines()]
         self.add_code_block_lines(example_block, indent=1)
         self.add_empty_lines()
 
@@ -172,7 +177,7 @@ class ReferencePageBuilder:
         for name, field in model.model_fields.items():
             field: FieldInfo
             if field.examples:
-                examples[name] = field.examples[0]
+                examples[name] = choice(field.examples)
             elif isinstance(field.annotation, (GenericAlias, UnionType)):
                 continue
             elif issubclass(field.annotation, BaseModel):

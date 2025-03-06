@@ -11,12 +11,14 @@ class RangeMatcher(BaseModel):
     min_count: int = Field(
         description="The minimum count allowed.",
         ge=1,
-        default=1
+        default=1,
+        examples=[1, 2, 3],
     )
     max_count: int | None = Field(
         description="The maximum count allowed.",
         gt=0,
         default=None,
+        examples=[4, 5, 6],
     )
 
     @model_validator(mode="after")
@@ -41,10 +43,12 @@ class StringMatcher(BaseModel):
     ignore_whitespace: bool = Field(
         description="Ignore any whitespaces when comparing data type keys.",
         default=False,
+        examples=[True, False],
     )
     case_insensitive: bool = Field(
         description="Ignore cases and compare data type keys only case-insensitively.",
         default=False,
+        examples=[True, False],
     )
     compare_start_only: bool = Field(
         description=(
@@ -52,6 +56,7 @@ class StringMatcher(BaseModel):
             "Ignore the rest of the data type definition in this case."
         ),
         default=False,
+        examples=[True, False],
     )
 
     def _match(self, actual: str | None, expected: str | None) -> bool:
@@ -77,14 +82,17 @@ class PatternMatcher(BaseModel):
     include: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="Patterns to match against for values to include",
         default=tuple(),
+        examples=[r".*i\s+am\s+a\s+regex\s+pattern.*", [r"^\w+\d+\s{1,3}$", "include[_-]this"]],
     )
     exclude: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="Patterns to match against for values to exclude",
         default=tuple(),
+        examples=[r".*i\s+am\s+a\s+regex\s+pattern.*", [r"^\w+\d+\s{1,3}$", "exclude[_-]this"]],
     )
     match_all: bool = Field(
         description="When True, all given patterns must match to be considered a match for either pattern type",
         default=False,
+        examples=[True, False],
     )
 
     def _match(self, value: str | None) -> bool | None:

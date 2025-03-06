@@ -93,11 +93,15 @@ class HasAllColumns[T: NodeT](NodeContractTerm[T]):
 
 
 class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
-    """Check whether {kind} have the expected names of columns set in their properties."""
+    """
+    Check whether {kind} have the expected names of columns set in their properties.
+    Also checks if those columns have the expected data types if configured to do so.
+    """
     columns: str | Sequence[str] | Mapping[str, str] = Field(
         description="A sequence of the names of the columns that should exist in the node, "
                     "or a mapping of the column names and their associated data types that should exist.",
-        default=tuple()
+        default=tuple(),
+        examples=["column1", ["column1", "column2", "column3"], {"column1": "VARCHAR", "column2": "INT"}]
     )
 
     @validate_context

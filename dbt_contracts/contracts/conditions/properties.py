@@ -36,6 +36,7 @@ class TagCondition(ContractCondition[TagT]):
     tags: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The tags to match on",
         default=tuple(),
+        examples=["tag1", ["tag1", "tag2"]],
     )
 
     def run(self, item: ParsedResource | ColumnInfo) -> bool:
@@ -47,6 +48,7 @@ class MetaCondition(ContractCondition[MetaT]):
     meta: Mapping[str, Sequence[str]] = Field(
         description="The mapping of meta keys to their allowed values",
         default_factory=dict,
+        examples=[{"key1": "val1", "key2": ["val2", "val3"]}],
     )
 
     # noinspection PyNestedDecorators

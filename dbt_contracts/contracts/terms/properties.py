@@ -43,6 +43,7 @@ class HasRequiredTags[I: TagT, P: ParentT](ContractTerm[I, P]):
     tags: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The required tags",
         default=tuple(),
+        examples=["tag1", ["tag1", "tag2"]],
     )
 
     @validate_context
@@ -60,6 +61,7 @@ class HasAllowedTags[I: TagT, P: ParentT](ContractTerm[I, P]):
     tags: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The allowed tags",
         default=tuple(),
+        examples=["tag1", ["tag1", "tag2"]],
     )
 
     @validate_context
@@ -77,6 +79,7 @@ class HasRequiredMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
     keys: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The required meta keys",
         default=tuple(),
+        examples=["key1", ["key1", "key2"]],
     )
 
     @validate_context
@@ -94,6 +97,7 @@ class HasAllowedMetaKeys[I: MetaT, P: ParentT](ContractTerm[I, P]):
     keys: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The allowed meta keys",
         default=tuple(),
+        examples=["key1", ["key1", "key2"]],
     )
 
     @validate_context
@@ -111,6 +115,7 @@ class HasAllowedMetaValues[I: MetaT, P: ParentT](ContractTerm[I, P]):
     meta: Mapping[str, Sequence[str]] = Field(
         description="The mapping of meta keys to their allowed values",
         default_factory=dict,
+        examples=[{"key1": "val1", "key2": ["val2", "val3"]}],
     )
 
     # noinspection PyNestedDecorators
