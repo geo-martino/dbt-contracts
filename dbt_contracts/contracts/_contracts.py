@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from collections.abc import Collection, Iterable, Mapping, MutableSequence
