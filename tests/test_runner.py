@@ -146,7 +146,7 @@ class TestContractsRunner:
             return Path(runner.config.project_root, path)
 
         paths = [
-            "path/to/model.sql",
+            str(Path("path", "to", "model.sql")),
             Path("path", "to", "another", "model.sql"),
             Path("path", "to", "dir"),
             Path("path", "not", "in", "project"),
@@ -154,6 +154,7 @@ class TestContractsRunner:
 
         with mock.patch("dbt_contracts.runner.get_absolute_project_path", new=_get_absolute_path):
             runner.paths = paths
+
         assert runner.paths.include == tuple(map(str, paths[:3]))
 
         with mock.patch("dbt_contracts.runner.get_absolute_project_path", new=_get_absolute_path):

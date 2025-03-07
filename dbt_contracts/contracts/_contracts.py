@@ -331,6 +331,7 @@ class ChildContract[I: ItemT, P: ParentT, G: ChildPropertiesGenerator | None](
             return {}
 
         paths = defaultdict[Path, int](int)
+        assert len(list(self.filtered_items)) > 0
         for item, parent in self.filtered_items:
             modified = self.generator.merge(item, context=self.context, parent=parent)
             if not modified:

@@ -107,6 +107,9 @@ class ContractTester[I: ItemT, G: PropertiesGenerator](metaclass=ABCMeta):
         name = choice(contract.terms).name
         mock_map = {term.name: mock.patch.object(term.__class__, "run") for term in contract.terms}
 
+        contract.conditions.clear()
+        assert list(contract.filtered_items)
+
         with ExitStack() as stack:
             mocks = {mock_name: stack.enter_context(mock_term) for mock_name, mock_term in mock_map.items()}
 
@@ -327,7 +330,7 @@ class ParentContractTester[I: ItemT, P: ParentT, G: ParentPropertiesGenerator](C
             term.run(choice(items), context=context)
 
     @staticmethod
-    def test_generate(contract: Contract[I, ContractTerm, G]):
+    def test_generate(contract: Contract[I, ContractTerm, G], filtered_items: list[I]):
         contract.generator = None
         assert not contract.generate()
 
@@ -337,16 +340,20 @@ class ParentContractTester[I: ItemT, P: ParentT, G: ParentPropertiesGenerator](C
         contract.generator = contract.__supported_generator__()
 
         with (
+                mock.patch.object(
+                    contract.__class__, "filtered_items", new_callable=mock.PropertyMock, return_value=filtered_items
+                ),
                 mock.patch.object(contract.generator.__class__, "merge", return_value=True) as mock_merge,
                 mock.patch.object(contract.generator.__class__, "update") as mock_update,
         ):
             results = contract.generate()
-            assert sum(results.values()) == len(list(contract.filtered_items))
+            assert results
+            assert sum(results.values()) == len(filtered_items)
 
             mock_merge.assert_called()
-            assert len(mock_merge.mock_calls) == len(list(contract.filtered_items))
+            assert len(mock_merge.mock_calls) == len(filtered_items)
             mock_update.assert_called()
-            assert len(mock_update.mock_calls) == len(list(contract.filtered_items))
+            assert len(mock_update.mock_calls) == len(filtered_items)
 
         with (
                 mock.patch.object(contract.generator.__class__, "merge", return_value=False) as mock_merge,
@@ -466,7 +473,7 @@ class ChildContractTester[I: ItemT, P: ParentT, G: ChildPropertiesGenerator](Con
             term.run(item, parent=parent, context=context)
 
     @staticmethod
-    def test_generate(contract: ChildContract[I, P, G]):
+    def test_generate(contract: ChildContract[I, P, G], filtered_items: list[tuple[I, P]]):
         contract.generator = None
         assert not contract.generate()
 
@@ -477,16 +484,20 @@ class ChildContractTester[I: ItemT, P: ParentT, G: ChildPropertiesGenerator](Con
         contract.parent.generator = contract.parent.__supported_generator__()
 
         with (
+                mock.patch.object(
+                    contract.__class__, "filtered_items", new_callable=mock.PropertyMock, return_value=filtered_items
+                ),
                 mock.patch.object(contract.generator.__class__, "merge", return_value=True) as mock_merge,
                 mock.patch.object(contract.parent.generator.__class__, "update") as mock_update,
         ):
             results = contract.generate()
-            assert sum(results.values()) == len(list(contract.filtered_items))
+            assert results
+            assert sum(results.values()) == len(filtered_items)
 
             mock_merge.assert_called()
-            assert len(mock_merge.mock_calls) == len(list(contract.filtered_items))
+            assert len(mock_merge.mock_calls) == len(filtered_items)
             mock_update.assert_called()
-            assert len(mock_update.mock_calls) == len(list(contract.filtered_items))
+            assert len(mock_update.mock_calls) == len(filtered_items)
 
         with (
                 mock.patch.object(contract.generator.__class__, "merge", return_value=False) as mock_merge,
@@ -507,11 +518,14 @@ class TestModelContract(ParentContractTester[ColumnInfo, ModelNode, ModelPropert
 
     @pytest.fixture(scope="class")
     def filtered_items(self, items: list[ModelNode]) -> list[ModelNode]:
+        assert len(items) > 3
+
         items = sample(items, k=len(items) // 3)
         for item in items:
             item.name = choice(("model1", "model2"))
             item.tags.append("include")
 
+        assert len(items) > 0
         return items
 
     @pytest.fixture(scope="class")
@@ -558,11 +572,14 @@ class TestSourceContract(ParentContractTester[ColumnInfo, SourceDefinition, Sour
 
     @pytest.fixture(scope="class")
     def filtered_items(self, items: list[SourceDefinition]) -> list[SourceDefinition]:
+        assert len(items) > 3
+
         items = sample(items, k=len(items) // 3)
         for item in items:
             item.name = choice(("source1", "source2"))
             item.tags.append("include")
 
+        assert len(items) > 0
         return items
 
     @pytest.fixture(scope="class")
@@ -614,11 +631,14 @@ class TestColumnContract(ChildContractTester[ColumnInfo, ModelNode, ColumnProper
 
     @pytest.fixture(scope="class")
     def filtered_items(self, items: list[tuple[ColumnInfo, ModelNode]]) -> list[tuple[ColumnInfo, ModelNode]]:
+        assert len(items) > 3
+
         columns = list({col.name: col for col, _ in items}.values())
         columns = sample(columns, k=len(columns) // 3)
         for col in columns:
             col.tags.append("valid")
 
+        assert len(columns) > 0
         return [(col, parent) for col, parent in items if "valid" in col.tags]
 
     @pytest.fixture(scope="class")
@@ -649,10 +669,13 @@ class TestMacroContract(ParentContractTester[MacroArgument, Macro, None]):
 
     @pytest.fixture(scope="class")
     def filtered_items(self, items: list[Macro]) -> list[Macro]:
+        assert len(items) > 3
+
         items = sample(items, k=len(items) // 3)
         for item in items:
             item.name = choice(("macro1", "macro2"))
 
+        assert len(items) > 0
         return items
 
     @pytest.fixture(scope="class")
@@ -694,11 +717,14 @@ class TestMacroArgumentContract(ChildContractTester[MacroArgument, Macro, None])
 
     @pytest.fixture(scope="class")
     def filtered_items(self, items: list[tuple[MacroArgument, Macro]]) -> list[tuple[MacroArgument, Macro]]:
+        assert len(items) > 3
+
         arguments = list({arg.name: arg for arg, _ in items}.values())
         arguments = sample(arguments, k=len(arguments) // 3)
         for arg in arguments:
             arg.name = choice(("arg1", "arg2"))
 
+        assert len(arguments) > 0
         return [(arg, parent) for arg, parent in items if arg.name in ("arg1", "arg2")]
 
     @pytest.fixture(scope="class")
