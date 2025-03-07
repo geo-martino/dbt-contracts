@@ -8,7 +8,7 @@ import pytest
 import yaml
 from faker import Faker
 
-from dbt_contracts.contracts import ModelContract, SourceContract, ColumnContract
+from dbt_contracts.contracts import ModelContract, SourceContract, ColumnContract, ContractContext
 from dbt_contracts.contracts.conditions import properties as c_properties
 from dbt_contracts.contracts.result import Result, ModelResult
 from dbt_contracts.contracts.terms import properties as t_properties, source as t_source, column as t_column
@@ -401,6 +401,43 @@ class TestContractsRunner:
             mock_log_results.assert_called_once()
             mock_log_results.assert_any_call(results)
             assert all(not contract.context.results for contract in runner._contracts)
+
+    def test_generate_runs_all_contracts(self, runner: ContractsRunner, tmp_path: Path):
+        with (
+            mock.patch.object(ModelContract, "generate", return_value={tmp_path: 1}) as mock_model,
+            mock.patch.object(SourceContract, "generate", return_value={tmp_path: 2}) as mock_source,
+            mock.patch.object(ColumnContract, "generate", return_value={tmp_path: 3}) as mock_column,
+            mock.patch.object(ContractsRunner, "_set_artifacts_on_contracts") as mock_set_artifacts,
+            mock.patch.object(ContractsRunner, "_log_generated_paths") as mock_log_paths,
+            mock.patch.object(ContractContext, "save_patches") as mock_save,
+        ):
+            results = runner.generate()
+            assert results == {tmp_path: 6}
+
+            mock_set_artifacts.assert_called_once()
+            mock_model.assert_called_once()
+            mock_source.assert_called_once()
+            mock_column.assert_called_once()
+
+            mock_log_paths.assert_called_once_with(results)
+            mock_save.assert_called_with(results)
+
+    def test_generate_runs_selected_contract(self, runner: ContractsRunner, tmp_path: Path):
+        runner.__dict__["manifest"] = "manifest"
+        runner.__dict__["catalog"] = "catalog"
+
+        with (
+            mock.patch.object(ModelContract, "generate") as mock_model,
+            mock.patch.object(SourceContract, "generate") as mock_source,
+            mock.patch.object(ColumnContract, "generate", return_value={tmp_path: 2}) as mock_column,
+        ):
+            key = ModelContract.child_config_key
+            results = runner.generate(key)
+            assert results == {tmp_path: 2}
+
+            mock_model.assert_not_called()
+            mock_source.assert_not_called()
+            mock_column.assert_called_once()
 
     def test_build_results(self, runner: ContractsRunner, results: list[Result]):
         assert runner._build_results([]) == ""

@@ -141,6 +141,9 @@ class ContractsRunner:
 
         self._paths = PathCondition(include=paths) if paths else None
 
+    ################################################################################
+    ## Creator methods
+    ################################################################################
     @classmethod
     def _resolve_config_path(cls, path: str | Path) -> Path:
         path = Path(path).resolve()
@@ -268,6 +271,9 @@ class ContractsRunner:
 
         self._paths: PathCondition | None = None
 
+    ################################################################################
+    ## Operations
+    ################################################################################
     def validate(self, contract_key: str = None, terms: Collection[str] = ()) -> list[Result]:
         """
         Validate the project against the contracts and log the results.
@@ -277,7 +283,7 @@ class ContractsRunner:
         :return: The results of the validation.
         """
         contracts = [self._get_contract_by_key(contract_key)] if contract_key is not None else self._contracts
-        self._set_artifacts_on_contracts(contracts)
+        self._set_artifacts_on_contracts(contracts, force=False)
 
         results: list[Result] = []
         for contract in contracts:
@@ -298,10 +304,43 @@ class ContractsRunner:
         self.logger.error(f"{Fore.LIGHTRED_EX}Found {len(results)} contract violations{Fore.RESET}")
         return results
 
-    def _set_artifacts_on_contracts(self, contracts: Collection[Contract]) -> None:
+    def generate(self, contract_key: str = None) -> dict[Path, int]:
+        """
+        Generate properties for the contracts and log the results.
+
+        :param contract_key: Only process the contract with this key.
+        :return: The paths of the updated/created properties files.
+        """
+        contracts = [self._get_contract_by_key(contract_key)] if contract_key is not None else self._contracts
+        self._set_artifacts_on_contracts(contracts, force=True)
+
+        results: dict[Path, int] = {}
+        for contract in contracts:
+            contract_results = contract.generate()
+            for path, count in contract_results.items():
+                results[path] = results.get(path, 0) + count
+
+        if not results:
+            self.logger.info(f"{Fore.LIGHTYELLOW_EX}No properties files modified{Fore.RESET}")
+            return results
+
+        message = f"Creating/updating {len(results)} properties files"
+        self.logger.info(f"{Fore.LIGHTMAGENTA_EX}{message}{Fore.RESET}")
+
+        # TODO: drop this additional loop when a PropertiesIO class is implemented
+        for contract in contracts:
+            contract.context.save_patches(results)
+
+        self._log_generated_paths(results)
+        return results
+
+    ################################################################################
+    ## Helper functions
+    ################################################################################
+    def _set_artifacts_on_contracts(self, contracts: Collection[Contract], force: bool = False) -> None:
         for contract in self._contracts:
             contract.manifest = self.manifest
-        if any(contract.needs_catalog for contract in contracts):
+        if force or any(contract.needs_catalog for contract in contracts):
             for contract in self._contracts:
                 contract.catalog = self.catalog
 
@@ -316,6 +355,9 @@ class ContractsRunner:
 
         raise Exception(f"Could not find a configured contract for the key: {contract_key}")
 
+    ################################################################################
+    ## Results - logging
+    ################################################################################
     def log_results(self, results: Collection[Result]) -> None:
         """
         Log the results of the validation.
@@ -333,6 +375,20 @@ class ContractsRunner:
         self._results_formatter.add_results(results)
         return self._results_formatter.build()
 
+    def _log_generated_paths(self, paths: Mapping[Path, int]) -> None:
+        if not paths:
+            return
+
+        message = f"Generated/updated the following number of items across {len(paths)} properties files"
+        self.logger.info(f"{Fore.LIGHTGREEN_EX}{message}{Fore.RESET}")
+
+        for path, count in paths.items():
+            self.logger.info(f"  - {Fore.LIGHTBLUE_EX}{path}{Fore.RESET}: {Fore.LIGHTGREEN_EX}{count}{Fore.RESET}")
+        print()
+
+    ################################################################################
+    ## Results - output
+    ################################################################################
     def write_results(self, results: Collection[Result], path: str | Path, output_type: str) -> Path | None:
         """
         Write the given results to an output file with the given `output_type`.
