@@ -2,7 +2,6 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import Any, Self, ClassVar
-from urllib.parse import urlparse, unquote
 
 import yaml
 from dbt.artifacts.resources import BaseResource

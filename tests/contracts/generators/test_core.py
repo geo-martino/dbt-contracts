@@ -2,7 +2,6 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from unittest import mock
 
-import yaml
 from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ParsedResource
 from dbt.flags import GLOBAL_FLAGS
@@ -135,7 +134,6 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
                 assert item.patch_path == f"{context.manifest.metadata.project_name}://{patch_path}"
             elif isinstance(item, BaseResource):
                 assert item.original_file_path == str(patch_path)
-
 
     @staticmethod
     def test_update_with_existing_patch(

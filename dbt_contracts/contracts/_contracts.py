@@ -302,7 +302,7 @@ class ChildContract[I: ItemT, P: ParentT, G: ChildPropertiesGenerator | None](
             conditions: MutableSequence[ContractCondition] = (),
             terms: MutableSequence[ChildContractTerm] = (),
             generator: G | None = None,
-            parent: ParentContract[I, P, ParentPropertiesGenerator] = None,
+            parent: ParentContract[I, P, ParentPropertiesGenerator | None] = None,
     ):
         super().__init__(
             manifest=manifest or (parent.manifest if parent is not None else None),
