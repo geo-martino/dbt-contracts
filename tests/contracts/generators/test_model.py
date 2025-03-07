@@ -44,7 +44,11 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
             assert expected_table in patch[key]
 
     def test_update_existing_patch_with_new_table(
-            self, generator: ModelPropertiesGenerator, item: ModelNode, models: list[ModelNode], context: ContractContext
+            self,
+            generator: ModelPropertiesGenerator,
+            item: ModelNode,
+            models: list[ModelNode],
+            context: ContractContext
     ):
         key = item.resource_type.pluralize()
         models = sample([model for model in models if model.name != item.name], k=5)
@@ -58,7 +62,11 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
             assert expected_table in patch[key]
 
     def test_update_existing_patch_with_existing_table(
-            self, generator: ModelPropertiesGenerator, item: ModelNode, models: list[ModelNode], context: ContractContext
+            self,
+            generator: ModelPropertiesGenerator,
+            item: ModelNode,
+            models: list[ModelNode],
+            context: ContractContext
     ):
         key = item.resource_type.pluralize()
         models = sample([model for model in models if model.name != item.name], k=5)

@@ -143,7 +143,9 @@ class NodePropertiesGeneratorTester[I: NodeT](ParentPropertiesGeneratorTester, m
         assert list(item.columns) == original_order
 
     @staticmethod
-    def test_reorder_columns_skips_when_columns_already_in_order(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
+    def test_reorder_columns_skips_when_columns_already_in_order(
+            generator: NodePropertiesGenerator[I], item: I, faker: Faker
+    ):
         original_order = list(item.columns)
         columns = {
             col.name: ColumnMetadata(name=col.name, index=faker.random_int(), type="int")
@@ -176,7 +178,9 @@ class NodePropertiesGeneratorTester[I: NodeT](ParentPropertiesGeneratorTester, m
         assert list(item.columns) != original_order
 
     @staticmethod
-    def test_merge_skips_on_no_table_in_database(generator: NodePropertiesGenerator[I], item: I, context: ContractContext):
+    def test_merge_skips_on_no_table_in_database(
+            generator: NodePropertiesGenerator[I], item: I, context: ContractContext
+    ):
         with (
             mock.patch("dbt_contracts.contracts.generators.node.get_matching_catalog_table", return_value=None),
             mock.patch.object(generator.__class__, "_set_description") as mock_description,
