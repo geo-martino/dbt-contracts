@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from collections.abc import Collection, Iterable, Mapping, MutableSequence
@@ -271,6 +272,7 @@ class ParentContract[I: ItemT, P: ParentT, G: ParentPropertiesGenerator | None](
                 path = self.context.properties.get_path(item, to_absolute=True)
             except FileNotFoundError:
                 path = self.generator.generate_properties_path(item)
+
             paths[path] += 1
 
         return dict(paths)

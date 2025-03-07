@@ -1,4 +1,4 @@
-from random import sample, choice
+from random import sample
 
 import pytest
 from dbt.contracts.graph.nodes import SourceDefinition
@@ -25,11 +25,6 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
         table = generator._generate_table_properties(item)
         assert all(val for val in table.values())
 
-    def test_generate_column_properties(self, generator: SourcePropertiesGenerator, item: SourceDefinition):
-        column = choice(list(item.columns.values()))
-        table = generator._generate_column_properties(column)
-        assert all(val for val in table.values())
-
     def test_generate_new_properties(self, generator: SourcePropertiesGenerator, item: SourceDefinition):
         properties = generator._generate_new_properties(item)
         assert item.resource_type.pluralize() in properties
@@ -46,7 +41,7 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
         properties = {}
         expected_source = generator._generate_full_properties(item)
 
-        generator._update_existing_properties(item, properties=properties)
+        assert generator._update_existing_properties(item, properties=properties) is properties
         assert len(properties[key]) == 1
         assert expected_source in properties[key]
 
@@ -83,7 +78,8 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
         assert sum(source["name"] == item.source_name for source in properties[key]) == 1
 
         original_sources_count = len(properties[key])
-        expected_table = generator._generate_table_properties(item)
+        expected_columns = list(map(generator._generate_column_properties, item.columns.values()))
+        expected_table = generator._generate_table_properties(item) | {"columns": expected_columns}
 
         generator._update_existing_properties(item, properties=properties)
         assert len(properties[key]) == original_sources_count

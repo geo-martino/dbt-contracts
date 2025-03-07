@@ -1,6 +1,5 @@
 from typing import Any
 
-from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.nodes import ModelNode
 
 from dbt_contracts.contracts.generators.node import NodePropertiesGenerator
@@ -17,9 +16,12 @@ class ModelPropertiesGenerator(NodePropertiesGenerator[ModelNode]):
         table_in_props = next((prop for prop in properties[key] if prop["name"] == item.name), None)
         table = self._generate_table_properties(item)
         if table_in_props is not None:
-            merge_maps(table_in_props, table, overwrite=True)
+            merge_maps(table_in_props, table, overwrite=True, extend=True)
+            table = table_in_props
         else:
             properties[key].append(table)
+
+        self._merge_columns(item, table)
 
         return properties
 
@@ -29,6 +31,11 @@ class ModelPropertiesGenerator(NodePropertiesGenerator[ModelNode]):
         return self._properties_defaults | {key: [table]}
 
     @classmethod
+    def _generate_full_properties(cls, item: ModelNode) -> dict[str, Any]:
+        columns = list(map(cls._generate_column_properties, item.columns.values()))
+        return cls._generate_table_properties(item) | {"columns": columns}
+
+    @classmethod
     def _generate_table_properties(cls, item: ModelNode) -> dict[str, Any]:
         table = {
             "name": item.name,
@@ -36,12 +43,3 @@ class ModelPropertiesGenerator(NodePropertiesGenerator[ModelNode]):
             "columns": list(map(cls._generate_column_properties, item.columns.values())),
         }
         return {key: val for key, val in table.items() if val}
-
-    @staticmethod
-    def _generate_column_properties(column: ColumnInfo) -> dict[str, Any]:
-        column = {
-            "name": column.name,
-            "description": column.description,
-            "data_type": column.data_type,
-        }
-        return {key: val for key, val in column.items() if val}

@@ -1,7 +1,7 @@
 from abc import ABCMeta
 from collections.abc import Mapping, Sequence
 from random import choice, sample
-from typing import Literal, Annotated, get_args
+from typing import Literal, Annotated, get_args, Any
 
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt_common.contracts.metadata import ColumnMetadata
@@ -9,7 +9,7 @@ from pydantic import Field, BeforeValidator
 
 from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.generators._core import ParentPropertiesGenerator, CORE_FIELDS
-from dbt_contracts.contracts.utils import get_matching_catalog_table, to_tuple
+from dbt_contracts.contracts.utils import get_matching_catalog_table, to_tuple, merge_maps
 from dbt_contracts.types import NodeT
 
 NODE_FIELDS = Literal[CORE_FIELDS, "columns"]
@@ -88,7 +88,39 @@ class NodePropertiesGenerator[I: NodeT](ParentPropertiesGenerator[I], metaclass=
 
         modified = False
         modified |= self._set_description(item, description=table.metadata.comment)
+        print(item.name, modified)
         modified |= self._set_columns(item, columns=table.columns)
+        print(item.name, modified)
         modified |= self._reorder_columns(item, columns=table.columns)
+        print(item.name, modified)
 
         return modified
+
+    def _merge_columns(self, item: I, table: dict[str, Any]) -> None:
+        if "columns" not in table:
+            table["columns"] = []
+
+        for index, column_info in enumerate(item.columns.values()):
+            column = self._generate_column_properties(column_info)
+            index_in_props, column_in_props = next(
+                ((i, col) for i, col in enumerate(table["columns"]) if col["name"] == column_info.name),
+                (None, None)
+            )
+
+            if column_in_props is not None:
+                merge_maps(column_in_props, column, overwrite=True, extend=True)
+            else:
+                table["columns"].insert(index, column)
+
+            if index_in_props is not None and index_in_props != index:
+                table["columns"].pop(index_in_props)
+                table["columns"].insert(index, column_in_props)
+
+    @staticmethod
+    def _generate_column_properties(column: ColumnInfo) -> dict[str, Any]:
+        column = {
+            "name": column.name,
+            "description": column.description,
+            "data_type": column.data_type,
+        }
+        return {key: val for key, val in column.items() if val}

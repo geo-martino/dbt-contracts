@@ -1,4 +1,4 @@
-from random import sample, choice
+from random import sample
 
 import pytest
 from dbt.contracts.graph.nodes import ModelNode
@@ -21,11 +21,6 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
         table = generator._generate_table_properties(item)
         assert all(val for val in table.values())
 
-    def test_generate_column_properties(self, generator: ModelPropertiesGenerator, item: ModelNode):
-        column = choice(list(item.columns.values()))
-        table = generator._generate_column_properties(column)
-        assert all(val for val in table.values())
-
     def test_generate_new_properties(self, generator: ModelPropertiesGenerator, item: ModelNode):
         properties = generator._generate_new_properties(item)
         assert item.resource_type.pluralize() in properties
@@ -40,7 +35,7 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
     ):
         key = item.resource_type.pluralize()
         properties = {}
-        expected_table = generator._generate_table_properties(item)
+        expected_table = generator._generate_full_properties(item)
 
         generator._update_existing_properties(item, properties=properties)
         assert len(properties[key]) == 1
@@ -55,7 +50,7 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
     ):
         key = item.resource_type.pluralize()
         models = sample([model for model in models if model.name != item.name], k=5)
-        properties = {key: list(map(generator._generate_table_properties, models))}
+        properties = {key: list(map(generator._generate_full_properties, models))}
         original_count = len(properties[key])
         expected_table = generator._generate_table_properties(item)
 
@@ -73,7 +68,7 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
         key = item.resource_type.pluralize()
         models = sample([model for model in models if model.name != item.name], k=5)
         table = generator._generate_table_properties(item)
-        properties = {key: list(map(generator._generate_table_properties, models)) + [table]}
+        properties = {key: list(map(generator._generate_full_properties, models)) + [table]}
         original_count = len(properties[key])
 
         # should update the description in the properties

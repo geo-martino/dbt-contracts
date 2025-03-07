@@ -18,6 +18,16 @@ class NodePropertiesGeneratorTester[I: NodeT](ParentPropertiesGeneratorTester, m
         raise NotImplementedError
 
     @staticmethod
+    def test_generate_column_properties(generator: NodePropertiesGenerator[I], item: I):
+        column = choice(list(item.columns.values()))
+        table = generator._generate_column_properties(column)
+        assert all(val for val in table.values())
+
+    @staticmethod
+    def test_merge_columns(generator: NodePropertiesGenerator[I], item: I):
+        pass  # TODO
+
+    @staticmethod
     def test_set_columns_skips_on_exclude(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         columns = {name: ColumnMetadata(name=name, index=i, type="int") for i, name in enumerate(faker.words())}
 
