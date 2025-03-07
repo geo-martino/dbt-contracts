@@ -270,7 +270,7 @@ class ParentContract[I: ItemT, P: ParentT, G: ParentPropertiesGenerator | None](
             self.generator.update(item, context=self.context)
             paths[self.context.get_patch_path(item)] += 1
 
-        return paths
+        return dict(paths)
 
 
 class ChildContract[I: ItemT, P: ParentT, G: ChildPropertiesGenerator | None](
@@ -336,10 +336,11 @@ class ChildContract[I: ItemT, P: ParentT, G: ChildPropertiesGenerator | None](
             if not modified:
                 continue
 
-            self.generator.update(parent, context=self.context)
+            if self.parent.generator is not None:
+                self.parent.generator.update(parent, context=self.context)
             paths[self.context.get_patch_path(parent)] += 1
 
-        return paths
+        return dict(paths)
 
 
 class ColumnContract[T: NodeT](ChildContract[ColumnInfo, T, g_column.ColumnPropertiesGenerator]):

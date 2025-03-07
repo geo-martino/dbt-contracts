@@ -115,11 +115,6 @@ class ContractTester[I: ItemT, G: PropertiesGenerator](metaclass=ABCMeta):
                 mock_term.assert_called() if mock_name == name else mock_term.assert_not_called()
 
     @staticmethod
-    @pytest.mark.skip(reason="Not yet implemented")
-    def test_generate(contract: Contract[I, ContractTerm, G]):
-        pass  # TODO
-
-    @staticmethod
     def test_from_dict(contract: Contract[I, ContractTerm, G]):
         conditions = sample(
             [cls._name() for cls in contract.__supported_conditions__],
@@ -331,6 +326,39 @@ class ParentContractTester[I: ItemT, P: ParentT, G: ParentPropertiesGenerator](C
         for term in contract.terms:  # just check that these don't fail
             term.run(choice(items), context=context)
 
+    @staticmethod
+    def test_generate(contract: Contract[I, ContractTerm, G]):
+        contract.generator = None
+        assert not contract.generate()
+
+        if contract.__supported_generator__ is None:
+            return
+
+        contract.generator = contract.__supported_generator__()
+
+        with (
+                mock.patch.object(contract.generator.__class__, "merge", return_value=True) as mock_merge,
+                mock.patch.object(contract.generator.__class__, "update") as mock_update,
+        ):
+            results = contract.generate()
+            assert sum(results.values()) == len(list(contract.filtered_items))
+
+            mock_merge.assert_called()
+            assert len(mock_merge.mock_calls) == len(list(contract.filtered_items))
+            mock_update.assert_called()
+            assert len(mock_update.mock_calls) == len(list(contract.filtered_items))
+
+        with (
+                mock.patch.object(contract.generator.__class__, "merge", return_value=False) as mock_merge,
+                mock.patch.object(contract.generator.__class__, "update") as mock_update,
+        ):
+            results = contract.generate()
+            assert not results
+
+            mock_merge.assert_called()
+            assert len(mock_merge.mock_calls) == len(list(contract.filtered_items))
+            mock_update.assert_not_called()
+
 
 class ChildContractTester[I: ItemT, P: ParentT, G: ChildPropertiesGenerator](ContractTester[I, G]):
     @abstractmethod
@@ -436,6 +464,40 @@ class ChildContractTester[I: ItemT, P: ParentT, G: ChildPropertiesGenerator](Con
         for term in contract.terms:  # just check that these don't fail
             item, parent = choice(items)
             term.run(item, parent=parent, context=context)
+
+    @staticmethod
+    def test_generate(contract: ChildContract[I, P, G]):
+        contract.generator = None
+        assert not contract.generate()
+
+        if contract.__supported_generator__ is None:
+            return
+
+        contract.generator = contract.__supported_generator__()
+        contract.parent.generator = contract.parent.__supported_generator__()
+
+        with (
+                mock.patch.object(contract.generator.__class__, "merge", return_value=True) as mock_merge,
+                mock.patch.object(contract.parent.generator.__class__, "update") as mock_update,
+        ):
+            results = contract.generate()
+            assert sum(results.values()) == len(list(contract.filtered_items))
+
+            mock_merge.assert_called()
+            assert len(mock_merge.mock_calls) == len(list(contract.filtered_items))
+            mock_update.assert_called()
+            assert len(mock_update.mock_calls) == len(list(contract.filtered_items))
+
+        with (
+                mock.patch.object(contract.generator.__class__, "merge", return_value=False) as mock_merge,
+                mock.patch.object(contract.parent.generator.__class__, "update") as mock_update,
+        ):
+            results = contract.generate()
+            assert not results
+
+            mock_merge.assert_called()
+            assert len(mock_merge.mock_calls) == len(list(contract.filtered_items))
+            mock_update.assert_not_called()
 
 
 class TestModelContract(ParentContractTester[ColumnInfo, ModelNode, ModelPropertiesGenerator]):
