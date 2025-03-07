@@ -103,12 +103,13 @@ class Contract[I: Any, T: ContractTerm](metaclass=ABCMeta):
     def _create_contract_part_from_dict[T: ContractPart](
             cls, config: str | Mapping[str, Any], part_map: Mapping[str, Type[T]]
     ) -> T | None:
+
         if isinstance(config, str):
-            part_cls = part_map.get(config)
+            part_cls = part_map.get(config, part_map.get(config.rstrip("s")))
             kwargs = {}
         elif isinstance(config, Mapping):
             name, kwargs = next(iter(config.items()))
-            part_cls = part_map.get(name)
+            part_cls = part_map.get(name, part_map.get(name.rstrip("s")))
         else:
             return
 

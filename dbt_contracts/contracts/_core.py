@@ -77,7 +77,7 @@ class ContractContext:
         if processor is None:
             raise Exception(f"Unexpected item to get patch for: {type(item)}")
 
-        return processor.get_patch_file(item, self.patches)
+        return processor.get_patch_file(item, patches=self.patches)
 
     def add_result(self, name: str, message: str, item: ItemT, parent: ParentT = None, **kwargs) -> None:
         """

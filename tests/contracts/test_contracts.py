@@ -1,7 +1,9 @@
 from abc import ABCMeta, abstractmethod
 from collections.abc import MutableSequence
+from contextlib import ExitStack
 from random import sample, choice
 from typing import Any
+from unittest import mock
 
 import pytest
 from dbt.artifacts.resources.v1.components import ColumnInfo
@@ -95,11 +97,16 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
         assert sorted(result, key=self._items_sort_key) == sorted(filtered_items, key=self._items_sort_key)
 
     @staticmethod
-    @pytest.mark.skip(reason="Not yet implemented")
-    def test_validate_on_selected_terms(contract: Contract[I, ContractTerm], filtered_items: list[I]):
+    def test_validate_on_selected_terms(contract: Contract[I, ContractTerm]):
         name = choice(contract.terms).name
-        contract.validate(terms=[name])
-        # TODO
+        mock_map = {term.name: mock.patch.object(term.__class__, "run") for term in contract.terms}
+
+        with ExitStack() as stack:
+            mocks = {mock_name: stack.enter_context(mock_term) for mock_name, mock_term in mock_map.items()}
+
+            contract.validate(terms=[name])
+            for mock_name, mock_term in mocks.items():
+                mock_term.assert_called() if mock_name == name else mock_term.assert_not_called()
 
     @staticmethod
     def test_from_dict(contract: Contract[I, ContractTerm]):
@@ -124,9 +131,33 @@ class ContractTester[I: ItemT](metaclass=ABCMeta):
         assert [term.name for term in new_contract.terms] == config["terms"]
 
     @staticmethod
-    @pytest.mark.skip(reason="Not yet implemented")
-    def test_create_contract_part_from_dict(contract: Contract[I, ContractTerm]):
-        pass  # TODO
+    def test_create_contract_part_from_dict_with_invalid(contract: Contract[I, ContractTerm]):
+        part_map = {cond._name(): cond for cond in contract.__supported_conditions__}
+        part_map["path"] = c_properties.PathCondition
+
+        # noinspection PyTypeChecker
+        assert contract._create_contract_part_from_dict(["paths"], part_map) is None  # bad input type
+        assert contract._create_contract_part_from_dict("unknown", part_map) is None  # unrecognised part
+
+    @staticmethod
+    def test_create_contract_part_from_dict_without_config(contract: Contract[I, ContractTerm]):
+        part_map = {cond._name(): cond for cond in contract.__supported_conditions__}
+        part_map["path"] = c_properties.PathCondition
+
+        with mock.patch.object(c_properties.PathCondition, "__new__") as path_mock:
+            contract._create_contract_part_from_dict("paths", part_map)
+            path_mock.assert_called_once_with(c_properties.PathCondition)
+
+    @staticmethod
+    def test_create_contract_part_from_dict_with_config(contract: Contract[I, ContractTerm]):
+        config = {"paths": {"key1": "value", "key2": "value"}}
+
+        part_map = {cond._name(): cond for cond in contract.__supported_conditions__}
+        part_map["path"] = c_properties.PathCondition
+
+        with mock.patch.object(c_properties.PathCondition, "__new__") as path_mock:
+            contract._create_contract_part_from_dict(config, part_map)
+            path_mock.assert_called_once_with(c_properties.PathCondition, **config["paths"])
 
 
 class ParentContractTester[I: ItemT, P: ParentT](ContractTester[P]):

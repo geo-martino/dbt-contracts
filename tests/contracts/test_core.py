@@ -1,4 +1,7 @@
+from unittest import mock
+
 import pytest
+from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.nodes import ModelNode
 
@@ -30,13 +33,21 @@ class TestContractContext:
         assert any(result.parent_id == parent.unique_id for result in results)
         assert any(result.parent_name == parent.name for result in results)
 
-    @pytest.mark.skip(reason="Not yet implemented")
-    def test_get_patch_path(self):
-        pass
+    def test_get_patch_path(self, context: ContractContext, model: ModelNode, simple_resource: BaseResource):
+        with mock.patch.object(Result, "get_patch_path") as mock_get_patch_path:
+            context.get_patch_path(model)
+            mock_get_patch_path.assert_called_once_with(model)
 
-    @pytest.mark.skip(reason="Not yet implemented")
-    def test_get_patch(self):
-        pass
+        with pytest.raises(Exception):  # unrecognised object type
+            context.get_patch_path(simple_resource)
+
+    def test_get_patch_file(self, context: ContractContext, model: ModelNode, simple_resource: BaseResource):
+        with mock.patch.object(Result, "get_patch_file") as mock_get_patch_file:
+            context.get_patch_file(model)
+            mock_get_patch_file.assert_called_once_with(model, patches=context.patches)
+
+        with pytest.raises(Exception):  # unrecognised object type
+            context.get_patch_file(simple_resource)
 
     def test_add_result_on_item(self, context: ContractContext, model: ModelNode):
         expected_name = "test_name"
