@@ -414,7 +414,7 @@ class TestContractsRunner:
             results = runner.generate()
             assert results == {tmp_path: 6}
 
-            mock_set_artifacts.assert_called_once()
+            mock_set_artifacts.assert_called_once_with(runner._contracts, force=True)
             mock_model.assert_called_once()
             mock_source.assert_called_once()
             mock_column.assert_called_once()
@@ -423,17 +423,15 @@ class TestContractsRunner:
             mock_save.assert_called_with(results)
 
     def test_generate_runs_selected_contract(self, runner: ContractsRunner, tmp_path: Path):
-        runner.__dict__["manifest"] = "manifest"
-        runner.__dict__["catalog"] = "catalog"
-
         with (
-            mock.patch.object(ModelContract, "generate") as mock_model,
-            mock.patch.object(SourceContract, "generate") as mock_source,
-            mock.patch.object(ColumnContract, "generate", return_value={tmp_path: 2}) as mock_column,
+            mock.patch.object(ModelContract, "generate", return_value={tmp_path: 1}) as mock_model,
+            mock.patch.object(SourceContract, "generate", return_value={tmp_path: 3}) as mock_source,
+            mock.patch.object(ColumnContract, "generate", return_value={tmp_path: 8}) as mock_column,
+            mock.patch.object(ContractsRunner, "_set_artifacts_on_contracts"),
         ):
             key = ModelContract.child_config_key
             results = runner.generate(key)
-            assert results == {tmp_path: 2}
+            assert results == {tmp_path: 8}
 
             mock_model.assert_not_called()
             mock_source.assert_not_called()
