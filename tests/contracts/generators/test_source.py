@@ -1,12 +1,10 @@
 from random import sample
-from unittest import mock
 
 import pytest
 from dbt.contracts.graph.nodes import SourceDefinition
 
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.generators.source import SourcePropertiesGenerator
-from dbt_contracts.properties import PropertiesIO
 from tests.contracts.generators.test_node import NodePropertiesGeneratorTester
 
 
