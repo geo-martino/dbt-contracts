@@ -129,7 +129,7 @@ def models(faker: Faker, columns: list[ColumnInfo], project_name: str) -> list[M
             description=faker.sentence(),
         )
 
-    return [_generate() for _ in range(faker.random_int(10, 20))]
+    return [_generate() for _ in range(faker.random_int(20, 30))]
 
 
 @pytest.fixture
@@ -161,7 +161,7 @@ def sources(faker: Faker, columns: list[ColumnInfo], project_name: str) -> list[
             description=faker.sentence(),
         )
 
-    return [_generate() for _ in range(faker.random_int(10, 20))]
+    return [_generate() for _ in range(faker.random_int(20, 30))]
 
 
 @pytest.fixture
@@ -184,7 +184,7 @@ def columns(faker: Faker) -> list[ColumnInfo]:
             description=faker.sentence(),
         )
 
-    return [_generate() for _ in range(faker.random_int(20, 30))]
+    return [_generate() for _ in range(faker.random_int(40, 50))]
 
 
 @pytest.fixture
@@ -243,7 +243,7 @@ def macros(faker: Faker, arguments: list[MacroArgument], project_name: str) -> l
             arguments=sample(arguments, k=faker.random_int(3, 8)),
         )
 
-    return [_generate() for _ in range(faker.random_int(10, 20))]
+    return [_generate() for _ in range(faker.random_int(30, 40))]
 
 
 @pytest.fixture
@@ -260,7 +260,7 @@ def arguments(faker: Faker) -> list[MacroArgument]:
             name="_".join(faker.words()),
         )
 
-    return [_generate() for _ in range(faker.random_int(20, 30))]
+    return [_generate() for _ in range(faker.random_int(40, 50))]
 
 
 @pytest.fixture
