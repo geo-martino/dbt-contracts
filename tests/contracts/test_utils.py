@@ -64,7 +64,9 @@ def test_get_matching_catalog_table(node: CompiledNode, simple_resource: BaseRes
 @pytest.fixture
 def relative_path(model: ModelNode, tmp_path: Path) -> Path:
     """Fixture to generate a relative path for testing."""
-    paths = [model.original_file_path, model.path, model.patch_path]
+    paths = [model.original_file_path, model.path]
+    if model.patch_path:
+        paths.append(model.patch_path.split("://"))
     path = choice([path for path in paths if path is not None])
 
     expected = tmp_path.joinpath(path)
