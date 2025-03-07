@@ -121,11 +121,15 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
         with (
             mock.patch.object(generator.__class__, "_update_existing_properties") as mock_update,
             mock.patch.object(generator.__class__, "_generate_new_properties") as mock_generate,
+            mock.patch.object(PropertiesIO, "__getitem__", return_value=None) as mock_get,
+            mock.patch.object(PropertiesIO, "__setitem__") as mock_set,
         ):
             generator.update(item, context=context)
 
             mock_update.assert_not_called()
             mock_generate.assert_called_once()
+            mock_get.assert_called_once()
+            mock_set.assert_called_once()
 
             properties_path = context.properties.get_path(item, to_absolute=True)
             assert properties_path is not None
@@ -145,19 +149,37 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
         with (
             mock.patch.object(generator.__class__, "_update_existing_properties") as mock_update,
             mock.patch.object(generator.__class__, "_generate_new_properties") as mock_generate,
+            mock.patch.object(PropertiesIO, "__getitem__", return_value=None) as mock_get,
+            mock.patch.object(PropertiesIO, "__setitem__") as mock_set,
         ):
             generator.update(item, context=context)
 
             mock_update.assert_called_once()
             mock_generate.assert_not_called()
+            mock_get.assert_called_once()
+            mock_set.assert_not_called()
 
     @staticmethod
-    def test_get_properties_path_on_existing_properties_path(
-            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
+    def test_update_with_existing_properties_file(
+            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext
     ):
-        properties_path = tmp_path.joinpath("path", "to", "properties.yml")
-        with mock.patch.object(PropertiesIO, "get_path", return_value=properties_path):
-            assert generator._get_properties_path(item, context=context) == properties_path
+        properties = {"key": "value"}
+        item.original_file_path = ""
+        item.patch_path = None
+        assert not context.properties.get_path(item)
+
+        with (
+            mock.patch.object(generator.__class__, "_update_existing_properties") as mock_update,
+            mock.patch.object(generator.__class__, "_generate_new_properties") as mock_generate,
+            mock.patch.object(PropertiesIO, "__getitem__", return_value=properties) as mock_get,
+            mock.patch.object(PropertiesIO, "__setitem__") as mock_set,
+        ):
+            generator.update(item, context=context)
+
+            mock_update.assert_called_once()
+            mock_generate.assert_not_called()
+            mock_get.assert_called_once()
+            mock_set.assert_not_called()
 
     @staticmethod
     def test_generate_properties_path_with_no_set_depth(

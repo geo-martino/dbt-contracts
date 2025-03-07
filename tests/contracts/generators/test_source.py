@@ -43,10 +43,9 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
         properties = {}
         expected_source = generator._generate_full_properties(item)
 
-        with mock.patch.object(PropertiesIO, "__getitem__", return_value=properties):
-            generator._update_existing_properties(item, context)
-            assert len(properties[key]) == 1
-            assert expected_source in properties[key]
+        generator._update_existing_properties(item, properties=properties)
+        assert len(properties[key]) == 1
+        assert expected_source in properties[key]
 
     def test_update_existing_properties_with_new_source(
             self,
@@ -63,10 +62,9 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
         original_sources_count = len(properties[key])
         expected_source = generator._generate_full_properties(item)
 
-        with mock.patch.object(PropertiesIO, "__getitem__", return_value=properties):
-            generator._update_existing_properties(item, context)
-            assert len(properties[key]) == original_sources_count + 1
-            assert expected_source in properties[key]
+        generator._update_existing_properties(item, properties=properties)
+        assert len(properties[key]) == original_sources_count + 1
+        assert expected_source in properties[key]
 
     def test_update_existing_properties_with_new_table(
             self,
@@ -84,13 +82,12 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
         original_sources_count = len(properties[key])
         expected_table = generator._generate_table_properties(item)
 
-        with mock.patch.object(PropertiesIO, "__getitem__", return_value=properties):
-            generator._update_existing_properties(item, context)
-            assert len(properties[key]) == original_sources_count
+        generator._update_existing_properties(item, properties=properties)
+        assert len(properties[key]) == original_sources_count
 
-            actual_sources = [source for source in properties[key] if source["name"] == item.source_name]
-            assert len(actual_sources) == 1
-            assert expected_table in actual_sources[0]["tables"]
+        actual_sources = [source for source in properties[key] if source["name"] == item.source_name]
+        assert len(actual_sources) == 1
+        assert expected_table in actual_sources[0]["tables"]
 
     def test_update_existing_properties_with_existing_table(
             self,
@@ -111,14 +108,13 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
         item.description = "a brand new description"
         expected_table = generator._generate_table_properties(item)
 
-        with mock.patch.object(PropertiesIO, "__getitem__", return_value=properties):
-            generator._update_existing_properties(item, context)
-            assert len(properties[key]) == original_sources_count
+        generator._update_existing_properties(item, properties=properties)
+        assert len(properties[key]) == original_sources_count
 
-            actual_sources = [source for source in properties[key] if source["name"] == item.source_name]
-            assert len(actual_sources) == 1
+        actual_sources = [source for source in properties[key] if source["name"] == item.source_name]
+        assert len(actual_sources) == 1
 
-            actual_tables = [prop for prop in actual_sources[0]["tables"] if prop["name"] == item.name]
-            assert len(actual_tables) == 1
-            assert actual_tables[0]["description"] == item.description
-            assert expected_table == actual_tables[0]
+        actual_tables = [prop for prop in actual_sources[0]["tables"] if prop["name"] == item.name]
+        assert len(actual_tables) == 1
+        assert actual_tables[0]["description"] == item.description
+        assert expected_table == actual_tables[0]

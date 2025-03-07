@@ -116,35 +116,33 @@ class ParentPropertiesGenerator[I: PropertiesT](PropertiesGenerator[I], metaclas
         :return: The updated properties.
         """
         if context.properties.get_path(item):
-            return self._update_existing_properties(item, context=context)
+            return self._update_existing_properties(item, properties=context.properties[item])
 
         flags = get_flags()
         project_dir = Path(getattr(flags, "PROJECT_DIR", None) or "")
 
-        path = self._get_properties_path(item, context=context)
-        properties = self._generate_new_properties(item)
-
+        path = self._generate_properties_path(item)
         if isinstance(item, ParsedResource):
             item.patch_path = f"{context.manifest.metadata.project_name}://{path.relative_to(project_dir)}"
         elif isinstance(item, BaseResource):
             item.original_file_path = str(path.relative_to(project_dir))
 
+        if (existing_properties_file := context.properties.get(path)) is not None:
+            # file exists but item's properties are not in it
+            # update properties file with the item's generated properties
+            return self._update_existing_properties(item, properties=existing_properties_file)
+
+        properties = self._generate_new_properties(item)
         context.properties[path] = properties
         return properties
 
     @abstractmethod
-    def _update_existing_properties(self, item: I, context: ContractContext) -> dict[str, Any]:
+    def _update_existing_properties(self, item: I, properties: dict[str, Any]) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
     def _generate_new_properties(self, item: I) -> dict[str, Any]:
         raise NotImplementedError
-
-    def _get_properties_path(self, item: I, context: ContractContext) -> Path:
-        """Get the properties path to use for the given item."""
-        if (path := context.properties.get_path(item)) is not None:
-            return path
-        return self._generate_properties_path(item)
 
     def _generate_properties_path(self, item: I) -> Path:
         """Generate a new properties path to use for the given item."""

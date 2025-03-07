@@ -8,9 +8,8 @@ from dbt_contracts.contracts.generators.node import NodePropertiesGenerator
 
 class ModelPropertiesGenerator(NodePropertiesGenerator[ModelNode]):
 
-    def _update_existing_properties(self, item: ModelNode, context: ContractContext) -> dict[str, Any]:
+    def _update_existing_properties(self, item: ModelNode, properties: dict[str, Any]) -> dict[str, Any]:
         key = item.resource_type.pluralize()
-        properties = context.properties[item]
         if key not in properties:
             properties[key] = []
 

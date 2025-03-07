@@ -39,10 +39,9 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
         properties = {}
         expected_table = generator._generate_table_properties(item)
 
-        with mock.patch.object(PropertiesIO, "__getitem__", return_value=properties):
-            generator._update_existing_properties(item, context)
-            assert len(properties[key]) == 1
-            assert expected_table in properties[key]
+        generator._update_existing_properties(item, properties=properties)
+        assert len(properties[key]) == 1
+        assert expected_table in properties[key]
 
     def test_update_existing_properties_with_new_table(
             self,
@@ -57,10 +56,9 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
         original_count = len(properties[key])
         expected_table = generator._generate_table_properties(item)
 
-        with mock.patch.object(PropertiesIO, "__getitem__", return_value=properties):
-            generator._update_existing_properties(item, context)
-            assert len(properties[key]) == original_count + 1
-            assert expected_table in properties[key]
+        generator._update_existing_properties(item, properties=properties)
+        assert len(properties[key]) == original_count + 1
+        assert expected_table in properties[key]
 
     def test_update_existing_properties_with_existing_table(
             self,
@@ -79,11 +77,10 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
         item.description = "a brand new description"
         expected_table = generator._generate_table_properties(item)
 
-        with mock.patch.object(PropertiesIO, "__getitem__", return_value=properties):
-            generator._update_existing_properties(item, context)
-            assert len(properties[key]) == original_count
-            assert expected_table in properties[key]
+        generator._update_existing_properties(item, properties=properties)
+        assert len(properties[key]) == original_count
+        assert expected_table in properties[key]
 
-            actual_tables = [prop for prop in properties[key] if prop["name"] == item.name]
-            assert len(actual_tables) == 1
-            assert actual_tables[0]["description"] == item.description
+        actual_tables = [prop for prop in properties[key] if prop["name"] == item.name]
+        assert len(actual_tables) == 1
+        assert actual_tables[0]["description"] == item.description
