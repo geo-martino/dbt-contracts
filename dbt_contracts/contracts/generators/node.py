@@ -7,7 +7,7 @@ from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt_common.contracts.metadata import ColumnMetadata
 from pydantic import Field, BeforeValidator
 
-from dbt_contracts.contracts import ContractContext
+from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.generators._core import ParentPropertiesGenerator, CORE_FIELDS
 from dbt_contracts.contracts.utils import get_matching_catalog_table, to_tuple
 from dbt_contracts.types import NodeT

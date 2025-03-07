@@ -3,6 +3,8 @@ from pathlib import Path
 from unittest import mock
 
 import yaml
+from dbt.artifacts.resources import BaseResource
+from dbt.artifacts.resources.v1.components import ParsedResource
 from dbt.flags import GLOBAL_FLAGS
 
 from dbt_contracts.contracts import ContractContext
@@ -107,9 +109,11 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
         raise NotImplementedError
 
     @staticmethod
-    def test_save_with_no_existing_patch(
-            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext
+    def test_update_with_no_existing_patch(
+            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
     ):
+        GLOBAL_FLAGS.PROJECT_DIR = tmp_path
+
         item.original_file_path = ""
         item.patch_path = None
         assert not context.get_patch_path(item)
@@ -117,16 +121,24 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
         with (
             mock.patch.object(generator.__class__, "_update_existing_patch") as mock_update,
             mock.patch.object(generator.__class__, "_generate_new_patch") as mock_generate,
-            mock.patch.object(generator.__class__, "_save_patch") as mock_save,
         ):
-            generator.save(item, context=context)
+            generator.update(item, context=context)
 
             mock_update.assert_not_called()
             mock_generate.assert_called_once()
-            mock_save.assert_called_once()
+
+            patch_path = context.get_patch_path(item, to_absolute=True)
+            assert patch_path is not None
+            assert tmp_path.joinpath(patch_path) in context.patches
+
+            if isinstance(item, ParsedResource):
+                assert item.patch_path == f"{context.manifest.metadata.project_name}://{patch_path}"
+            elif isinstance(item, BaseResource):
+                assert item.original_file_path == str(patch_path)
+
 
     @staticmethod
-    def test_save_with_existing_patch(
+    def test_update_with_existing_patch(
             generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext
     ):
         assert context.get_patch_path(item)
@@ -134,25 +146,11 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
         with (
             mock.patch.object(generator.__class__, "_update_existing_patch") as mock_update,
             mock.patch.object(generator.__class__, "_generate_new_patch") as mock_generate,
-            mock.patch.object(generator.__class__, "_save_patch") as mock_save,
         ):
-            generator.save(item, context=context)
+            generator.update(item, context=context)
 
             mock_update.assert_called_once()
             mock_generate.assert_not_called()
-            mock_save.assert_called_once()
-
-    @staticmethod
-    def test_save_patch(
-            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
-    ):
-        patch_path = tmp_path.joinpath("patch.yml")
-        patch = {"key": "value"}
-        with mock.patch.object(generator.__class__, "_get_patch_path", return_value=patch_path):
-            generator._save_patch(item, context=context, patch=patch)
-
-        with patch_path.open("r") as f:
-            assert yaml.full_load(f) == patch
 
     @staticmethod
     def test_get_patch_path_on_existing_patch_path(

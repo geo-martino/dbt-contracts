@@ -1,6 +1,9 @@
+from pathlib import Path
+from random import choice, sample
 from unittest import mock
 
 import pytest
+import yaml
 from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.nodes import ModelNode
@@ -35,8 +38,9 @@ class TestContractContext:
 
     def test_get_patch_path(self, context: ContractContext, model: ModelNode, simple_resource: BaseResource):
         with mock.patch.object(Result, "get_patch_path") as mock_get_patch_path:
-            context.get_patch_path(model)
-            mock_get_patch_path.assert_called_once_with(model)
+            to_absolute = choice([True, False])
+            context.get_patch_path(model, to_absolute=to_absolute)
+            mock_get_patch_path.assert_called_once_with(model, to_absolute=to_absolute)
 
         with pytest.raises(Exception):  # unrecognised object type
             context.get_patch_path(simple_resource)
@@ -48,6 +52,25 @@ class TestContractContext:
 
         with pytest.raises(Exception):  # unrecognised object type
             context.get_patch_file(simple_resource)
+
+    @staticmethod
+    def test_save_patches(context: ContractContext, model: ModelNode, tmp_path: Path):
+        patches = {
+            tmp_path.joinpath("patch1.yml"): {"key1": "value1"},
+            tmp_path.joinpath("patch2.yml"): {"key2": "value2"},
+            tmp_path.joinpath("patch3.yml"): {"key3": "value3"},
+            tmp_path.joinpath("patch4.yml"): {"key4": "value4"},
+        }
+        context.patches |= patches
+        paths = sample(list(patches), k=2)
+
+        context.save_patches(paths)
+        for path, patch in context.patches.items():
+            if path in paths:
+                assert path.is_file()
+                assert yaml.full_load(path.read_text()) == patch
+            else:
+                assert not path.is_file()
 
     def test_add_result_on_item(self, context: ContractContext, model: ModelNode):
         expected_name = "test_name"

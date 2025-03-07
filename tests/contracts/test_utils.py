@@ -38,6 +38,7 @@ def test_get_absolute_patch_path_in_project_dir(relative_path: Path, tmp_path: P
     assert get_absolute_project_path(relative_path) == expected
 
 
+# TODO: flakey test - fix me
 def test_get_absolute_patch_path_in_cwd(relative_path: Path, tmp_path: Path):
     expected = tmp_path.joinpath(relative_path)
     # noinspection SpellCheckingInspection

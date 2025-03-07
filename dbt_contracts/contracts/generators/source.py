@@ -2,7 +2,7 @@ from typing import Any
 
 from dbt.contracts.graph.nodes import SourceDefinition
 
-from dbt_contracts.contracts import ContractContext
+from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.generators.node import NodePropertiesGenerator
 
 

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import yaml
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 from pydantic import BaseModel
@@ -53,18 +55,19 @@ class ContractContext:
         self._results = []
 
     @staticmethod
-    def get_patch_path(item: ItemT) -> Path | None:
+    def get_patch_path(item: ItemT, to_absolute: bool = False) -> Path | None:
         """
         Get the patch path for a given item from its properties.
 
         :param item: The item to get a patch path for.
+        :param to_absolute: Format the path to be absolute.
         :return: The patch path if found.
         """
         processor = RESULT_PROCESSOR_MAP.get(type(item))
         if processor is None:
             raise Exception(f"Unexpected item to get patch for: {type(item)}")
 
-        return processor.get_patch_path(item)
+        return processor.get_patch_path(item, to_absolute=to_absolute)
 
     def get_patch_file(self, item: ItemT) -> dict[str, Any]:
         """
@@ -78,6 +81,23 @@ class ContractContext:
             raise Exception(f"Unexpected item to get patch for: {type(item)}")
 
         return processor.get_patch_file(item, patches=self.patches)
+
+    def save_patches(self, paths: Collection[Path] = ()) -> None:
+        """
+        Save the stored patches.
+
+        :param paths: Only save the patches from this list.
+        """
+        if not paths:
+            paths = tuple(self.patches)
+
+        for path in paths:
+            if path not in self.patches:
+                continue
+
+            patch = self.patches[path]
+            with path.open("w") as file:
+                yaml.dump(patch, file)
 
     def add_result(self, name: str, message: str, item: ItemT, parent: ParentT = None, **kwargs) -> None:
         """

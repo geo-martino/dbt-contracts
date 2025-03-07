@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import re
 from abc import ABCMeta, abstractmethod
-from collections.abc import Sequence, Mapping
+from collections.abc import Sequence
 from pathlib import Path
 from random import choice
 from typing import Literal, Annotated, get_args, Any
 
-import yaml
+from dbt.artifacts.resources import BaseResource
+from dbt.artifacts.resources.v1.components import ParsedResource
 from dbt.flags import get_flags
 from pydantic import Field, BeforeValidator
 
@@ -101,21 +102,36 @@ class ParentPropertiesGenerator[I: PropertiesT](PropertiesGenerator[I], metaclas
         examples=[0, 1, 2, 3],
     )
 
-    def save(self, item: I, context: ContractContext) -> None:
+    def update(self, item: I, context: ContractContext) -> dict[str, Any]:
         """
-        Save the properties of the given item to a properties file.
+        Update/generate the properties of the given item as a properties file.
 
         If the item already has a patch path configured, properties will be updated in-place.
         Otherwise, a new properties file will be generated based on the configuration of this generator.
+        This new properties file will be added to the context's patches store.
+        The path for this new properties file will be added to the item's attributes.
 
-        :param item: The item to save properties for.
+        :param item: The item to update properties for.
         :param context: The contract context to use.
+        :return: The updated patch.
         """
         if context.get_patch_path(item):
-            patch = self._update_existing_patch(item, context=context)
-        else:
-            patch = self._generate_new_patch(item)
-        return self._save_patch(item, context=context, patch=patch)
+            return self._update_existing_patch(item, context=context)
+
+        flags = get_flags()
+        project_dir = Path(getattr(flags, "PROJECT_DIR", None) or "")
+
+        patch = self._generate_new_patch(item)
+        path = self._get_patch_path(item, context=context)
+
+        if isinstance(item, ParsedResource):
+            item.patch_path = f"{context.manifest.metadata.project_name}://{path.relative_to(project_dir)}"
+        elif isinstance(item, BaseResource):
+            item.original_file_path = str(path.relative_to(project_dir))
+
+        context.patches[path] = patch
+
+        return patch
 
     @abstractmethod
     def _update_existing_patch(self, item: I, context: ContractContext) -> dict[str, Any]:
@@ -124,11 +140,6 @@ class ParentPropertiesGenerator[I: PropertiesT](PropertiesGenerator[I], metaclas
     @abstractmethod
     def _generate_new_patch(self, item: I) -> dict[str, Any]:
         raise NotImplementedError
-
-    def _save_patch(self, item: I, context: ContractContext, patch: Mapping[str, Any]) -> None:
-        path = self._get_patch_path(item, context=context)
-        with path.open("w") as file:
-            yaml.dump(patch, file)
 
     def _get_patch_path(self, item: I, context: ContractContext) -> Path:
         """Get the patch path to use for the given item."""
