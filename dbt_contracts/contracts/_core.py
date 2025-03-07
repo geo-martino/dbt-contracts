@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from collections.abc import Collection
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
+from dataclasses import dataclass
+from typing import ClassVar
 
-import yaml
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 from pydantic import BaseModel
 
 from dbt_contracts.contracts.result import Result, RESULT_PROCESSOR_MAP
+from dbt_contracts.properties import PropertiesIO
 from dbt_contracts.types import ItemT, ParentT
 
 
@@ -44,7 +42,7 @@ class ContractContext:
     """
     manifest: Manifest | None = None
     catalog: CatalogArtifact | None = None
-    patches: dict[Path, dict[str, Any]] = field(default_factory=dict)
+    properties: ClassVar[PropertiesIO] = PropertiesIO()
 
     @property
     def results(self) -> list[Result]:
@@ -53,51 +51,6 @@ class ContractContext:
 
     def __post_init__(self) -> None:
         self._results = []
-
-    @staticmethod
-    def get_patch_path(item: ItemT, to_absolute: bool = False) -> Path | None:
-        """
-        Get the patch path for a given item from its properties.
-
-        :param item: The item to get a patch path for.
-        :param to_absolute: Format the path to be absolute.
-        :return: The patch path if found.
-        """
-        processor = RESULT_PROCESSOR_MAP.get(type(item))
-        if processor is None:
-            raise Exception(f"Unexpected item to get patch for: {type(item)}")
-
-        return processor.get_patch_path(item, to_absolute=to_absolute)
-
-    def get_patch_file(self, item: ItemT) -> dict[str, Any]:
-        """
-        Get the patch file by either extracting from the stored patches or loading from disk.
-
-        :param item: The item to get the patch object for.
-        :return: The loaded patch file if found.
-        """
-        processor = RESULT_PROCESSOR_MAP.get(type(item))
-        if processor is None:
-            raise Exception(f"Unexpected item to get patch for: {type(item)}")
-
-        return processor.get_patch_file(item, patches=self.patches)
-
-    def save_patches(self, paths: Collection[Path] = ()) -> None:
-        """
-        Save the stored patches.
-
-        :param paths: Only save the patches from this list.
-        """
-        if not paths:
-            paths = tuple(self.patches)
-
-        for path in paths:
-            if path not in self.patches:
-                continue
-
-            patch = self.patches[path]
-            with path.open("w") as file:
-                yaml.dump(patch, file)
 
     def add_result(self, name: str, message: str, item: ItemT, parent: ParentT = None, **kwargs) -> None:
         """
@@ -116,10 +69,10 @@ class ContractContext:
         result = processor.from_resource(
             item=item,
             parent=parent,
+            properties=self.properties,
             result_name=name,
             result_level="warning",
             message=message,
-            patches=self.patches,
             **kwargs
         )
         self.results.append(result)

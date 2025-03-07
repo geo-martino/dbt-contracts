@@ -8,10 +8,11 @@ import pytest
 import yaml
 from faker import Faker
 
-from dbt_contracts.contracts import ModelContract, SourceContract, ColumnContract, ContractContext
+from dbt_contracts.contracts import ModelContract, SourceContract, ColumnContract
 from dbt_contracts.contracts.conditions import properties as c_properties
 from dbt_contracts.contracts.result import Result, ModelResult
 from dbt_contracts.contracts.terms import properties as t_properties, source as t_source, column as t_column
+from dbt_contracts.properties import PropertiesIO
 # noinspection PyProtectedMember
 from dbt_contracts.runner import _get_default_table_header, ContractsRunner
 
@@ -108,18 +109,18 @@ class TestContractsRunner:
     def test_get_default_table_header(self, results: list[Result]):
         """Test the `get_default_table_header` function."""
         result = results[0]
-        assert not result.patch_path
+        assert not result.properties_path
 
         output = _get_default_table_header(result)
         assert result.result_type in output
         assert str(result.path) in output
-        assert str(result.patch_path) not in output
+        assert str(result.properties_path) not in output
 
-        result.patch_path = Path("patch_path.yml")
+        result.properties_path = Path("properties_path.yml")
         output = _get_default_table_header(result)
         assert result.result_type in output
         assert str(result.path) in output
-        assert str(result.patch_path) in output
+        assert str(result.properties_path) in output
 
     def test_cached_properties(self, runner: ContractsRunner):
         config = runner.config
@@ -409,7 +410,7 @@ class TestContractsRunner:
             mock.patch.object(ColumnContract, "generate", return_value={tmp_path: 3}) as mock_column,
             mock.patch.object(ContractsRunner, "_set_artifacts_on_contracts") as mock_set_artifacts,
             mock.patch.object(ContractsRunner, "_log_generated_paths") as mock_log_paths,
-            mock.patch.object(ContractContext, "save_patches") as mock_save,
+            mock.patch.object(PropertiesIO, "save") as mock_save,
         ):
             results = runner.generate()
             assert results == {tmp_path: 6}
@@ -487,8 +488,8 @@ class TestContractsRunner:
             assert f.read() == "[]"
 
         for result in results:
-            result.patch_start_line = faker.random_int()
-            result.patch_end_line = faker.random_int(min=result.patch_start_line)
+            result.properties_start_line = faker.random_int()
+            result.properties_end_line = faker.random_int(min=result.properties_start_line)
 
         assert all(result.can_format_to_github_annotation for result in results)
         output_path = runner.write_results(results, path=tmp_path, output_type="github-annotations")

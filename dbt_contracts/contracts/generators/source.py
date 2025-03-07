@@ -8,39 +8,39 @@ from dbt_contracts.contracts.generators.node import NodePropertiesGenerator
 
 class SourcePropertiesGenerator(NodePropertiesGenerator[SourceDefinition]):
 
-    def _update_existing_patch(self, item: SourceDefinition, context: ContractContext) -> dict[str, Any]:
+    def _update_existing_properties(self, item: SourceDefinition, context: ContractContext) -> dict[str, Any]:
         key = item.resource_type.pluralize()
-        patch = context.get_patch_file(item)
-        if key not in patch:
-            patch[key] = []
+        properties = context.properties[item]
+        if key not in properties:
+            properties[key] = []
 
-        source = next((source for source in patch[key] if source["name"] == item.source_name), None)
+        source = next((source for source in properties[key] if source["name"] == item.source_name), None)
         if source is None:
-            source = self._generate_source_patch(item)
-            patch[key].append(source)
+            source = self._generate_source_properties(item)
+            properties[key].append(source)
         if "tables" not in source:
             source["tables"] = []
 
-        properties = next((prop for prop in source["tables"] if prop["name"] == item.name), None)
-        table = self._generate_table_patch(item)
-        if properties is not None:
-            properties.update(table)
+        table_in_props = next((prop for prop in source["tables"] if prop["name"] == item.name), None)
+        table = self._generate_table_properties(item)
+        if table_in_props is not None:
+            table_in_props.update(table)
         else:
             source["tables"].append(table)
 
-        return patch
+        return properties
 
-    def _generate_new_patch(self, item: SourceDefinition) -> dict[str, Any]:
+    def _generate_new_properties(self, item: SourceDefinition) -> dict[str, Any]:
         key = item.resource_type.pluralize()
-        source = self._generate_full_patch(item)
-        return self._patch_defaults | {key: [source]}
+        source = self._generate_full_properties(item)
+        return self._properties_defaults | {key: [source]}
 
     @classmethod
-    def _generate_full_patch(cls, item: SourceDefinition) -> dict[str, Any]:
-        return cls._generate_source_patch(item) | {"tables": [cls._generate_table_patch(item)]}
+    def _generate_full_properties(cls, item: SourceDefinition) -> dict[str, Any]:
+        return cls._generate_source_properties(item) | {"tables": [cls._generate_table_properties(item)]}
 
     @staticmethod
-    def _generate_source_patch(item: SourceDefinition) -> dict[str, Any]:
+    def _generate_source_properties(item: SourceDefinition) -> dict[str, Any]:
         source = {
             "name": item.source_name,
             "description": item.source_description,
@@ -53,7 +53,7 @@ class SourcePropertiesGenerator(NodePropertiesGenerator[SourceDefinition]):
         return {key: val for key, val in source.items() if val}
 
     @staticmethod
-    def _generate_table_patch(item: SourceDefinition) -> dict[str, Any]:
+    def _generate_table_properties(item: SourceDefinition) -> dict[str, Any]:
         table = {
             "name": item.name,
             "description": item.description,

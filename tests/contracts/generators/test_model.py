@@ -6,6 +6,7 @@ from dbt.contracts.graph.nodes import ModelNode
 
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.generators.model import ModelPropertiesGenerator
+from dbt_contracts.properties import PropertiesIO
 from tests.contracts.generators.test_node import NodePropertiesGeneratorTester
 
 
@@ -18,32 +19,32 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
     def item(self, model: ModelNode) -> ModelNode:
         return model
 
-    def test_generate_table_patch(self, generator: ModelPropertiesGenerator, item: ModelNode):
-        table = generator._generate_table_patch(item)
+    def test_generate_table_properties(self, generator: ModelPropertiesGenerator, item: ModelNode):
+        table = generator._generate_table_properties(item)
         assert all(val for val in table.values())
 
-    def test_generate_new_patch(self, generator: ModelPropertiesGenerator, item: ModelNode):
-        patch = generator._generate_new_patch(item)
-        assert item.resource_type.pluralize() in patch
+    def test_generate_new_properties(self, generator: ModelPropertiesGenerator, item: ModelNode):
+        properties = generator._generate_new_properties(item)
+        assert item.resource_type.pluralize() in properties
 
-        table = generator._generate_table_patch(item)
-        assert table in patch[item.resource_type.pluralize()]
-        for key, val in generator._patch_defaults.items():
-            assert patch[key] == val
+        table = generator._generate_table_properties(item)
+        assert table in properties[item.resource_type.pluralize()]
+        for key, val in generator._properties_defaults.items():
+            assert properties[key] == val
 
-    def test_update_existing_patch_with_empty_patch(
+    def test_update_existing_properties_with_empty_properties(
             self, generator: ModelPropertiesGenerator, item: ModelNode, context: ContractContext
     ):
         key = item.resource_type.pluralize()
-        patch = {}
-        expected_table = generator._generate_table_patch(item)
+        properties = {}
+        expected_table = generator._generate_table_properties(item)
 
-        with mock.patch.object(ContractContext, "get_patch_file", return_value=patch):
-            generator._update_existing_patch(item, context)
-            assert len(patch[key]) == 1
-            assert expected_table in patch[key]
+        with mock.patch.object(PropertiesIO, "__getitem__", return_value=properties):
+            generator._update_existing_properties(item, context)
+            assert len(properties[key]) == 1
+            assert expected_table in properties[key]
 
-    def test_update_existing_patch_with_new_table(
+    def test_update_existing_properties_with_new_table(
             self,
             generator: ModelPropertiesGenerator,
             item: ModelNode,
@@ -52,16 +53,16 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
     ):
         key = item.resource_type.pluralize()
         models = sample([model for model in models if model.name != item.name], k=5)
-        patch = {key: list(map(generator._generate_table_patch, models))}
-        original_count = len(patch[key])
-        expected_table = generator._generate_table_patch(item)
+        properties = {key: list(map(generator._generate_table_properties, models))}
+        original_count = len(properties[key])
+        expected_table = generator._generate_table_properties(item)
 
-        with mock.patch.object(ContractContext, "get_patch_file", return_value=patch):
-            generator._update_existing_patch(item, context)
-            assert len(patch[key]) == original_count + 1
-            assert expected_table in patch[key]
+        with mock.patch.object(PropertiesIO, "__getitem__", return_value=properties):
+            generator._update_existing_properties(item, context)
+            assert len(properties[key]) == original_count + 1
+            assert expected_table in properties[key]
 
-    def test_update_existing_patch_with_existing_table(
+    def test_update_existing_properties_with_existing_table(
             self,
             generator: ModelPropertiesGenerator,
             item: ModelNode,
@@ -70,19 +71,19 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
     ):
         key = item.resource_type.pluralize()
         models = sample([model for model in models if model.name != item.name], k=5)
-        table = generator._generate_table_patch(item)
-        patch = {key: list(map(generator._generate_table_patch, models)) + [table]}
-        original_count = len(patch[key])
+        table = generator._generate_table_properties(item)
+        properties = {key: list(map(generator._generate_table_properties, models)) + [table]}
+        original_count = len(properties[key])
 
-        # should update the description in the patch
+        # should update the description in the properties
         item.description = "a brand new description"
-        expected_table = generator._generate_table_patch(item)
+        expected_table = generator._generate_table_properties(item)
 
-        with mock.patch.object(ContractContext, "get_patch_file", return_value=patch):
-            generator._update_existing_patch(item, context)
-            assert len(patch[key]) == original_count
-            assert expected_table in patch[key]
+        with mock.patch.object(PropertiesIO, "__getitem__", return_value=properties):
+            generator._update_existing_properties(item, context)
+            assert len(properties[key]) == original_count
+            assert expected_table in properties[key]
 
-            actual_tables = [prop for prop in patch[key] if prop["name"] == item.name]
+            actual_tables = [prop for prop in properties[key] if prop["name"] == item.name]
             assert len(actual_tables) == 1
             assert actual_tables[0]["description"] == item.description

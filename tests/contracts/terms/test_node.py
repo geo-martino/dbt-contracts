@@ -40,12 +40,14 @@ def test_get_tests(node: CompiledNode, simple_resource: BaseResource, manifest: 
 def test_has_tests(node: CompiledNode, simple_resource: BaseResource, context: ContractContext):
     assert 0 < len(list(HasTests._get_tests(item=node, manifest=context.manifest))) < 10
     assert HasTests().run(node, context=context)
-    assert not HasTests(min_count=10).run(node, context=context)
 
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        assert not HasTests(min_count=10).run(node, context=context)
+        mock_add_result.assert_called_once()
+
         # noinspection PyTypeChecker
         assert not HasTests().run(simple_resource, context=context)
-        mock_add_result.assert_called_once()
+        assert len(mock_add_result.mock_calls) == 2
 
 
 # noinspection PyTestUnpassedFixture

@@ -23,7 +23,9 @@ def test_has_properties(item: str, context: ContractContext, faker: Faker, reque
     if isinstance(item, SourceDefinition):  # always returns true for sources
         assert HasProperties().run(item, context=context)
     else:
-        assert not HasProperties().run(item, context=context)
+        with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+            assert not HasProperties().run(item, context=context)
+            mock_add_result.assert_called_once()
 
 
 @pytest.mark.parametrize("item", ["model", "source", "column", "macro", "argument"])
@@ -51,7 +53,9 @@ def test_has_required_tags(item: str, context: ContractContext, faker: Faker, re
 
     item.tags.clear()
     assert HasRequiredTags().run(item, context=context)
-    assert not HasRequiredTags(tags=faker.words(10)).run(item, context=context)
+    with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        assert not HasRequiredTags(tags=faker.words(10)).run(item, context=context)
+        mock_add_result.assert_called_once()
 
 
 @pytest.mark.parametrize("item", ["model", "column"])
@@ -63,7 +67,9 @@ def test_has_allowed_tags(item: str, context: ContractContext, faker: Faker, req
         assert not HasAllowedTags(tags=sample(item.tags, k=5)).run(item, context=context)
         mock_add_result.assert_called_once()
 
-    assert not HasAllowedTags(tags=faker.words(10)).run(item, context=context)
+        assert not HasAllowedTags(tags=faker.words(10)).run(item, context=context)
+        assert len(mock_add_result.mock_calls) == 2
+
     assert HasAllowedTags(tags=faker.words(10) + item.tags).run(item, context=context)
 
     item.tags.clear()
@@ -83,7 +89,10 @@ def test_has_required_meta_keys(item: str, context: ContractContext, faker: Fake
 
     item.meta.clear()
     assert HasRequiredMetaKeys().run(item, context=context)
-    assert not HasRequiredMetaKeys(keys=faker.words(10)).run(item, context=context)
+
+    with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        assert not HasRequiredMetaKeys(keys=faker.words(10)).run(item, context=context)
+        mock_add_result.assert_called_once()
 
 
 @pytest.mark.parametrize("item", ["model", "column"])
@@ -95,7 +104,9 @@ def test_has_allowed_meta_keys(item: str, context: ContractContext, faker: Faker
         assert not HasAllowedMetaKeys(keys=sample(list(item.meta), k=5)).run(item, context=context)
         mock_add_result.assert_called_once()
 
-    assert not HasAllowedMetaKeys(keys=faker.words(10)).run(item, context=context)
+        assert not HasAllowedMetaKeys(keys=faker.words(10)).run(item, context=context)
+        assert len(mock_add_result.mock_calls) == 2
+
     assert HasAllowedMetaKeys(keys=faker.words(10) + list(item.meta)).run(item, context=context)
 
     item.meta.clear()

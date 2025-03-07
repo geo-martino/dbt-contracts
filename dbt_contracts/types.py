@@ -8,7 +8,7 @@ from dbt.contracts.graph.nodes import SourceDefinition, Macro
 
 type ChildT = ColumnInfo | MacroArgument
 type ParentT = BaseResource | None
-type ItemT = ChildT | ParentT
+type ItemT = ColumnInfo | MacroArgument | BaseResource | None
 
 type PropertiesT = ParsedResource | SourceDefinition | Macro
 type DescriptionT = ParsedResource | ColumnInfo | SourceDefinition | Macro | MacroArgument

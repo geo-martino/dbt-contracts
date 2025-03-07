@@ -32,14 +32,14 @@ def relative_path(model: ModelNode, tmp_path: Path) -> Path:
     return Path(path)
 
 
-def test_get_absolute_patch_path_in_project_dir(relative_path: Path, tmp_path: Path):
+def test_get_absolute_path_in_project_dir(relative_path: Path, tmp_path: Path):
     GLOBAL_FLAGS.PROJECT_DIR = tmp_path
     expected = tmp_path.joinpath(relative_path)
     assert get_absolute_project_path(relative_path) == expected
 
 
 # TODO: flakey test - fix me
-def test_get_absolute_patch_path_in_cwd(relative_path: Path, tmp_path: Path):
+def test_get_absolute_path_in_cwd(relative_path: Path, tmp_path: Path):
     expected = tmp_path.joinpath(relative_path)
     # noinspection SpellCheckingInspection
     with mock.patch.object(os, "getcwd", return_value=str(tmp_path)):

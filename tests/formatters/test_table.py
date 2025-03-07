@@ -312,9 +312,9 @@ class TestTableRowBuilder:
             builder.cells[0],
             [TableCellBuilder(key="result_name"), TableCellBuilder(key="message"), None],
             [  # produces an empty line
-                TableCellBuilder(key="patch_path"),
-                TableCellBuilder(key="patch_start_line"),
-                TableCellBuilder(key="patch_start_col")
+                TableCellBuilder(key="properties_path"),
+                TableCellBuilder(key="properties_start_line"),
+                TableCellBuilder(key="properties_start_col")
             ],
             builder.cells[0],
         ]
@@ -330,9 +330,9 @@ class TestTableRowBuilder:
             builder.cells[0],
             [TableCellBuilder(key="result_name"), TableCellBuilder(key="message"), None],
             [  # produces an empty line
-                TableCellBuilder(key="patch_path"),
-                TableCellBuilder(key="patch_start_line"),
-                TableCellBuilder(key="patch_start_col")
+                TableCellBuilder(key="properties_path"),
+                TableCellBuilder(key="properties_start_line"),
+                TableCellBuilder(key="properties_start_col")
             ],
             builder.cells[0],
         ]

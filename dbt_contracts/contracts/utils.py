@@ -37,6 +37,7 @@ def to_tuple(value: Any) -> tuple:
 def get_absolute_project_path(path: str | Path) -> Path | None:
     """
     Get the absolute path of the given relative `path` in the project directory.
+    Only returns the path if it exists.
 
     :param path: The relative path.
     :return: The absolute project path.

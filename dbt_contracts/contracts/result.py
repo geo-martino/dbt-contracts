@@ -1,32 +1,16 @@
 from abc import ABCMeta, abstractmethod
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Self, ClassVar
 
-import yaml
 from dbt.artifacts.resources import BaseResource
-from dbt.artifacts.resources.v1.components import ParsedResource, ColumnInfo
+from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 from pydantic import BaseModel
-from yaml import MappingNode
 
-from dbt_contracts.contracts.utils import get_absolute_project_path
+from dbt_contracts.properties import PropertiesIO
 from dbt_contracts.types import ItemT, ParentT
-
-
-class SafeLineLoader(yaml.SafeLoader):
-    """YAML safe loader which applies line and column number information to every mapping read."""
-
-    def construct_mapping(self, node: MappingNode, deep: bool = False):
-        """Construct mapping object and apply line and column numbers"""
-        mapping = super().construct_mapping(node, deep=deep)
-        # Add 1 so line/col numbering starts at 1
-        mapping["__start_line__"] = node.start_mark.line + 1
-        mapping["__start_col__"] = node.start_mark.column + 1
-        mapping["__end_line__"] = node.end_mark.line + 1
-        mapping["__end_col__"] = node.end_mark.column + 1
-        return mapping
 
 
 class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
@@ -37,12 +21,12 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
     result_level: str
     result_name: str
     message: str
-    # patch attributes
-    patch_path: Path | None = None
-    patch_start_line: int | None = None
-    patch_start_col: int | None = None
-    patch_end_line: int | None = None
-    patch_end_col: int | None = None
+    # properties attributes
+    properties_path: Path | None = None
+    properties_start_line: int | None = None
+    properties_start_col: int | None = None
+    properties_end_line: int | None = None
+    properties_end_col: int | None = None
     # parent specific attributes
     parent_id: str | None = None
     parent_name: str | None = None
@@ -58,23 +42,22 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
 
     @classmethod
     def from_resource(
-            cls, item: I, parent: P = None, patches: MutableMapping[Path, dict[str, Any]] = None, **kwargs
+            cls, item: I, parent: P = None, properties: PropertiesIO = None, **kwargs
     ) -> Self:
         """
         Create a new :py:class:`Result` from a given resource.
 
         :param item: The resource to log a result for.
         :param parent: The parent item that the given child `item` belongs to if available.
-        :param patches: A map of loaded patches with associated line/col identifiers.
-            When defined, will attempt to find the patch for the given item in this map before trying to load from disk.
-            If a patch is not a found and is subsequently loaded by this method,
-            the loaded patch will be added to this map.
+        :param properties: The properties IO handler to use when loading properties files.
         :return: The :py:class:`Result` instance.
         """
-        # noinspection PyUnresolvedReferences
-        field_names: set[str] = set(cls.model_fields.keys())
-        patch = cls.get_patch_file(item=parent or item, patches=patches)
-        patch_object = cls._extract_patch_object_for_item(patch=patch, item=item, parent=parent) or {}
+        props = {}
+        props_path = None
+        props_item = parent if parent is not None else item
+        if properties is not None and (item_properties := properties.get(props_item)) is not None:
+            props = cls._extract_properties_for_item(item_properties, item=item, parent=parent) or {}
+            props_path = properties.get_path(props_item, to_absolute=False)
 
         if parent is not None:
             kwargs |= dict(
@@ -87,15 +70,18 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
         if isinstance(path_item := parent if parent is not None else item, BaseResource):
             path = Path(path_item.original_file_path)
 
+        # noinspection PyUnresolvedReferences
+        field_names: set[str] = set(cls.model_fields.keys())
+
         return cls(
             name=item.name,
             path=path,
             result_type=cls._get_result_type(item=item, parent=parent),
-            patch_path=cls.get_patch_path(item=parent if parent is not None else item, to_absolute=False),
-            patch_start_line=patch_object.get("__start_line__"),
-            patch_start_col=patch_object.get("__start_col__"),
-            patch_end_line=patch_object.get("__end_line__"),
-            patch_end_col=patch_object.get("__end_col__"),
+            properties_path=props_path,
+            properties_start_line=props.get("__start_line__"),
+            properties_start_col=props.get("__start_col__"),
+            properties_end_line=props.get("__end_line__"),
+            properties_end_col=props.get("__end_col__"),
             **{key: val for key, val in kwargs.items() if key in field_names},
         )
 
@@ -106,60 +92,10 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
             result_type = f"{parent.resource_type.name.title()} {result_type}"
         return result_type
 
-    @staticmethod
-    def get_patch_path(item: I | P, to_absolute: bool = False) -> Path | None:
-        """
-        Get the patch path for a given item from its properties.
-
-        :param item: The item to get a patch path for.
-        :param to_absolute: Format the path to be absolute.
-        :return: The patch path if found.
-        """
-        patch_path = None
-        if isinstance(item, ParsedResource) and item.patch_path:
-            patch_path = Path(item.patch_path.split("://")[1])
-        elif isinstance(item, BaseResource) and (path := Path(item.original_file_path)).suffix in {".yml", ".yaml"}:
-            patch_path = path
-
-        if patch_path is None or not to_absolute or patch_path.is_absolute():
-            return patch_path
-        return get_absolute_project_path(patch_path)
-
-    @classmethod
-    def get_patch_file(
-            cls, item: I, patches: MutableMapping[Path, dict[str, Any]] = None
-    ) -> dict[str, Any]:
-        """
-        Get the patch file by either extracting from the given patches or loading from disk.
-
-        :param item: The item to get the patch object for.
-        :param patches: The loaded patches to search through.
-        :return: The loaded patch file if found.
-        """
-        patch_path = cls.get_patch_path(item=item, to_absolute=True)
-        if patch_path is None or not patch_path.is_file():
-            return {}
-
-        if patches is None:
-            patch = cls._read_patch_file(patch_path)
-        elif patch_path not in patches:
-            patch = cls._read_patch_file(patch_path)
-            patches[patch_path] = patch
-        else:
-            patch = patches[patch_path]
-
-        return patch
-
-    @classmethod
-    def _read_patch_file(cls, path: Path) -> dict[str, Any]:
-        with path.open("r") as file:
-            patch = yaml.load(file, Loader=SafeLineLoader)
-        return patch or {}
-
     @classmethod
     @abstractmethod
-    def _extract_patch_object_for_item(
-            cls, patch: Mapping[str, Any], item: ItemT, parent: ParentT = None
+    def _extract_properties_for_item(
+            cls, properties: Mapping[str, Any], item: ItemT, parent: ParentT = None
     ) -> Mapping[str, Any] | None:
         raise NotImplementedError
 
@@ -185,11 +121,11 @@ class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
         https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run
         """
         return {
-            "path": str(self.patch_path or self.path),
-            "start_line": self.patch_start_line,
-            "start_column": self.patch_start_col,
-            "end_line": self.patch_end_line,
-            "end_column": self.patch_end_col,
+            "path": str(self.properties_path or self.path),
+            "start_line": self.properties_start_line,
+            "start_column": self.properties_start_col,
+            "end_line": self.properties_end_line,
+            "end_column": self.properties_end_col,
             "annotation_level": self.result_level,
             "title": self.result_name.replace("_", " ").title(),
             "message": self.message,
@@ -204,10 +140,10 @@ class ModelResult(Result[ModelNode, None]):
     resource_type = ModelNode
 
     @classmethod
-    def _extract_patch_object_for_item(
-            cls, patch: Mapping[str, Any], item: ModelNode, parent: None = None
+    def _extract_properties_for_item(
+            cls, properties: Mapping[str, Any], item: ModelNode, parent: None = None
     ) -> Mapping[str, Any] | None:
-        models = (model for model in patch.get("models", ()) if model.get("name", "") == item.name)
+        models = (model for model in properties.get("models", ()) if model.get("name", "") == item.name)
         return next(models, None)
 
 
@@ -215,12 +151,12 @@ class SourceResult(Result[SourceDefinition, None]):
     resource_type = SourceDefinition
 
     @classmethod
-    def _extract_patch_object_for_item(
-            cls, patch: Mapping[str, Any], item: SourceDefinition, parent: None = None
+    def _extract_properties_for_item(
+            cls, properties: Mapping[str, Any], item: SourceDefinition, parent: None = None
     ) -> Mapping[str, Any] | None:
         sources = (
             table
-            for source in patch.get("sources", ()) if source.get("name", "") == item.source_name
+            for source in properties.get("sources", ()) if source.get("name", "") == item.source_name
             for table in source.get("tables", ()) if table.get("name", "") == item.name
         )
         return next(sources, None)
@@ -230,19 +166,19 @@ class ColumnResult[P: ParentT](Result[ColumnInfo, P]):
     resource_type = ColumnInfo
 
     @classmethod
-    def _extract_patch_object_for_item(
-            cls, patch: Mapping[str, Any], item: ColumnInfo, parent: P = None
+    def _extract_properties_for_item(
+            cls, properties: Mapping[str, Any], item: ColumnInfo, parent: P = None
     ) -> Mapping[str, Any] | None:
         result_processor = RESULT_PROCESSOR_MAP.get(type(parent))
         if result_processor is None:
             return
 
         # noinspection PyProtectedMember
-        parent_patch = result_processor._extract_patch_object_for_item(patch=patch, item=parent)
-        if parent_patch is None:
+        parent_properties = result_processor._extract_properties_for_item(properties=properties, item=parent)
+        if parent_properties is None:
             return
 
-        columns = (column for column in parent_patch.get("columns", ()) if column.get("name", "") == item.name)
+        columns = (column for column in parent_properties.get("columns", ()) if column.get("name", "") == item.name)
         return next(columns, None)
 
     @classmethod
@@ -254,7 +190,7 @@ class ColumnResult[P: ParentT](Result[ColumnInfo, P]):
 
     @classmethod
     def from_resource(
-            cls, item: ColumnInfo, parent: P = None, patches: MutableMapping[Path, Mapping[str, Any]] = None, **kwargs
+            cls, item: ColumnInfo, parent: P = None, properties: PropertiesIO = None, **kwargs
     ) -> Self:
         try:
             index = list(parent.columns.keys()).index(item.name) if parent is not None else None
@@ -268,10 +204,10 @@ class MacroResult(Result[Macro, None]):
     resource_type = Macro
 
     @classmethod
-    def _extract_patch_object_for_item(
-            cls, patch: Mapping[str, Any], item: Macro, parent: None = None
+    def _extract_properties_for_item(
+            cls, properties: Mapping[str, Any], item: Macro, parent: None = None
     ) -> Mapping[str, Any] | None:
-        macros = (macro for macro in patch.get("macros", ()) if macro.get("name", "") == item.name)
+        macros = (macro for macro in properties.get("macros", ()) if macro.get("name", "") == item.name)
         return next(macros, None)
 
 
@@ -279,11 +215,11 @@ class MacroArgumentResult(Result[MacroArgument, Macro]):
     resource_type = MacroArgument
 
     @classmethod
-    def _extract_patch_object_for_item(
-            cls, patch: Mapping[str, Any], item: MacroArgument, parent: Macro = None
+    def _extract_properties_for_item(
+            cls, properties: Mapping[str, Any], item: MacroArgument, parent: Macro = None
     ) -> Mapping[str, Any] | None:
         # noinspection PyProtectedMember
-        macro = MacroResult._extract_patch_object_for_item(patch=patch, item=parent)
+        macro = MacroResult._extract_properties_for_item(properties=properties, item=parent)
         if macro is None:
             return
 
@@ -296,11 +232,7 @@ class MacroArgumentResult(Result[MacroArgument, Macro]):
 
     @classmethod
     def from_resource(
-            cls,
-            item: MacroArgument,
-            parent: Macro = None,
-            patches: MutableMapping[Path, Mapping[str, Any]] = None,
-            **kwargs
+            cls, item: MacroArgument, parent: Macro = None, properties: PropertiesIO = None, **kwargs
     ) -> Self:
         index = parent.arguments.index(item) if parent is not None else None
         return super().from_resource(item=item, parent=parent, index=index, **kwargs)

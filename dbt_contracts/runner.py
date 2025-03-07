@@ -16,7 +16,7 @@ from dbt.config import RuntimeConfig
 from dbt.contracts.graph.manifest import Manifest
 
 from dbt_contracts import dbt_cli
-from dbt_contracts.contracts import Contract, CONTRACT_MAP, ParentContract
+from dbt_contracts.contracts import Contract, CONTRACT_MAP, ParentContract, ContractContext
 from dbt_contracts.contracts.conditions.properties import PathCondition
 from dbt_contracts.contracts.result import Result
 from dbt_contracts.contracts.utils import get_absolute_project_path, to_tuple
@@ -28,8 +28,8 @@ def _get_default_table_header(result: Result) -> str:
     path = result.path
     header_path = f"{Fore.LIGHTBLUE_EX}{path}{Fore.RESET}"
 
-    if (patch_path := result.patch_path) and patch_path != path:
-        header_path += f" @ {Fore.LIGHTCYAN_EX}{patch_path}{Fore.RESET}"
+    if (properties_path := result.properties_path) and properties_path != path:
+        header_path += f" @ {Fore.LIGHTCYAN_EX}{properties_path}{Fore.RESET}"
 
     return f"{Fore.LIGHTWHITE_EX}{result.result_type.rstrip("s")}s{Fore.RESET}: {header_path}"
 
@@ -40,7 +40,7 @@ DEFAULT_TERMINAL_LOG_BUILDER_CELLS = (
             key="result_name", colour=Fore.RED, max_width=50
         ),
         TableCellBuilder(
-            key="patch_start_line", prefix="L: ", alignment=">", colour=Fore.LIGHTBLUE_EX, min_width=6, max_width=9
+            key="properties_start_line", prefix="L: ", alignment=">", colour=Fore.LIGHTBLUE_EX, min_width=6, max_width=9
         ),
         TableCellBuilder(
             key=lambda result: result.parent_name if result.has_parent else result.name,
@@ -53,7 +53,7 @@ DEFAULT_TERMINAL_LOG_BUILDER_CELLS = (
     (
         None,
         TableCellBuilder(
-            key="patch_start_col", prefix="P: ", alignment=">", colour=Fore.LIGHTBLUE_EX, min_width=6, max_width=9
+            key="properties_start_col", prefix="P: ", alignment=">", colour=Fore.LIGHTBLUE_EX, min_width=6, max_width=9
         ),
         TableCellBuilder(
             key=lambda result: result.name if result.has_parent else "",
@@ -327,9 +327,9 @@ class ContractsRunner:
         message = f"Creating/updating {len(results)} properties files"
         self.logger.info(f"{Fore.LIGHTMAGENTA_EX}{message}{Fore.RESET}")
 
-        # TODO: drop this additional loop when a PropertiesIO class is implemented
-        for contract in contracts:
-            contract.context.save_patches(results)
+        # properties are updated on the class attribute of ContractContext
+        # so all contexts store the same PropertiesIO object
+        ContractContext.properties.save(results)
 
         self._log_generated_paths(results)
         return results

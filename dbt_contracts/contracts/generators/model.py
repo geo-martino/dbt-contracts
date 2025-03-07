@@ -8,28 +8,28 @@ from dbt_contracts.contracts.generators.node import NodePropertiesGenerator
 
 class ModelPropertiesGenerator(NodePropertiesGenerator[ModelNode]):
 
-    def _update_existing_patch(self, item: ModelNode, context: ContractContext) -> dict[str, Any]:
+    def _update_existing_properties(self, item: ModelNode, context: ContractContext) -> dict[str, Any]:
         key = item.resource_type.pluralize()
-        patch = context.get_patch_file(item)
-        if key not in patch:
-            patch[key] = []
+        properties = context.properties[item]
+        if key not in properties:
+            properties[key] = []
 
-        properties = next((prop for prop in patch[key] if prop["name"] == item.name), None)
-        table = self._generate_table_patch(item)
-        if properties is not None:
-            properties.update(table)
+        table_in_props = next((prop for prop in properties[key] if prop["name"] == item.name), None)
+        table = self._generate_table_properties(item)
+        if table_in_props is not None:
+            table_in_props.update(table)
         else:
-            patch[key].append(table)
+            properties[key].append(table)
 
-        return patch
+        return properties
 
-    def _generate_new_patch(self, item: ModelNode) -> dict[str, Any]:
+    def _generate_new_properties(self, item: ModelNode) -> dict[str, Any]:
         key = item.resource_type.pluralize()
-        table = self._generate_table_patch(item)
-        return self._patch_defaults | {key: [table]}
+        table = self._generate_table_properties(item)
+        return self._properties_defaults | {key: [table]}
 
     @staticmethod
-    def _generate_table_patch(item: ModelNode) -> dict[str, Any]:
+    def _generate_table_properties(item: ModelNode) -> dict[str, Any]:
         table = {
             "name": item.name,
             "description": item.description,

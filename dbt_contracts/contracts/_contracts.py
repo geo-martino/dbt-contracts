@@ -268,7 +268,7 @@ class ParentContract[I: ItemT, P: ParentT, G: ParentPropertiesGenerator | None](
                 continue
 
             self.generator.update(item, context=self.context)
-            paths[self.context.get_patch_path(item)] += 1
+            paths[self.context.properties.get_path(item)] += 1
 
         return dict(paths)
 
@@ -338,7 +338,7 @@ class ChildContract[I: ItemT, P: ParentT, G: ChildPropertiesGenerator | None](
 
             if self.parent.generator is not None:
                 self.parent.generator.update(parent, context=self.context)
-            paths[self.context.get_patch_path(parent)] += 1
+            paths[self.context.properties.get_path(parent)] += 1
 
         return dict(paths)
 
