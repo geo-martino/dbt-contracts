@@ -72,14 +72,14 @@ def catalog(models: list[ModelNode], sources: list[SourceDefinition]) -> Catalog
 
 
 @pytest.fixture
-def simple_resource(faker: Faker) -> BaseResource:
+def simple_resource(faker: Faker, project_name: str) -> BaseResource:
     """Fixture for a simple BaseResource object."""
     path = faker.file_path(extension=choice(("yml", "yaml", "py")), absolute=False)
     return BaseResource(
         name="_".join(faker.words()),
         path=path,
         original_file_path=str(Path("models", path)),
-        package_name=faker.word(),
+        package_name=project_name,
         unique_id=faker.uuid4(str),
         resource_type=NodeType.Model,
     )
@@ -106,7 +106,7 @@ def node_table(node: CompiledNode, catalog: CatalogArtifact) -> CatalogTable:
 
 
 @pytest.fixture(scope="session")
-def models(faker: Faker, columns: list[ColumnInfo]) -> list[ModelNode]:
+def models(faker: Faker, columns: list[ColumnInfo], project_name: str) -> list[ModelNode]:
     """Fixture for the ModelNodes that can be found in the manifest."""
     def _generate() -> ModelNode:
         path = faker.file_path(extension=choice(("sql", "py")), absolute=False)
@@ -114,7 +114,7 @@ def models(faker: Faker, columns: list[ColumnInfo]) -> list[ModelNode]:
             name="_".join(faker.words()),
             path=path,
             original_file_path=str(Path("models", path)),
-            package_name=faker.word(),
+            package_name=choice([project_name, faker.word()]),
             unique_id=".".join(("models", *Path(path).with_suffix("").parts)),
             resource_type=NodeType.Model,
             alias=faker.word(),
@@ -139,7 +139,7 @@ def model(models: list[ModelNode], column: ColumnInfo) -> ModelNode:
 
 
 @pytest.fixture(scope="session")
-def sources(faker: Faker, columns: list[ColumnInfo]) -> list[SourceDefinition]:
+def sources(faker: Faker, columns: list[ColumnInfo], project_name: str) -> list[SourceDefinition]:
     """Fixture for the SourceDefinitions that can be found in the manifest."""
     def _generate() -> SourceDefinition:
         path = faker.file_path(extension=choice(("yml", "yaml")), absolute=False)
@@ -147,7 +147,7 @@ def sources(faker: Faker, columns: list[ColumnInfo]) -> list[SourceDefinition]:
             name="_".join(faker.words()),
             path=path,
             original_file_path=str(Path("models", path)),
-            package_name=faker.word(),
+            package_name=choice([project_name, faker.word()]),
             unique_id=".".join(("source", *Path(path).with_suffix("").parts)),
             resource_type=NodeType.Source,
             fqn=faker.words(3),
@@ -194,7 +194,7 @@ def column(columns: list[ColumnInfo]) -> ColumnInfo:
 
 
 @pytest.fixture(scope="session")
-def tests(models: list[ModelNode], sources: list[SourceDefinition], faker: Faker) -> list[TestNode]:
+def tests(models: list[ModelNode], sources: list[SourceDefinition], project_name: str, faker: Faker) -> list[TestNode]:
     """Fixture for the TestNodes that can be found in the manifest."""
     def _generate(item: BaseResource, column: ColumnInfo = None) -> TestNode:
         path = faker.file_path(extension=choice(("yml", "yaml", "py")), absolute=False)
@@ -202,7 +202,7 @@ def tests(models: list[ModelNode], sources: list[SourceDefinition], faker: Faker
             name="_".join(faker.words()),
             path=path,
             original_file_path=str(Path("tests", path)),
-            package_name=faker.word(),
+            package_name=choice([project_name, faker.word()]),
             unique_id=".".join(("test", *Path(path).with_suffix("").parts)),
             resource_type=NodeType.Test,
             attached_node=item.unique_id,
@@ -236,7 +236,7 @@ def macros(faker: Faker, arguments: list[MacroArgument], project_name: str) -> l
             name="_".join(faker.words()),
             path=path,
             original_file_path=str(Path("macros", path)),
-            package_name=project_name,
+            package_name=choice([project_name, faker.word()]),
             resource_type=NodeType.Macro,
             unique_id=".".join(("macro", *Path(path).with_suffix("").parts)),
             macro_sql="SELECT * FROM table",

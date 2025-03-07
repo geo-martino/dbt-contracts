@@ -115,9 +115,7 @@ class Contract[I: Any, T: ContractTerm, G: PropertiesGenerator | None](metaclass
         if cls.__supported_generator__ is None:
             return
 
-        generator_config = config.get("properties", config.get("generator", []))
-        if not generator_config:
-            return
+        generator_config = config.get("properties", config.get("generator", {}))
         return cls.__supported_generator__(**generator_config)
 
     @classmethod
@@ -268,7 +266,12 @@ class ParentContract[I: ItemT, P: ParentT, G: ParentPropertiesGenerator | None](
                 continue
 
             self.generator.update(item, context=self.context)
-            paths[self.context.properties.get_path(item)] += 1
+
+            try:
+                path = self.context.properties.get_path(item, to_absolute=True)
+            except FileNotFoundError:
+                path = self.generator.generate_properties_path(item)
+            paths[path] += 1
 
         return dict(paths)
 
@@ -327,19 +330,22 @@ class ChildContract[I: ItemT, P: ParentT, G: ChildPropertiesGenerator | None](
         ]
 
     def generate(self) -> dict[Path, int]:
-        if self.generator is None:
+        if self.generator is None or self.parent.generator is None:
             return {}
 
         paths = defaultdict[Path, int](int)
-        assert len(list(self.filtered_items)) > 0
         for item, parent in self.filtered_items:
             modified = self.generator.merge(item, context=self.context, parent=parent)
             if not modified:
                 continue
 
-            if self.parent.generator is not None:
-                self.parent.generator.update(parent, context=self.context)
-            paths[self.context.properties.get_path(parent)] += 1
+            self.parent.generator.update(parent, context=self.context)
+
+            try:
+                path = self.context.properties.get_path(parent, to_absolute=True)
+            except FileNotFoundError:
+                path = self.parent.generator.generate_properties_path(parent)
+            paths[path] += 1
 
         return dict(paths)
 
@@ -435,7 +441,10 @@ class ModelContract(ParentContract[ColumnInfo, ModelNode, g_model.ModelPropertie
 
     @property
     def items(self) -> Iterable[ModelNode]:
-        return (n for n in self.manifest.nodes.values() if isinstance(n, ModelNode))
+        return (
+            node for node in self.manifest.nodes.values()
+            if isinstance(node, ModelNode) and node.package_name == self.manifest.metadata.project_name
+        )
 
 
 class SourceContract(ParentContract[ColumnInfo, SourceDefinition, g_source.SourcePropertiesGenerator]):
@@ -471,7 +480,10 @@ class SourceContract(ParentContract[ColumnInfo, SourceDefinition, g_source.Sourc
 
     @property
     def items(self) -> Iterable[SourceDefinition]:
-        return iter(self.manifest.sources.values())
+        return (
+            source for source in self.manifest.sources.values()
+            if source.package_name == self.manifest.metadata.project_name
+        )
 
 
 class MacroContract(ParentContract[MacroArgument, Macro, None]):
@@ -491,8 +503,8 @@ class MacroContract(ParentContract[MacroArgument, Macro, None]):
     @property
     def items(self) -> Iterable[Macro]:
         return (
-            mac for mac in self.manifest.macros.values()
-            if mac.package_name == self.manifest.metadata.project_name
+            macro for macro in self.manifest.macros.values()
+            if macro.package_name == self.manifest.metadata.project_name
         )
 
 

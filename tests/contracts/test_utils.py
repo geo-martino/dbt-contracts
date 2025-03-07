@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from pathlib import Path
 from random import choice
 from unittest import mock
@@ -9,7 +10,48 @@ from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.nodes import CompiledNode, ModelNode
 from dbt.flags import GLOBAL_FLAGS
 
-from dbt_contracts.contracts.utils import get_matching_catalog_table, get_absolute_project_path
+from dbt_contracts.contracts.utils import get_matching_catalog_table, get_absolute_project_path, merge_maps
+
+
+def tests_merge_maps():
+    source = {
+        1: "value",
+        2: {"a": "val a", "b": "val b", "c": {"nested1": "nested val"}},
+        3: {"nested1": {"nested2": {"nested3": "old value"}}},
+        4: {"a": [1, 2, 3]}
+    }
+    new = {
+        2: {"b": "new value b", "c": {"nested1": "modified nested val"}},
+        3: {"nested1": {"nested2": {"nested3": "new value", "new key": "new val"}}},
+        4: {"a": [4, 5]}
+    }
+
+    test = deepcopy(source)
+    merge_maps(source=test, new=new, extend=False, overwrite=False)
+    assert test == {
+        1: "value",
+        2: {"a": "val a", "b": "val b", "c": {"nested1": "nested val"}},
+        3: {"nested1": {"nested2": {"nested3": "old value", "new key": "new val"}}},
+        4: {"a": [1, 2, 3]}
+    }
+
+    test = deepcopy(source)
+    merge_maps(source=test, new=new, extend=False, overwrite=True)
+    assert test == {
+        1: "value",
+        2: {"a": "val a", "b": "new value b", "c": {"nested1": "modified nested val"}},
+        3: {"nested1": {"nested2": {"nested3": "new value", "new key": "new val"}}},
+        4: {"a": [4, 5]}
+    }
+
+    test = deepcopy(source)
+    merge_maps(source=test, new=new, extend=True, overwrite=False)
+    assert test == {
+        1: "value",
+        2: {"a": "val a", "b": "val b", "c": {"nested1": "nested val"}},
+        3: {"nested1": {"nested2": {"nested3": "old value", "new key": "new val"}}},
+        4: {"a": [1, 2, 3, 4, 5]}
+    }
 
 
 def test_get_matching_catalog_table(node: CompiledNode, simple_resource: BaseResource, catalog: CatalogArtifact):

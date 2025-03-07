@@ -1,4 +1,4 @@
-from random import sample
+from random import sample, choice
 
 import pytest
 from dbt.contracts.graph.nodes import SourceDefinition
@@ -23,6 +23,11 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
 
     def test_generate_table_properties(self, generator: SourcePropertiesGenerator, item: SourceDefinition):
         table = generator._generate_table_properties(item)
+        assert all(val for val in table.values())
+
+    def test_generate_column_properties(self, generator: SourcePropertiesGenerator, item: SourceDefinition):
+        column = choice(list(item.columns.values()))
+        table = generator._generate_column_properties(column)
         assert all(val for val in table.values())
 
     def test_generate_new_properties(self, generator: SourcePropertiesGenerator, item: SourceDefinition):
@@ -104,7 +109,6 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
         # should update the description in the properties
         original_sources_count = len(properties[key])
         item.description = "a brand new description"
-        expected_table = generator._generate_table_properties(item)
 
         generator._update_existing_properties(item, properties=properties)
         assert len(properties[key]) == original_sources_count
@@ -115,4 +119,3 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
         actual_tables = [prop for prop in actual_sources[0]["tables"] if prop["name"] == item.name]
         assert len(actual_tables) == 1
         assert actual_tables[0]["description"] == item.description
-        assert expected_table == actual_tables[0]

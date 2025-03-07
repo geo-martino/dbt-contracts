@@ -421,7 +421,7 @@ class TestContractsRunner:
             mock_source.assert_called_once()
             mock_column.assert_called_once()
 
-            mock_log_paths.assert_called_once_with(results)
+            mock_log_paths.assert_called_once_with({})  # nothing was saved so results log is empty
             mock_save.assert_called_with(results)
 
     def test_generate_runs_selected_contract(self, runner: ContractsRunner, tmp_path: Path):
@@ -430,6 +430,8 @@ class TestContractsRunner:
             mock.patch.object(SourceContract, "generate", return_value={tmp_path: 3}) as mock_source,
             mock.patch.object(ColumnContract, "generate", return_value={tmp_path: 8}) as mock_column,
             mock.patch.object(ContractsRunner, "_set_artifacts_on_contracts"),
+            mock.patch.object(ContractsRunner, "_log_generated_paths") as mock_log_paths,
+            mock.patch.object(PropertiesIO, "save", return_value=[tmp_path]) as mock_save,
         ):
             key = ModelContract.child_config_key
             results = runner.generate(key)
@@ -438,6 +440,9 @@ class TestContractsRunner:
             mock_model.assert_not_called()
             mock_source.assert_not_called()
             mock_column.assert_called_once()
+
+            mock_log_paths.assert_called_once_with(results)
+            mock_save.assert_called_with(results)
 
     def test_build_results(self, runner: ContractsRunner, results: list[Result]):
         assert runner._build_results([]) == ""

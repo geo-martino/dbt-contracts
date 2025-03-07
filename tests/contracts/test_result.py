@@ -26,18 +26,20 @@ class TestResult:
     @pytest.fixture
     def result(self, model: ModelNode, source: SourceDefinition) -> Result:
         """Fixture for a Result object"""
+        path = PropertiesIO.get_path(source)
         props = {
             "__start_line__": 90,
             "__start_col__": 1,
             "__end_line__": 115,
             "__end_col__": 15,
         }
-        properties = PropertiesIO({
-            PropertiesIO.get_path(source, to_absolute=True): props
-        })
+        properties = PropertiesIO({path: props})
 
         cls = RESULT_PROCESSOR_MAP[type(model)]
-        with mock.patch.object(cls, "_extract_properties_for_item", return_value=props):
+        with (
+            mock.patch.object(cls, "_extract_properties_for_item", return_value=props),
+            mock.patch.object(PropertiesIO, "__getitem__", return_value=path),
+        ):
             result = cls.from_resource(
                 item=model,
                 parent=source,

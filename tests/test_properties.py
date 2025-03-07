@@ -30,7 +30,7 @@ class TestPropertiesIO:
 
     def test_get_absolute_properties_path(self, source: SourceDefinition):
         with mock.patch("dbt_contracts.properties.get_absolute_project_path") as mock_func:
-            assert PropertiesIO.get_path(source, to_absolute=True)
+            assert PropertiesIO.get_path(source, to_absolute=True).is_absolute()
             mock_func.assert_called_once()
 
     def test_get_properties_file_for_invalid_properties_path(
@@ -62,6 +62,9 @@ class TestPropertiesIO:
             # properties are pulled from loaded properties and file is not read again
             assert properties[model] == expected
             read_properties_file.assert_called_once_with(path)
+
+        for path in properties:
+            assert path.is_absolute()
 
     def test_read_properties_file(self, source: SourceDefinition, tmp_path: Path):
         path = tmp_path.joinpath(source.original_file_path)

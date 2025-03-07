@@ -513,8 +513,8 @@ class ChildContractTester[I: ItemT, P: ParentT, G: ChildPropertiesGenerator](Con
 
 class TestModelContract(ParentContractTester[ColumnInfo, ModelNode, ModelPropertiesGenerator]):
     @pytest.fixture(scope="class")
-    def items(self, models: list[ModelNode]) -> list[ModelNode]:
-        return models
+    def items(self, models: list[ModelNode], manifest: Manifest) -> list[ModelNode]:
+        return [model for model in models if model.package_name == manifest.metadata.project_name]
 
     @pytest.fixture(scope="class")
     def filtered_items(self, items: list[ModelNode]) -> list[ModelNode]:
@@ -567,8 +567,8 @@ class TestModelContract(ParentContractTester[ColumnInfo, ModelNode, ModelPropert
 
 class TestSourceContract(ParentContractTester[ColumnInfo, SourceDefinition, SourcePropertiesGenerator]):
     @pytest.fixture(scope="class")
-    def items(self, sources: list[SourceDefinition]) -> list[SourceDefinition]:
-        return sources
+    def items(self, sources: list[SourceDefinition], manifest: Manifest) -> list[SourceDefinition]:
+        return [source for source in sources if source.package_name == manifest.metadata.project_name]
 
     @pytest.fixture(scope="class")
     def filtered_items(self, items: list[SourceDefinition]) -> list[SourceDefinition]:
@@ -665,7 +665,7 @@ class TestColumnContract(ChildContractTester[ColumnInfo, ModelNode, ColumnProper
 class TestMacroContract(ParentContractTester[MacroArgument, Macro, None]):
     @pytest.fixture(scope="class")
     def items(self, macros: list[Macro], manifest: Manifest) -> list[Macro]:
-        return macros
+        return [macro for macro in macros if macro.package_name == manifest.metadata.project_name]
 
     @pytest.fixture(scope="class")
     def filtered_items(self, items: list[Macro]) -> list[Macro]:

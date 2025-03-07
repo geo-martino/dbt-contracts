@@ -115,13 +115,18 @@ class ParentPropertiesGenerator[I: PropertiesT](PropertiesGenerator[I], metaclas
         :param context: The contract context to use.
         :return: The updated properties.
         """
-        if context.properties.get_path(item):
-            return self._update_existing_properties(item, properties=context.properties[item])
+        try:
+            path = context.properties.get_path(item, to_absolute=True)
+        except FileNotFoundError:
+            path = None
+
+        if path is not None and path.is_file():
+            return self._update_existing_properties(item, properties=context.properties[path])
 
         flags = get_flags()
         project_dir = Path(getattr(flags, "PROJECT_DIR", None) or "")
 
-        path = self._generate_properties_path(item)
+        path = self.generate_properties_path(item)
         if isinstance(item, ParsedResource):
             item.patch_path = f"{context.manifest.metadata.project_name}://{path.relative_to(project_dir)}"
         elif isinstance(item, BaseResource):
@@ -144,7 +149,7 @@ class ParentPropertiesGenerator[I: PropertiesT](PropertiesGenerator[I], metaclas
     def _generate_new_properties(self, item: I) -> dict[str, Any]:
         raise NotImplementedError
 
-    def _generate_properties_path(self, item: I) -> Path:
+    def generate_properties_path(self, item: I) -> Path:
         """Generate a new properties path to use for the given item."""
         flags = get_flags()
         project_dir = Path(getattr(flags, "PROJECT_DIR", None) or "")

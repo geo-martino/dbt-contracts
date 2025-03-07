@@ -32,8 +32,11 @@ class PropertiesIO(MutableMapping[Path, dict[str, Any]]):
 
     def __getitem__(self, item: str | Path | PropertiesT):
         if not isinstance(item, (str, Path)):
-            path = self.get_path(item=item, to_absolute=True)
-            if path is None:
+            try:
+                path = self.get_path(item=item, to_absolute=True)
+                if path is None:
+                    raise FileNotFoundError
+            except FileNotFoundError:
                 raise KeyError(f"No properties path found for the given item: {item.name!r}.")
         else:
             path = Path(item)
@@ -77,7 +80,7 @@ class PropertiesIO(MutableMapping[Path, dict[str, Any]]):
         Get the properties path for a given item from its attributes.
 
         :param item: The item to get a properties path for.
-        :param to_absolute: Format the path to be absolute.
+        :param to_absolute: Format the path to be absolute. Only returns the path if it exists in the project.
         :return: The properties path if found.
         """
         properties_path = None
@@ -90,7 +93,7 @@ class PropertiesIO(MutableMapping[Path, dict[str, Any]]):
             return properties_path
         return get_absolute_project_path(properties_path)
 
-    def save(self, paths: Collection[Path] = ()) -> None:
+    def save(self, paths: Collection[Path] = ()) -> list[Path]:
         """
         Save the stored properties.
 
@@ -99,10 +102,31 @@ class PropertiesIO(MutableMapping[Path, dict[str, Any]]):
         if not paths:
             paths = tuple(self._properties)
 
+        paths_updated = []
         for path in paths:
             if path not in self._properties:
                 continue
 
-            properties = self._properties[path]
+            properties = self._clean_properties(self._properties[path])
+            path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("w") as file:
-                yaml.dump(properties, file)
+                yaml.dump(properties, file, sort_keys=False)
+
+            paths_updated.append(path)
+
+        return paths_updated
+
+    @classmethod
+    def _clean_properties(cls, properties: dict[str, Any]) -> dict[str, Any]:
+        properties = properties.copy()
+
+        for key, value in properties.copy().items():
+            if key.startswith("__"):
+                del properties[key]
+
+            if isinstance(value, dict):
+                properties[key] = cls._clean_properties(value)
+            elif isinstance(value, Collection) and not isinstance(value, str):
+                properties[key] = [cls._clean_properties(val) if isinstance(val, dict) else val for val in value]
+
+        return properties

@@ -1,8 +1,10 @@
 from typing import Any
 
+from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.nodes import SourceDefinition
 
 from dbt_contracts.contracts.generators.node import NodePropertiesGenerator
+from dbt_contracts.contracts.utils import merge_maps
 
 
 class SourcePropertiesGenerator(NodePropertiesGenerator[SourceDefinition]):
@@ -22,7 +24,7 @@ class SourcePropertiesGenerator(NodePropertiesGenerator[SourceDefinition]):
         table_in_props = next((prop for prop in source["tables"] if prop["name"] == item.name), None)
         table = self._generate_table_properties(item)
         if table_in_props is not None:
-            table_in_props.update(table)
+            merge_maps(table_in_props, table, overwrite=True)
         else:
             source["tables"].append(table)
 
@@ -44,24 +46,24 @@ class SourcePropertiesGenerator(NodePropertiesGenerator[SourceDefinition]):
             "description": item.source_description,
             "database": item.unrendered_database or item.database,
             "schema": item.unrendered_schema or item.schema,
-            "loader": item.loader,
-            "meta": item.source_meta,
-            "config": item.config.to_dict(),
         }
         return {key: val for key, val in source.items() if val}
 
-    @staticmethod
-    def _generate_table_properties(item: SourceDefinition) -> dict[str, Any]:
+    @classmethod
+    def _generate_table_properties(cls, item: SourceDefinition) -> dict[str, Any]:
         table = {
             "name": item.name,
             "description": item.description,
             "identifier": item.identifier,
-            "loaded_at_field": item.loaded_at_field,
-            "meta": item.meta,
-            "tags": item.tags,
-            "freshness": item.freshness.to_dict() if item.freshness else None,
-            "quoting": item.quoting.to_dict(),
-            "external": item.external.to_dict() if item.external else None,
-            "columns": [column.to_dict() for column in item.columns.values()],
+            "columns": list(map(cls._generate_column_properties, item.columns.values())),
         }
         return {key: val for key, val in table.items() if val}
+
+    @staticmethod
+    def _generate_column_properties(column: ColumnInfo) -> dict[str, Any]:
+        column = {
+            "name": column.name,
+            "description": column.description,
+            "data_type": column.data_type,
+        }
+        return {key: val for key, val in column.items() if val}

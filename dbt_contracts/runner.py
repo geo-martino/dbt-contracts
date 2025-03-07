@@ -329,9 +329,9 @@ class ContractsRunner:
 
         # properties are updated on the class attribute of ContractContext
         # so all contexts store the same PropertiesIO object
-        ContractContext.properties.save(results)
+        paths = ContractContext.properties.save(results)
+        self._log_generated_paths({path: count for path, count in results.items() if path in paths})
 
-        self._log_generated_paths(results)
         return results
 
     ################################################################################
@@ -377,12 +377,15 @@ class ContractsRunner:
 
     def _log_generated_paths(self, paths: Mapping[Path, int]) -> None:
         if not paths:
+            message = "No files updated/created"
+            self.logger.info(f"{Fore.LIGHTYELLOW_EX}{message}{Fore.RESET}")
             return
 
         message = f"Generated/updated the following number of items across {len(paths)} properties files"
         self.logger.info(f"{Fore.LIGHTGREEN_EX}{message}{Fore.RESET}")
 
         for path, count in paths.items():
+            path = path.relative_to(self.config.project_root)
             self.logger.info(f"  - {Fore.LIGHTBLUE_EX}{path}{Fore.RESET}: {Fore.LIGHTGREEN_EX}{count}{Fore.RESET}")
         print()
 

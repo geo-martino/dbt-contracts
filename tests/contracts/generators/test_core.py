@@ -118,6 +118,10 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
         item.patch_path = None
         assert not context.properties.get_path(item)
 
+        expected_path = tmp_path.joinpath(generator.generate_properties_path(item))
+        expected_path.parent.mkdir(parents=True)
+        expected_path.touch()
+
         with (
             mock.patch.object(generator.__class__, "_update_existing_properties") as mock_update,
             mock.patch.object(generator.__class__, "_generate_new_properties") as mock_generate,
@@ -135,16 +139,22 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
             assert properties_path is not None
             assert tmp_path.joinpath(properties_path) in context.properties
 
+            relative_path = properties_path.relative_to(tmp_path)
             if isinstance(item, ParsedResource):
-                assert item.patch_path == f"{context.manifest.metadata.project_name}://{properties_path}"
+                assert item.patch_path == f"{context.manifest.metadata.project_name}://{relative_path}"
             elif isinstance(item, BaseResource):
-                assert item.original_file_path == str(properties_path)
+                assert item.original_file_path == str(relative_path)
 
     @staticmethod
     def test_update_with_existing_properties_path(
-            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext
+            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
     ):
         assert context.properties.get_path(item)
+
+        GLOBAL_FLAGS.PROJECT_DIR = tmp_path
+        expected_path = tmp_path.joinpath(context.properties.get_path(item))
+        expected_path.parent.mkdir(parents=True)
+        expected_path.touch()
 
         with (
             mock.patch.object(generator.__class__, "_update_existing_properties") as mock_update,
@@ -192,7 +202,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
         expected = tmp_path.joinpath("path", "to", "a", "different", f"{generator.filename}.yml")
         item.original_file_path = expected.relative_to(tmp_path).with_name(Path(item.path).name)
         with mock.patch.object(PropertiesIO, "get_path", return_value=None):
-            assert generator._generate_properties_path(item) == expected
+            assert generator.generate_properties_path(item) == expected
 
     @staticmethod
     def test_generates_properties_path_with_depth(
@@ -207,7 +217,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
         item.path = expected.relative_to(tmp_path).with_name(Path(item.path).name)
         item.original_file_path = None
         with mock.patch.object(PropertiesIO, "get_path", return_value=None):
-            assert generator._generate_properties_path(item) == expected
+            assert generator.generate_properties_path(item) == expected
 
 
 class ChildPropertiesGeneratorTester[I: ItemT, P: PropertiesT](ContractPropertiesGeneratorTester[I], metaclass=ABCMeta):

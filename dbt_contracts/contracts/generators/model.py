@@ -1,8 +1,10 @@
 from typing import Any
 
+from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.nodes import ModelNode
 
 from dbt_contracts.contracts.generators.node import NodePropertiesGenerator
+from dbt_contracts.contracts.utils import merge_maps
 
 
 class ModelPropertiesGenerator(NodePropertiesGenerator[ModelNode]):
@@ -15,7 +17,7 @@ class ModelPropertiesGenerator(NodePropertiesGenerator[ModelNode]):
         table_in_props = next((prop for prop in properties[key] if prop["name"] == item.name), None)
         table = self._generate_table_properties(item)
         if table_in_props is not None:
-            table_in_props.update(table)
+            merge_maps(table_in_props, table, overwrite=True)
         else:
             properties[key].append(table)
 
@@ -26,18 +28,20 @@ class ModelPropertiesGenerator(NodePropertiesGenerator[ModelNode]):
         table = self._generate_table_properties(item)
         return self._properties_defaults | {key: [table]}
 
-    @staticmethod
-    def _generate_table_properties(item: ModelNode) -> dict[str, Any]:
+    @classmethod
+    def _generate_table_properties(cls, item: ModelNode) -> dict[str, Any]:
         table = {
             "name": item.name,
             "description": item.description,
-            "docs": item.docs.to_dict(),
-            "latest_version": item.latest_version,
-            "deprecation_date": item.deprecation_date.isoformat() if item.deprecation_date else None,
-            "access": item.access.name,
-            "config": item.config.to_dict(),
-            "constraints": [constraint.to_dict() for constraint in item.constraints],
-            "columns": [column.to_dict() for column in item.columns.values()],
-            "time_spine": item.time_spine.to_dict() if item.time_spine else None,
+            "columns": list(map(cls._generate_column_properties, item.columns.values())),
         }
         return {key: val for key, val in table.items() if val}
+
+    @staticmethod
+    def _generate_column_properties(column: ColumnInfo) -> dict[str, Any]:
+        column = {
+            "name": column.name,
+            "description": column.description,
+            "data_type": column.data_type,
+        }
+        return {key: val for key, val in column.items() if val}
