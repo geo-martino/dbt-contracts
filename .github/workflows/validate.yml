@@ -61,14 +61,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: ⚙️ Setup - Python 🐍
-        uses: actions/setup-python@v5
+      - name: ⚙️ Setup - UV 🐍
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: ⚙️ Setup - Install dependencies
+      - name: ⚙️ Setup - Python 🐍
         run: |
-          python -m pip install '.[test]'
+          uv sync
 
       - name: 🧪 Run tests
         run: |
@@ -97,14 +97,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: ⚙️ Setup - Python 🐍
-        uses: actions/setup-python@v5
+      - name: ⚙️ Setup - UV 🐍
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ env.python-version }}
+          python-version: ${{ matrix.python-version }}
 
-      - name: ⚙️ Setup - Install dependencies
+      - name: ⚙️ Setup - Python 🐍
         run: |
-          python -m pip install '.[build]'
+          uv sync
 
       - name: 📄 Sanitise readme
         run: |
