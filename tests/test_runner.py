@@ -242,22 +242,24 @@ class TestContractsRunner:
 
     def test_from_dict(self):
         config = {
-            "models": [
-                {
-                    "filters": sample([cls._name() for cls in ModelContract.__supported_conditions__], k=3),
-                    "terms": sample([cls._name() for cls in ModelContract.__supported_terms__], k=3),
-                },
-                {
-                    "filters": sample([cls._name() for cls in ModelContract.__supported_conditions__], k=3),
-                    "terms": sample([cls._name() for cls in ModelContract.__supported_terms__], k=3),
-                }
-            ],
-            "sources": [
-                {
-                    "filters": sample([cls._name() for cls in SourceContract.__supported_conditions__], k=3),
-                    "terms": sample([cls._name() for cls in SourceContract.__supported_terms__], k=3),
-                }
-            ]
+            "contracts": {
+                "models": [
+                    {
+                        "filters": sample([cls._name() for cls in ModelContract.__supported_conditions__], k=3),
+                        "terms": sample([cls._name() for cls in ModelContract.__supported_terms__], k=3),
+                    },
+                    {
+                        "filters": sample([cls._name() for cls in ModelContract.__supported_conditions__], k=3),
+                        "terms": sample([cls._name() for cls in ModelContract.__supported_terms__], k=3),
+                    }
+                ],
+                "sources": [
+                    {
+                        "filters": sample([cls._name() for cls in SourceContract.__supported_conditions__], k=3),
+                        "terms": sample([cls._name() for cls in SourceContract.__supported_terms__], k=3),
+                    }
+                ]
+            }
         }
 
         with mock.patch.object(ContractsRunner, "_create_contracts_from_config") as mock_create:
@@ -265,9 +267,9 @@ class TestContractsRunner:
             ContractsRunner.from_dict(config, config=None)
 
             assert len(mock_create.mock_calls) == 3 * 2  # *2 for iter calls
-            mock_create.assert_any_call("models", config=config["models"][0])
-            mock_create.assert_any_call("models", config=config["models"][1])
-            mock_create.assert_any_call("sources", config=config["sources"][0])
+            mock_create.assert_any_call("models", config=config["contracts"]["models"][0])
+            mock_create.assert_any_call("models", config=config["contracts"]["models"][1])
+            mock_create.assert_any_call("sources", config=config["contracts"]["sources"][0])
 
     def test_create_contracts_from_config(self):
         models_config = {

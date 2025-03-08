@@ -43,16 +43,11 @@ class NodePropertiesGenerator[I: NodeT](ParentPropertiesGenerator[I], metaclass=
             return False
         if not columns:
             return False
-        result = [self._set_column(item, column=column) for column in columns.values()]
-        added = any(result)
-        if added:
-            print("added", result)
-        result = [
+
+        added = any([self._set_column(item, column=column) for column in columns.values()])
+        removed = any([
             self._drop_column(item, column=column, columns=columns) for column in list(item.columns.values())
-        ]
-        removed = any(result)
-        if removed:
-            print("removed", result)
+        ])
         return added or removed
 
     @staticmethod
@@ -93,11 +88,8 @@ class NodePropertiesGenerator[I: NodeT](ParentPropertiesGenerator[I], metaclass=
 
         modified = False
         modified |= self._set_description(item, description=table.metadata.comment)
-        print(item.name, modified)
         modified |= self._set_columns(item, columns=table.columns)
-        print(item.name, modified)
         modified |= self._reorder_columns(item, columns=table.columns)
-        print(item.name, modified)
 
         return modified
 

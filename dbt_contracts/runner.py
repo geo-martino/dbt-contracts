@@ -234,7 +234,7 @@ class ContractsRunner:
         """
         contracts = [
             contract
-            for key, contract_configs in mapping.items()
+            for key, contract_configs in mapping.get("contracts", {}).items()
             for conf in contract_configs
             for contract in cls._create_contracts_from_config(key, config=conf)
         ]
