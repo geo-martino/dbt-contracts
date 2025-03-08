@@ -274,7 +274,7 @@ class ParentContractTester[I: ItemT, P: ParentT, G: ParentPropertiesGenerator](C
                 [cls._name() for cls in contract.__supported_terms__],
                 k=min(len(contract.__supported_terms__), 3)
             ),
-            contract.__child_contract__.__config_key__: {
+            contract.__child_contract__.__config_key__: [{
                 "filter": sample(
                     [cls._name() for cls in contract.__child_contract__.__supported_conditions__],
                     k=min(len(contract.__child_contract__.__supported_conditions__), 2)
@@ -283,16 +283,16 @@ class ParentContractTester[I: ItemT, P: ParentT, G: ParentPropertiesGenerator](C
                     [cls._name() for cls in contract.__child_contract__.__supported_terms__],
                     k=min(len(contract.__child_contract__.__supported_terms__), 3)
                 ),
-            }
+            }]
         }
 
-        child = contract.create_child_contract_from_dict(config)
+        child = contract.create_child_contract_from_dict(config)[0]
 
         assert child.parent == contract
         assert child.manifest == contract.manifest
         assert child.catalog == contract.catalog
 
-        child_config = config[contract.__child_contract__.__config_key__]
+        child_config = config[contract.__child_contract__.__config_key__][0]
         assert [condition.name for condition in child.conditions] == child_config["filter"]
         assert [term.name for term in child.terms] == child_config["terms"]
 

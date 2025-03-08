@@ -98,11 +98,17 @@ def node_column(node: CompiledNode) -> ColumnInfo:
 
 
 @pytest.fixture
-def node_table(node: CompiledNode, catalog: CatalogArtifact) -> CatalogTable:
+def catalog_table(node: CompiledNode, catalog: CatalogArtifact) -> CatalogTable:
     """Fixture for the CatalogTable object matching the current node fixture."""
     if isinstance(node, SourceDefinition):
         return catalog.sources[node.unique_id]
     return catalog.nodes[node.unique_id]
+
+
+@pytest.fixture
+def catalog_column(catalog_table: CatalogTable, node_column: ColumnInfo, catalog: CatalogArtifact) -> ColumnMetadata:
+    """Fixture for the ColumnMetadata object matching the current node column fixture."""
+    return catalog_table.columns[node_column.name]
 
 
 @pytest.fixture(scope="session")

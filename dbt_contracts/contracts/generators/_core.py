@@ -4,12 +4,13 @@ import re
 from abc import ABCMeta, abstractmethod
 from collections.abc import Sequence
 from pathlib import Path
-from random import choice
-from typing import Literal, Annotated, get_args, Any
+from random import choice, sample
+from typing import Literal, Annotated, Any
 
 from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ParsedResource
 from dbt.flags import get_flags
+from dbt_common.dataclass_schema import dbtClassMixin
 from pydantic import Field, BeforeValidator
 
 from dbt_contracts.contracts._core import ContractContext, ContractPart
@@ -19,56 +20,68 @@ from dbt_contracts.types import ItemT, PropertiesT
 CORE_FIELDS = Literal["description"]
 
 
-class PropertiesGenerator[I: ItemT](ContractPart, metaclass=ABCMeta):
+class PropertyGenerator[S: ItemT, T: dbtClassMixin](ContractPart, metaclass=ABCMeta):
+    """
+    A part of a contract meant to generate a property for a resource based on its related database object.
+
+    May also process an item while also taking into account its parent item
+    e.g. a Column (child item) within a Model (parent item)
+    """
+    overwrite: bool = Field(
+        description=(
+            "Whether to overwrite existing properties with properties from the database. "
+            "When false, keeps the values already present in the properties if present."
+        ),
+        default=True,
+        examples=[True, False],
+    )
+
+    @abstractmethod
+    def run(self, source: S, target: T) -> bool:
+        """
+        Run this generator on the given source, merging properties from the target item.
+
+        :param source: The item to modify.
+        :param target: The item containing the target properties to set onto the source.
+        :return: Boolean for if the source was modified.
+        """
+        raise NotImplementedError
+
+
+class PropertiesGenerator[I: ItemT, G: PropertyGenerator](ContractPart, metaclass=ABCMeta):
     """
     A part of a contract meant to generate properties for a resource based on its related database object.
 
     May also process an item while also taking into account its parent item
     e.g. a Column (child item) within a Model (parent item)
     """
-    exclude: Annotated[Sequence[CORE_FIELDS], BeforeValidator(to_tuple)] = Field(
+    __supported_generators__: tuple[type[G]] = ()
+
+    exclude: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="The fields to exclude from the generated properties.",
         default=(),
-        examples=[choice(get_args(CORE_FIELDS)), list(get_args(CORE_FIELDS))]
-    )
-    overwrite: bool = Field(
-        description=(
-            "Whether to overwrite existing properties with properties from the database. "
-            "When false, keeps the values already present in the properties if present."
-        ),
-        default=False,
-        examples=[True, False],
-    )
-    description_terminator: str | None = Field(
-        description=(
-            "When processing descriptions, only take the description up to this terminating string. "
-            "e.g. if you only want to take the first line of a multi-line description, set this to '\\n'"
-        ),
-        default=None,
-        examples=["\\n", "__END__", "."],
+        examples=[
+            choice([cls._name() for cls in __supported_generators__] or ["none"]),
+            sample([cls._name() for cls in __supported_generators__], k=min(2, len(__supported_generators__))),
+        ]
     )
 
     @classmethod
     def _name(cls) -> str:
-        """The name of this term in snake_case."""
-        class_name = cls.__name__.replace("Generator", "")
+        """The name of this generator in snake_case."""
+        class_name = cls.__name__.replace("Properties", "").replace("Generator", "")
         return re.sub(r"([a-z])([A-Z])", r"\1_\2", class_name).lower()
 
-    def _set_description(self, item: ItemT, description: str | None) -> bool:
-        if "description" in self.exclude:
-            return False
-        if not description:
-            return False
-        if item.description and not self.overwrite:
-            return False
-
-        if self.description_terminator:
-            description = description.split(self.description_terminator)[0]
-        if item.description == description:
-            return False
-
-        item.description = description
-        return True
+    @property
+    def generators(self) -> list[PropertyGenerator]:
+        """
+        Get all the single property generators set on this generator,
+        excluding those that are configured to be excluded.
+        """
+        return [
+            attr for name, attr in vars(self).items()
+            if name not in self.exclude and isinstance(attr, PropertyGenerator)
+        ]
 
     @abstractmethod
     def merge(self, item: I, context: ContractContext) -> bool:
@@ -82,7 +95,7 @@ class PropertiesGenerator[I: ItemT](ContractPart, metaclass=ABCMeta):
         raise NotImplementedError
 
 
-class ParentPropertiesGenerator[I: PropertiesT](PropertiesGenerator[I], metaclass=ABCMeta):
+class ParentPropertiesGenerator[I: PropertiesT, G: PropertyGenerator](PropertiesGenerator[I, G], metaclass=ABCMeta):
     _properties_defaults: dict[str, Any] = {"version": 2}
 
     filename: str = Field(
@@ -161,13 +174,15 @@ class ParentPropertiesGenerator[I: PropertiesT](PropertiesGenerator[I], metaclas
             parts = Path(item_path).parts
             path = project_dir.joinpath(*parts[:self.depth + 1]).joinpath(self.filename)
 
-        if path.suffix not in {".yml", ".yaml"}:
+        if path.suffix.casefold() not in {".yml", ".yaml"}:
             path = path.with_suffix(".yml")
 
         return path
 
 
-class ChildPropertiesGenerator[I: ItemT, P: PropertiesT](PropertiesGenerator[I], metaclass=ABCMeta):
+class ChildPropertiesGenerator[I: ItemT, P: PropertiesT, G: PropertyGenerator](
+    PropertiesGenerator[I, G], metaclass=ABCMeta
+):
     @abstractmethod
     def merge(self, item: I, context: ContractContext, parent: P = None) -> bool:
         """

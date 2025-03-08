@@ -51,8 +51,8 @@ def test_has_tests(node: CompiledNode, simple_resource: BaseResource, context: C
 
 
 # noinspection PyTestUnpassedFixture
-def test_has_all_columns(node: CompiledNode, node_table: CatalogTable, context: ContractContext):
-    assert set(node.columns.keys()) == set(node_table.columns.keys())
+def test_has_all_columns(node: CompiledNode, catalog_table: CatalogTable, context: ContractContext):
+    assert set(node.columns.keys()) == set(catalog_table.columns.keys())
     assert HasAllColumns().run(node, context=context)  # fixtures are set up to match
 
     node.columns.clear()
@@ -82,8 +82,10 @@ def test_has_expected_column_types(node: CompiledNode, context: ContractContext)
         mock_add_result.assert_called_once()
 
 
-def test_has_matching_description(node: CompiledNode, node_table: CatalogTable, context: ContractContext, faker: Faker):
-    assert node.description == node_table.metadata.comment
+def test_has_matching_description(
+        node: CompiledNode, catalog_table: CatalogTable, context: ContractContext, faker: Faker
+):
+    assert node.description == catalog_table.metadata.comment
     assert HasMatchingDescription().run(node, context=context)  # fixtures are set up to match
 
     node.description = faker.sentence()

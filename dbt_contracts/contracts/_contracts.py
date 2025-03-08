@@ -24,7 +24,6 @@ from dbt_contracts.contracts.generators import PropertiesGenerator, \
 from dbt_contracts.contracts.terms import ContractTerm, ChildContractTerm, \
     properties as t_properties, node as t_node, \
     model as t_model, source as t_source, column as t_column, macro as t_macro
-from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.types import ItemT, ParentT, NodeT
 
 
@@ -170,10 +169,14 @@ class Contract[I: Any, T: ContractTerm, G: PropertiesGenerator | None](metaclass
     @classmethod
     def validate_terms(cls, terms: ContractTerm | Collection[ContractTerm]) -> bool:
         """.Validate that all the given ``terms`` are supported by this contract."""
-        if not cls.__supported_terms__ and len(terms := to_tuple(terms)) > 0:
+        if isinstance(terms, ContractTerm):
+            terms = [terms]
+
+        if not cls.__supported_terms__ and len(terms) > 0:
             return False
         elif cls.__supported_terms__ and len(terms) == 0:
             return False
+
         return all(term.__class__ in cls.__supported_terms__ for term in terms)
 
     @classmethod
@@ -237,16 +240,24 @@ class ParentContract[I: ItemT, P: ParentT, G: ParentPropertiesGenerator | None](
             return
         return self.__child_contract__(parent=self, conditions=conditions, terms=terms, generator=generator)
 
-    def create_child_contract_from_dict(self, config: Mapping[str, Any]) -> ChildContract[I, P] | None:
+    def create_child_contract_from_dict(self, config: Mapping[str, Any]) -> list[ChildContract[I, P]]:
         """Create a child contract from this parent contract."""
         if self.__child_contract__ is None:
-            return
+            return []
         if (config := config.get(self.__child_contract__.__config_key__)) is None:
-            return
+            return []
 
-        contract = self.__child_contract__.from_dict(config=config, manifest=self.manifest, catalog=self.catalog)
-        contract.parent = self
-        return contract
+        if isinstance(config, Mapping):
+            config = [config]
+
+        contracts = [
+            self.__child_contract__.from_dict(config=conf, manifest=self.manifest, catalog=self.catalog)
+            for conf in config
+        ]
+        for contract in contracts:
+            contract.parent = self
+
+        return contracts
 
     # noinspection PyUnresolvedReferences
     def validate(self, terms: Collection[str] = ()) -> list[P]:

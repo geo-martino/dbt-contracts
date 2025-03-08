@@ -1,99 +1,130 @@
 from abc import ABCMeta
-from collections.abc import Mapping, Sequence
-from random import choice, sample
-from typing import Literal, Annotated, get_args, Any
+from collections.abc import Mapping
+from typing import Literal, Any
 
 from dbt.artifacts.resources.v1.components import ColumnInfo
-from dbt_common.contracts.metadata import ColumnMetadata
-from pydantic import Field, BeforeValidator
+from dbt_common.contracts.metadata import ColumnMetadata, CatalogTable
+from pydantic import Field
 
 from dbt_contracts.contracts._core import ContractContext
-from dbt_contracts.contracts.generators._core import ParentPropertiesGenerator, CORE_FIELDS
-from dbt_contracts.contracts.utils import get_matching_catalog_table, to_tuple, merge_maps
+from dbt_contracts.contracts.generators._core import ParentPropertiesGenerator, CORE_FIELDS, PropertyGenerator
+from dbt_contracts.contracts.generators.column import ColumnPropertiesGenerator
+from dbt_contracts.contracts.generators.properties import SetDescription
+from dbt_contracts.contracts.utils import get_matching_catalog_table, merge_maps
 from dbt_contracts.types import NodeT
 
 NODE_FIELDS = Literal[CORE_FIELDS, "columns"]
 
 
-class NodePropertiesGenerator[I: NodeT](ParentPropertiesGenerator[I], metaclass=ABCMeta):
-    exclude: Annotated[Sequence[NODE_FIELDS], BeforeValidator(to_tuple)] = Field(
-        description="The fields to exclude from the generated properties.",
-        default=(),
-        examples=[choice(get_args(NODE_FIELDS)), sample(get_args(NODE_FIELDS), k=2)]
-    )
-    remove_columns: bool = Field(
+class NodePropertyGenerator[S: NodeT](PropertyGenerator[S, CatalogTable], metaclass=ABCMeta):
+    pass
+
+
+class SetNodeDescription[S: NodeT](SetDescription[S, CatalogTable], NodePropertyGenerator[S]):
+    def run(self, source: S, target: CatalogTable) -> bool:
+        return self._set_description(source, description=target.metadata.comment)
+
+
+class SetNodeColumns[S: NodeT](NodePropertyGenerator[S]):
+    add: bool = Field(
         description=(
-            "Remove columns from the properties file which are not found in the database object. "
-            "Ignored when 'columns' is excluded."
+            "Add columns to the properties file which are in the database object but missing from the properties."
         ),
-        default=False,
+        default=True,
         examples=[True, False],
     )
-    order_columns: bool = Field(
+    remove: bool = Field(
         description=(
-            "Reorder columns in the properties file to match the order found in the database object. "
-            "Ignored when 'columns' is excluded."
+            "Remove columns from the properties file which are in the properties file but not in the database object."
         ),
-        default=False,
+        default=True,
+        examples=[True, False],
+    )
+    order: bool = Field(
+        description="Reorder columns in the properties file to match the order found in the database object.",
+        default=True,
         examples=[True, False],
     )
 
-    def _set_columns(self, item: I, columns: Mapping[str, ColumnMetadata]) -> bool:
-        if "columns" in self.exclude:
-            return False
-        if not columns:
-            return False
-
-        added = any([self._set_column(item, column=column) for column in columns.values()])
-        removed = any([
-            self._drop_column(item, column=column, columns=columns) for column in list(item.columns.values())
-        ])
-        return added or removed
+    @classmethod
+    def _name(cls) -> str:
+        return "columns"
 
     @staticmethod
-    def _set_column(item: I, column: ColumnMetadata) -> bool:
-        if any(col.name == column.name for col in item.columns.values()):
+    def _set_column(source: S, column: ColumnMetadata) -> bool:
+        if any(col.name == column.name for col in source.columns.values()):
             return False
 
-        item.columns[column.name] = ColumnInfo(name=column.name)
+        source.columns[column.name] = ColumnInfo(name=column.name)
         return True
 
-    def _drop_column(self, item: I, column: ColumnInfo, columns: Mapping[str, ColumnMetadata]) -> bool:
-        if not self.remove_columns or any(col.name == column.name for col in columns.values()):
+    @staticmethod
+    def _drop_column(source: S, column: ColumnInfo, columns: Mapping[str, ColumnMetadata]) -> bool:
+        if any(col.name == column.name for col in columns.values()):
             return False
 
-        item.columns.pop(column.name)
+        source.columns.pop(column.name)
         return True
 
-    def _reorder_columns(self, item: I, columns: Mapping[str, ColumnMetadata]) -> bool:
-        if "columns" in self.exclude:
-            return False
-        if not self.order_columns or not columns:
-            return False
-
+    @staticmethod
+    def _order_columns(source: S, columns: Mapping[str, ColumnMetadata]):
         index_map = {col.name: col.index for col in columns.values()}
         columns_in_order = dict(
-            sorted(item.columns.items(), key=lambda col: index_map.get(col[1].name, len(index_map)))
+            sorted(source.columns.items(), key=lambda col: index_map.get(col[1].name, len(index_map)))
         )
-        if list(columns_in_order) == list(item.columns):
+        if list(columns_in_order) == list(source.columns):
             return False
 
-        item.columns.clear()
-        item.columns.update(columns_in_order)
+        source.columns.clear()
+        source.columns.update(columns_in_order)
         return True
 
-    def merge(self, item: I, context: ContractContext) -> bool:
+    def run(self, source: S, target: CatalogTable) -> bool:
+        if not target.columns:
+            return False
+
+        columns = target.columns
+
+        added = False
+        if self.add:
+            added = any([self._set_column(source, column=column) for column in columns.values()])
+
+        removed = False
+        if self.remove:
+            removed = any([
+                self._drop_column(source, column=column, columns=columns) for column in source.columns.copy().values()
+            ])
+
+        ordered = False
+        if self.order:
+            ordered = self._order_columns(source, target.columns)
+
+        return added or removed or ordered
+
+
+class NodePropertiesGenerator(ParentPropertiesGenerator[NodeT, NodePropertyGenerator], metaclass=ABCMeta):
+    __supported_generators__ = (
+        SetNodeDescription,
+        SetNodeColumns,
+    )
+
+    description: SetNodeDescription | None = Field(
+        description="Configuration for setting the description",
+        default=SetNodeDescription(),
+    )
+    columns: SetNodeColumns | None = Field(
+        description="Configuration for setting the columns",
+        default=SetNodeColumns(),
+    )
+
+    def merge(self, item: NodeT, context: ContractContext) -> bool:
         if (table := get_matching_catalog_table(item, catalog=context.catalog)) is None:
             return False
 
-        modified = False
-        modified |= self._set_description(item, description=table.metadata.comment)
-        modified |= self._set_columns(item, columns=table.columns)
-        modified |= self._reorder_columns(item, columns=table.columns)
+        return any([generator.run(item, table) for generator in self.generators])
 
-        return modified
-
-    def _merge_columns(self, item: I, table: dict[str, Any]) -> None:
+    @staticmethod
+    def _merge_columns(item: NodeT, table: dict[str, Any]) -> None:
         if "columns" not in table:
             table["columns"] = []
 
@@ -102,7 +133,7 @@ class NodePropertiesGenerator[I: NodeT](ParentPropertiesGenerator[I], metaclass=
                 table["columns"].remove(column)
 
         for index, column_info in enumerate(item.columns.values()):
-            column = self._generate_column_properties(column_info)
+            column = ColumnPropertiesGenerator._generate_new_properties(column_info)
             index_in_props, column_in_props = next(
                 ((i, col) for i, col in enumerate(table["columns"]) if col["name"] == column_info.name),
                 (None, None)
@@ -116,12 +147,3 @@ class NodePropertiesGenerator[I: NodeT](ParentPropertiesGenerator[I], metaclass=
             if index_in_props is not None and index_in_props != index:
                 table["columns"].pop(index_in_props)
                 table["columns"].insert(index, column_in_props)
-
-    @staticmethod
-    def _generate_column_properties(column: ColumnInfo) -> dict[str, Any]:
-        column = {
-            "name": column.name,
-            "description": column.description,
-            "data_type": column.data_type,
-        }
-        return {key: val for key, val in column.items() if val}
