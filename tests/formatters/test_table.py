@@ -281,19 +281,19 @@ class TestTableRowBuilder:
             builder.extend_line_widths([], min_widths=min_widths)
 
     def test_extend_line_widths(self, builder: TableRowBuilder, result: Result):
-        lines = [
+        lines = [[
             ["this is a result", "failure", "error", "keep as is"],
             ["result", "This is an error message.", "", ""],
             ["this is a result", "failure", "error", ""],
-        ]
+        ]]
         builder.cells[0][2].alignment = ">"
         builder.cells[0].append(None)
         min_widths = [20, 30, 10, None]
-        expected = [
+        expected = [[
             ["this is a result    ", "failure                       ", "     error", "keep as is"],
             ["result              ", "This is an error message.     ", "          ", ""],
             ["this is a result    ", "failure                       ", "     error", ""],
-        ]
+        ]]
 
         assert builder.extend_line_widths(lines, min_widths=min_widths) == expected
 
@@ -364,17 +364,26 @@ class TestTableRowBuilder:
         builder.cells[0].append(TableCellBuilder(key="message", min_width=10, max_width=6, wrap=True))
         builder.colour = Fore.RED
         sep = builder.separator_coloured
-        lines = [
+        lines = [[
             ["this is a result", "failure   ", "error     ", "This      "],
             ["                ", "          ", "          ", "is an     "],
             ["                ", "          ", "          ", "error     "],
             ["                ", "          ", "          ", "message.  "]
-        ]
+        ], [
+            ["this is result 2", "success   ", "pass      ", "This      "],
+            ["                ", "          ", "          ", "is a      "],
+            ["                ", "          ", "          ", "success   "],
+            ["                ", "          ", "          ", "message.  "]
+        ]]
 
         assert builder.join(lines) == "\n".join((
             f"this is a result {sep} failure    {sep} error      {sep} This      ",
             f"                 {sep}            {sep}            {sep} is an     ",
             f"                 {sep}            {sep}            {sep} error     ",
+            f"                 {sep}            {sep}            {sep} message.  ",
+            f"this is result 2 {sep} success    {sep} pass       {sep} This      ",
+            f"                 {sep}            {sep}            {sep} is a      ",
+            f"                 {sep}            {sep}            {sep} success   ",
             f"                 {sep}            {sep}            {sep} message.  ",
         ))
 
@@ -448,16 +457,16 @@ class TestTableBuilder:
         formatter.consistent_widths = False
         formatter.add_results(results)
         assert formatter._results == [
-            ["this is the 1st res…", "failure   ", "error     "],
-            ["this is the 2nd res…", "a very great success", "info      "],
+            [["this is the 1st res…", "failure   ", "error     "]],
+            [["this is the 2nd res…", "a very great success", "info      "]],
         ]
 
     def test_add_results_with_consistent_widths(self, results: list[Result], formatter: TableFormatter):
         formatter.consistent_widths = True
         formatter.add_results(results)
         assert formatter._results == [
-            ["this is the 1st res…", "failure             ", "error     "],
-            ["this is the 2nd res…", "a very great success", "info      "],
+            [["this is the 1st res…", "failure             ", "error     "]],
+            [["this is the 2nd res…", "a very great success", "info      "]],
         ]
 
     def test_build(self, results: list[Result], formatter: TableFormatter):

@@ -30,7 +30,9 @@ class NodePropertiesGeneratorTester[I: NodeT](ParentPropertiesGeneratorTester, m
         for column in modified_columns.values():
             column["description"] = faker.sentence()
             column["new_property"] = faker.random_int()
-        shuffle(table["columns"])
+
+        while table["columns"] == list(modified_columns.values()):
+            shuffle(table["columns"])
 
         expected_columns = list(map(generator._generate_column_properties, item.columns.values()))
         for column in expected_columns:

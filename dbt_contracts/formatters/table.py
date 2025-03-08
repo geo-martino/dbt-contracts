@@ -2,7 +2,7 @@ import itertools
 import re
 import textwrap
 from collections.abc import Sequence, Callable, Iterable, Collection
-from typing import Self, Any, Annotated
+from typing import Self, Any, Annotated, Literal
 
 from colorama import Fore
 from pydantic import BaseModel, Field, model_validator, BeforeValidator
@@ -17,6 +17,11 @@ def _get_print_length(value: str) -> int:
     return len(pattern.sub("", value))
 
 
+def _align_and_pad_print_length(value: str, alignment: Literal["<", "^", ">"], width: int) -> str:
+    width += len(value) - _get_print_length(value)
+    return f"{value:{alignment}{width}}"
+
+
 class TableCellBuilder[T: Result](BaseModel):
     key: str | Callable[[T], str] = Field(
         description="The key to use to get the value from the :py:class:`.Result` "
@@ -29,7 +34,7 @@ class TableCellBuilder[T: Result](BaseModel):
         ),
         default=None
     )
-    alignment: str = Field(
+    alignment: Literal["<", "^", ">"] = Field(
         description="The alignment of the value in the cell.",
         default="<"
     )
@@ -92,12 +97,10 @@ class TableCellBuilder[T: Result](BaseModel):
         if not self.alignment or not width:
             return value
 
-        if has_prefix and self.prefix_coloured:
-            width -= _get_print_length(self.prefix_coloured)
-        if self.colour:
-            width += len(self.colour + Fore.RESET)
+        if has_prefix and self.prefix:
+            width -= len(self.prefix)
 
-        return f"{value:{self.alignment}{width}}"
+        return _align_and_pad_print_length(value, self.alignment, width)
 
     def _apply_colour(self, value: str) -> str:
         if not self.colour:
@@ -197,7 +200,7 @@ class TableRowBuilder[T: Result](BaseModel):
         return list(map("\n".join, zip(*values, strict=True)))
 
     @staticmethod
-    def _get_max_rows(values: Sequence[str]) -> int:
+    def _get_max_rows(values: Iterable[str]) -> int:
         return max(len(value.splitlines()) for value in values)
 
     @classmethod
@@ -219,7 +222,7 @@ class TableRowBuilder[T: Result](BaseModel):
         return list(zip(*columns, strict=True))
 
     @staticmethod
-    def _remove_empty_lines[T: Collection[str]](lines: Iterable[T]) -> list[T]:
+    def _remove_empty_lines[T: Iterable[str]](lines: Iterable[T]) -> list[T]:
         """
         Remove empty lines from the given `values`.
 
@@ -228,15 +231,18 @@ class TableRowBuilder[T: Result](BaseModel):
         return [line for line in lines if any(bool(cell.strip()) for cell in line)]
 
     @staticmethod
-    def get_widths_from_lines(lines: Collection[Collection[str]]) -> list[int]:
+    def get_widths_from_lines(lines: Iterable[Iterable[str]]) -> list[int]:
         """Get the maximum width for each column from the given `lines`."""
         return [max(map(_get_print_length, column)) for column in zip(*lines, strict=True)]
 
-    def extend_line_widths(self, lines: Sequence[Sequence[str]], min_widths: Sequence[int | None]) -> list[list[str]]:
+    def extend_line_widths(
+            self, rows: Iterable[Collection[Iterable[str]]], min_widths: Sequence[int | None]
+    ) -> list[list[list[str]]]:
         """
-        Adjust the given `lines` to the given `min_widths` aligning according to the matching cell config.
+        Adjust the given `rows` to the given `min_widths` aligning according to the matching cell config.
+        Each row must consist of a sequence of lines that match the dimensions of the configured cells of this builder.
 
-        :param lines: The lines to adjust.
+        :param rows: The collection of rows to adjust.
         :param min_widths: The widths to extend the lines to.
         :return: The extended lines.
         """
@@ -248,13 +254,26 @@ class TableRowBuilder[T: Result](BaseModel):
                 f"cells={len(self.cells[0])}, widths={len(min_widths)}"
             )
 
-        return [
-            [
-                f"{value:{cell.alignment}{width}}" if width is not None else value
-                for cell, value, width in zip(self.cells[0], line, min_widths, strict=True)
-            ]
-            for line in lines
-        ]
+        result: list[list[list[str]]] = []
+        for lines in rows:
+            cells_padded = list(self.cells) + list(itertools.repeat(self.cells[-1], len(lines) - len(self.cells)))
+            result_lines: list[list[str]] = []
+
+            for line, cells in zip(lines, cells_padded, strict=True):
+                result_line: list[str] = []
+
+                for value, cell, width in zip(line, cells, min_widths, strict=True):
+                    if not value and width is not None:
+                        value = " " * width
+                    elif width is not None:
+                        alignment = cell.alignment if cell is not None else self.cells[0][0].alignment
+                        value = _align_and_pad_print_length(value, alignment, width)
+
+                    result_line.append(value)
+                result_lines.append(result_line)
+            result.append(result_lines)
+
+        return result
 
     def build_lines(self, result: T, min_widths: Sequence[int | None] = ()) -> list[list[str]]:
         """
@@ -278,14 +297,14 @@ class TableRowBuilder[T: Result](BaseModel):
 
         lines = self._get_lines(result, min_widths=min_widths)
         lines = self._to_matrix(lines)
-        lines = self._remove_empty_lines(lines)
         min_widths = self.get_widths_from_lines(lines)
-        lines = self.extend_line_widths(lines, min_widths=min_widths)
+        lines = self.extend_line_widths([lines], min_widths=min_widths)[0]
+        lines = self._remove_empty_lines(lines)
         return lines
 
-    def join(self, lines: Sequence[Sequence[str]]) -> str:
-        """Join the given lines into a single string."""
-        return "\n".join(map(f" {self.separator_coloured} ".join, lines))
+    def join(self, rows: Iterable[Iterable[Iterable[str]]]) -> str:
+        """Join the given rows into a single string."""
+        return "\n".join(map(f" {self.separator_coloured} ".join, itertools.chain.from_iterable(rows)))
 
     def build(self, result: T, min_widths: Sequence[int] = ()) -> str:
         """
@@ -298,7 +317,7 @@ class TableRowBuilder[T: Result](BaseModel):
         :return: The formatted row.
         """
         lines = self.build_lines(result, min_widths=min_widths)
-        return self.join(lines)
+        return self.join([lines])
 
 
 class TableFormatter[T: Result](ResultsFormatter[T]):
@@ -310,11 +329,17 @@ class TableFormatter[T: Result](ResultsFormatter[T]):
         default=False,
     )
 
+    @property
+    def widths(self) -> list[int]:
+        """Get the max widths of each column in the currently stored result"""
+        flattened_results = itertools.chain.from_iterable(self._results)
+        return self.builder.get_widths_from_lines(flattened_results)
+
     def __init__(self, /, **data: Any):
         super().__init__(**data)
 
         self._lines: list[str] = []
-        self._results: list[list[str]] = []
+        self._results: list[list[list[str]]] = []
 
     def add_header(self, header: str) -> None:
         """Add a header to the table."""
@@ -325,18 +350,14 @@ class TableFormatter[T: Result](ResultsFormatter[T]):
         self._lines.insert(0, "")
         self._lines.insert(0, header)
 
-    def add_results(self, results: Collection[T]) -> None:
+    def add_results(self, results: Iterable[T]) -> None:
         for result in results:
-            widths = self.builder.get_widths_from_lines(self._results) if self.consistent_widths else None
+            widths = self.widths if self.consistent_widths else None
             row = self.builder.build_lines(result, min_widths=widths)
+            self._results.append(row)
 
-            self._results.extend(row)
-
-        if not self.consistent_widths:
-            return
-
-        widths = self.builder.get_widths_from_lines(self._results)
-        self._results = self.builder.extend_line_widths(self._results, min_widths=widths)
+        if self.consistent_widths:
+            self._results = self.builder.extend_line_widths(self._results, min_widths=self.widths)
 
     def build(self) -> str:
         output = "\n".join(self._lines) + self.builder.join(self._results)
@@ -378,10 +399,10 @@ class GroupedTableFormatter[T: Result](ResultsFormatter[T]):
         return getattr(result, getter, "") or ""
 
     @classmethod
-    def _get_values(cls, result: T, getters: Sequence[str | Callable[[T], Any]]) -> tuple[Any, ...]:
+    def _get_values(cls, result: T, getters: Iterable[str | Callable[[T], Any]]) -> tuple[Any, ...]:
         return tuple(cls._get_value(result, getter=getter) for getter in getters)
 
-    def add_results(self, results: Collection[T]) -> None:
+    def add_results(self, results: Iterable[T]) -> None:
         results = sorted(results, key=lambda r: self._get_value(result=r, getter=self.group_key))
         groups = itertools.groupby(results, key=lambda r: self._get_value(result=r, getter=self.group_key))
 

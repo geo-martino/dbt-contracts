@@ -144,7 +144,7 @@ no_fail = VALIDATOR_PARSER.add_argument(
 )
 
 terms = VALIDATOR_PARSER.add_argument(
-    "--validations", "--terms",
+    "--terms", "--term", "--validations", "--validation",
     help="Apply only these validations/terms. If none given, apply all configured validations/terms.",
     nargs="+",
     default=None,
@@ -179,14 +179,14 @@ def setup_runner(args: argparse.Namespace) -> ContractsRunner:
 
 def validate() -> None:
     """Main entry point for the `validator` CLI command"""
-    args = VALIDATOR_PARSER.parse_args()
+    args, _ = VALIDATOR_PARSER.parse_known_args()
     runner = setup_runner(args)
 
     if args.output is None:
         args.output = Path(runner.config.project_root, runner.config.target_path)
     args.output = Path(args.output).resolve()
 
-    results = runner.validate(contract_key=args.contract, terms=args.validations)
+    results = runner.validate(contract_key=args.contract, terms=args.terms)
 
     if args.format:
         runner.write_results(results, path=args.output, output_type=args.format)
@@ -197,14 +197,13 @@ def validate() -> None:
 
 def generate() -> None:
     """Main entry point for the `generate` CLI command"""
-    args = GENERATOR_PARSER.parse_args()
+    args, _ = GENERATOR_PARSER.parse_known_args()
     runner = setup_runner(args)
 
     runner.generate(contract_key=args.contract)
 
 
 if __name__ == "__main__":
-    import sys
     logging.basicConfig(level=logging.INFO, format="%(message)s", handlers=[logging.StreamHandler()], force=True)
 
     operation = CORE_PARSER.add_argument(
@@ -215,14 +214,12 @@ if __name__ == "__main__":
         choices=["validate", "generate"],
         type=str,
     )
-    core_args = CORE_PARSER.parse_args()
+    core_args, _ = CORE_PARSER.parse_known_args()
 
     if core_args.operation == "validate":
-        sys.argv = [arg for arg in sys.argv if arg not in ("--operation", "validate")]
         validate()
         exit(0)
     elif core_args.operation == "generate":
-        sys.argv = [arg for arg in sys.argv if arg not in ("--operation", "generate")]
         generate()
         exit(0)
 
