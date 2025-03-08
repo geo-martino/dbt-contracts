@@ -13,7 +13,7 @@ from faker import Faker
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.terms.node import Exists, HasTests, HasAllColumns, HasExpectedColumns, \
     HasMatchingDescription, HasContract, HasValidUpstreamDependencies, HasValidRefDependencies, \
-    HasValidSourceDependencies, HasValidMacroDependencies, HasNoFinalSemiColon, HasNoHardcodedRefs
+    HasValidSourceDependencies, HasValidMacroDependencies, HasNoFinalSemicolon, HasNoHardcodedRefs
 from dbt_contracts.contracts.utils import get_matching_catalog_table
 
 
@@ -191,11 +191,11 @@ def test_has_valid_macro_dependencies(compiled_node: CompiledNode, context: Cont
 def test_has_no_final_semicolon(compiled_node: CompiledNode, context: ContractContext, faker: Faker):
     compiled_node.path = faker.file_path(extension="sql", absolute=False)
     compiled_node.raw_code = "SELECT * FROM table"
-    assert HasNoFinalSemiColon().run(compiled_node, context=context)
+    assert HasNoFinalSemicolon().run(compiled_node, context=context)
 
     compiled_node.raw_code = "SELECT * FROM table \n;   \n \n "
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
-        assert not HasNoFinalSemiColon().run(compiled_node, context=context)
+        assert not HasNoFinalSemicolon().run(compiled_node, context=context)
         mock_add_result.assert_called_once()
 
 

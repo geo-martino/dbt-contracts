@@ -448,7 +448,7 @@ class ModelContract(ParentContract[ColumnInfo, ModelNode, g_model.ModelPropertie
         t_node.HasValidRefDependencies,
         t_node.HasValidSourceDependencies,
         t_node.HasValidMacroDependencies,
-        t_node.HasNoFinalSemiColon,
+        t_node.HasNoFinalSemicolon,
         t_node.HasNoHardcodedRefs,
         t_model.HasConstraints,
     )

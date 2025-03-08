@@ -235,7 +235,7 @@ class HasValidMacroDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]
         )
 
 
-class HasNoFinalSemiColon[T: CompiledNode](NodeContractTerm[T]):
+class HasNoFinalSemicolon[T: CompiledNode](NodeContractTerm[T]):
     """Check if {kind} have a final semicolon present in their queries."""
     @validate_context
     def run(self, item: T, context: ContractContext) -> bool:

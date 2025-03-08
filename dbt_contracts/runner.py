@@ -288,6 +288,7 @@ class ContractsRunner:
         results: list[Result] = []
         for contract in contracts:
             contract.validate(terms=terms)
+            print()
 
             if not contract.context.results:
                 continue
