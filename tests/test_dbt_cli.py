@@ -90,15 +90,6 @@ def test_install_dependencies(config: Namespace):
         mock_get_result.assert_called_once_with("deps", *args, runner=runner)
 
 
-def test_get_manifest_with_no_existing_artifact(config: Namespace):
-    runner = dbtRunner()
-
-    with mock.patch("dbt_contracts.dbt_cli.get_result") as mock_get_result:
-        get_manifest("arg1", "arg2", runner=runner, config=config)
-        args = add_default_args("arg1", "arg2", config=config)
-        mock_get_result.assert_called_once_with("parse", *args, runner=runner)
-
-
 def test_get_manifest_with_existing_artifact(config: Namespace, manifest: Manifest):
     manifest = manifest.to_dict()
     with (
@@ -110,6 +101,26 @@ def test_get_manifest_with_existing_artifact(config: Namespace, manifest: Manife
         mock_get_result.assert_not_called()
 
 
+def test_get_manifest_with_no_existing_artifact(config: Namespace):
+    runner = dbtRunner()
+
+    with mock.patch("dbt_contracts.dbt_cli.get_result") as mock_get_result:
+        get_manifest("arg1", "arg2", runner=runner, config=config)
+        args = add_default_args("arg1", "arg2", config=config)
+        mock_get_result.assert_called_once_with("parse", *args, runner=runner)
+
+
+def test_get_manifest_with_existing_artifact_with_refresh(config: Namespace, catalog: CatalogArtifact):
+    catalog = catalog.to_dict()
+    with (
+        mock.patch("dbt_contracts.dbt_cli.load_artifact", return_value=catalog) as mock_load_artifact,
+        mock.patch("dbt_contracts.dbt_cli.get_result") as mock_get_result,
+    ):
+        get_manifest(config=config, refresh=True)
+        mock_load_artifact.assert_not_called()
+        mock_get_result.assert_called_once()
+
+
 def test_get_catalog_with_existing_artifact(config: Namespace, catalog: CatalogArtifact):
     catalog = catalog.to_dict()
     with (
@@ -119,6 +130,17 @@ def test_get_catalog_with_existing_artifact(config: Namespace, catalog: CatalogA
         assert get_catalog(config=config).to_dict() == catalog
         mock_load_artifact.assert_called_once_with(CATALOG_FILENAME, config=config)
         mock_get_result.assert_not_called()
+
+
+def test_get_catalog_with_existing_artifact_with_refresh(config: Namespace, catalog: CatalogArtifact):
+    catalog = catalog.to_dict()
+    with (
+        mock.patch("dbt_contracts.dbt_cli.load_artifact", return_value=catalog) as mock_load_artifact,
+        mock.patch("dbt_contracts.dbt_cli.get_result") as mock_get_result,
+    ):
+        get_catalog(config=config, refresh=True)
+        mock_load_artifact.assert_not_called()
+        mock_get_result.assert_called_once()
 
 
 def test_get_catalog_with_no_existing_artifact(config: Namespace):

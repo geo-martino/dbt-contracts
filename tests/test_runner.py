@@ -100,7 +100,8 @@ class TestContractsRunner:
             assert not contract.needs_catalog
 
         config = Namespace(
-            project_root=str(tmp_path)
+            project_root=str(tmp_path),
+            project_name="name",
         )
 
         # noinspection PyTypeChecker
@@ -412,17 +413,20 @@ class TestContractsRunner:
             mock.patch.object(ContractsRunner, "_set_artifacts_on_contracts") as mock_set_artifacts,
             mock.patch.object(ContractsRunner, "_log_generated_paths") as mock_log_paths,
             mock.patch.object(PropertiesIO, "save") as mock_save,
+            mock.patch("dbt_contracts.runner.dbt_cli.get_manifest", return_value="manifest") as mock_manifest,
         ):
             results = runner.generate()
             assert results == {tmp_path: 6}
 
-            mock_set_artifacts.assert_called_once_with(runner._contracts, force=True)
+            mock_set_artifacts.assert_any_call(runner._contracts, force=True)
             mock_model.assert_called_once()
             mock_source.assert_called_once()
             mock_column.assert_called_once()
 
             mock_log_paths.assert_called_once_with({})  # nothing was saved so results log is empty
             mock_save.assert_called_with(results)
+            mock_manifest.assert_any_call(runner=runner.dbt, config=runner.config, logger=runner.logger, refresh=True)
+            mock_set_artifacts.assert_called_with(runner._contracts)
 
     def test_generate_runs_selected_contract(self, runner: ContractsRunner, tmp_path: Path):
         with (
@@ -432,6 +436,7 @@ class TestContractsRunner:
             mock.patch.object(ContractsRunner, "_set_artifacts_on_contracts"),
             mock.patch.object(ContractsRunner, "_log_generated_paths") as mock_log_paths,
             mock.patch.object(PropertiesIO, "save", return_value=[tmp_path]) as mock_save,
+            mock.patch("dbt_contracts.runner.dbt_cli.get_manifest", return_value="manifest") as mock_manifest,
         ):
             key = ModelContract.child_config_key
             results = runner.generate(key)
@@ -443,6 +448,7 @@ class TestContractsRunner:
 
             mock_log_paths.assert_called_once_with(results)
             mock_save.assert_called_with(results)
+            mock_manifest.assert_any_call(runner=runner.dbt, config=runner.config, logger=runner.logger, refresh=True)
 
     def test_build_results(self, runner: ContractsRunner, results: list[Result]):
         assert runner._build_results([]) == ""

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from collections.abc import Collection, Iterable, Mapping, MutableSequence
@@ -7,6 +8,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any, Self, Type
 
+from colorama import Fore
 from dbt.adapters.utils import classproperty
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
@@ -146,6 +148,8 @@ class Contract[I: Any, T: ContractTerm, G: PropertiesGenerator | None](metaclass
             terms: MutableSequence[T] = (),
             generator: G | None = None,
     ):
+        self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
+
         if len(terms) > 0 and not self.validate_terms(terms):
             raise Exception("Unsupported terms for this contract.")
         if len(conditions) > 0 and not self.validate_conditions(conditions):
@@ -250,6 +254,11 @@ class ParentContract[I: ItemT, P: ParentT, G: ParentPropertiesGenerator | None](
             return list(self.filtered_items)
 
         run_terms = [term for term in self.terms if term.name in terms] if terms else self.terms
+
+        key = f"{self.config_key.rstrip("s")}s"
+        message = f"Validating {len(tuple(self.filtered_items))} {key} against {len(run_terms)} terms"
+        self.logger.info(f"{Fore.LIGHTMAGENTA_EX}{message}{Fore.RESET}")
+
         return [
             item for item in self.filtered_items
             if all(term.run(item, context=self.context) for term in run_terms)
@@ -258,6 +267,9 @@ class ParentContract[I: ItemT, P: ParentT, G: ParentPropertiesGenerator | None](
     def generate(self) -> dict[Path, int]:
         if self.generator is None:
             return {}
+
+        message = f"Generating properties for {len(tuple(self.filtered_items))} {self.config_key.rstrip("s")}s"
+        self.logger.info(f"{Fore.LIGHTMAGENTA_EX}{message}{Fore.RESET}")
 
         paths = defaultdict[Path, int](int)
         for item in self.filtered_items:
@@ -325,6 +337,11 @@ class ChildContract[I: ItemT, P: ParentT, G: ChildPropertiesGenerator | None](
             return list(self.filtered_items)
 
         run_terms = [term for term in self.terms if term.name in terms] if terms else self.terms
+
+        key = f"{self.parent.config_key.rstrip('s')} {self.__config_key__.rstrip("s")}s"
+        message = f"Validating {len(tuple(self.filtered_items))} {key} against {len(run_terms)} terms"
+        self.logger.info(f"{Fore.LIGHTMAGENTA_EX}{message}{Fore.RESET}")
+
         return [
             (item, parent) for item, parent in self.filtered_items
             if all(term.run(item, parent=parent, context=self.context) for term in run_terms)
@@ -333,6 +350,10 @@ class ChildContract[I: ItemT, P: ParentT, G: ChildPropertiesGenerator | None](
     def generate(self) -> dict[Path, int]:
         if self.generator is None or self.parent.generator is None:
             return {}
+
+        key = f"{self.parent.config_key.rstrip('s')} {self.__config_key__.rstrip("s")}s"
+        message = f"Generating properties for {len(tuple(self.filtered_items))} {key}"
+        self.logger.info(f"{Fore.LIGHTMAGENTA_EX}{message}{Fore.RESET}")
 
         paths = defaultdict[Path, int](int)
         for item, parent in self.filtered_items:

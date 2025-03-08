@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from random import choice, sample
+from random import choice, sample, shuffle
 from unittest import mock
 
 from dbt.artifacts.resources.v1.components import ColumnInfo
@@ -24,8 +24,23 @@ class NodePropertiesGeneratorTester[I: NodeT](ParentPropertiesGeneratorTester, m
         assert all(val for val in table.values())
 
     @staticmethod
-    def test_merge_columns(generator: NodePropertiesGenerator[I], item: I):
-        pass  # TODO
+    def test_merge_columns(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
+        table = {"columns": list(map(generator._generate_column_properties, item.columns.values()))}
+        modified_columns = {col["name"]: col for col in sample(table["columns"], k=3)}
+        for column in modified_columns.values():
+            column["description"] = faker.sentence()
+            column["new_property"] = faker.random_int()
+        shuffle(table["columns"])
+
+        expected_columns = list(map(generator._generate_column_properties, item.columns.values()))
+        for column in expected_columns:
+            if not (modified_column := modified_columns.get(column["name"])):
+                continue
+            column["new_property"] = modified_column["new_property"]
+
+        generator._merge_columns(item, table)
+        assert table["columns"] == expected_columns
+        assert table["columns"] != list(modified_columns.values())  # sorted back to expected order after shuffle
 
     @staticmethod
     def test_set_columns_skips_on_exclude(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
@@ -174,7 +189,7 @@ class NodePropertiesGeneratorTester[I: NodeT](ParentPropertiesGeneratorTester, m
         item.columns |= {name: ColumnInfo(name=name) for name in faker.words()}
         original_order = list(item.columns)
         columns = {
-            col.name: ColumnMetadata(name=col.name, index=faker.random_int(), type="int")
+            col.name: ColumnMetadata(name=col.name, index=faker.random_int(max=len(item.columns)), type="int")
             for col in sample(list(item.columns.values()), k=3)
         }
 

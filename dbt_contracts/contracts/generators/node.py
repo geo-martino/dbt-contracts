@@ -88,11 +88,8 @@ class NodePropertiesGenerator[I: NodeT](ParentPropertiesGenerator[I], metaclass=
 
         modified = False
         modified |= self._set_description(item, description=table.metadata.comment)
-        print(item.name, modified)
         modified |= self._set_columns(item, columns=table.columns)
-        print(item.name, modified)
         modified |= self._reorder_columns(item, columns=table.columns)
-        print(item.name, modified)
 
         return modified
 
@@ -108,7 +105,7 @@ class NodePropertiesGenerator[I: NodeT](ParentPropertiesGenerator[I], metaclass=
             )
 
             if column_in_props is not None:
-                merge_maps(column_in_props, column, overwrite=True, extend=True)
+                merge_maps(column_in_props, column, overwrite=True, extend=False)
             else:
                 table["columns"].insert(index, column)
 

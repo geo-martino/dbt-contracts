@@ -41,8 +41,6 @@ class ColumnPropertiesGenerator[P: NodeT](ChildPropertiesGenerator[ColumnInfo, P
 
         modified = False
         modified |= self._set_description(item, description=column.comment)
-        print(item.name, modified)
         modified |= self._set_data_type(item, data_type=column.type)
-        print(item.name, modified)
 
         return modified

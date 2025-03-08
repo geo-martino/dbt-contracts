@@ -332,6 +332,14 @@ class ContractsRunner:
         paths = ContractContext.properties.save(results)
         self._log_generated_paths({path: count for path, count in results.items() if path in paths})
 
+        # clear and refresh the manifest by setting onto each contract again
+        self.dbt.manifest = None
+        self.__dict__["manifest"] = dbt_cli.get_manifest(
+            runner=self.dbt, config=self.config, logger=self.logger, refresh=True
+        )
+        self.dbt.manifest = self.manifest
+        self._set_artifacts_on_contracts(contracts)
+
         return results
 
     ################################################################################
@@ -346,6 +354,8 @@ class ContractsRunner:
 
         for contract in contracts:
             if self.paths is not None and contract.validate_conditions(self.paths):
+                if self.paths in contract.conditions:
+                    continue
                 contract.conditions.append(self.paths)
 
     def _get_contract_by_key(self, contract_key: str = None) -> Contract:

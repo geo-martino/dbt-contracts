@@ -23,7 +23,7 @@ class SourcePropertiesGenerator(NodePropertiesGenerator[SourceDefinition]):
         table_in_props = next((prop for prop in source["tables"] if prop["name"] == item.name), None)
         table = self._generate_table_properties(item)
         if table_in_props is not None:
-            merge_maps(table_in_props, table, overwrite=True, extend=True)
+            merge_maps(table_in_props, table, overwrite=True, extend=False)
             table = table_in_props
         else:
             source["tables"].append(table)
