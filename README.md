@@ -44,130 +44,134 @@ Refer to this list to help when designing your contract file.
 
 #### Filters
 
-- [`is_materialized`](https://geo-martino.github.io/dbt-contracts/reference/models.html#is-materialized): Check whether the given `node` is configured to be materialized.
-- [`meta`](https://geo-martino.github.io/dbt-contracts/reference/models.html#meta): Check whether a given `resource` has any matching meta to the accepted_values.
-- [`name`](https://geo-martino.github.io/dbt-contracts/reference/models.html#name): Check whether a given `item` has a valid name.
-- [`paths`](https://geo-martino.github.io/dbt-contracts/reference/models.html#paths): Check whether a given `item` has a valid path.
+- [`name`](https://geo-martino.github.io/dbt-contracts/reference/models.html#name): Filter models based on their names.
+- [`path`](https://geo-martino.github.io/dbt-contracts/reference/models.html#path): Filter models based on their paths.
+- [`tag`](https://geo-martino.github.io/dbt-contracts/reference/models.html#tag): Filter models based on their tags.
+- [`meta`](https://geo-martino.github.io/dbt-contracts/reference/models.html#meta): Filter models based on their meta values.
+- [`is_materialized`](https://geo-martino.github.io/dbt-contracts/reference/models.html#is-materialized): Filter models taking only those which are not ephemeral.
 
-#### Enforcements
+#### Terms
 
-- [`exists`](https://geo-martino.github.io/dbt-contracts/reference/models.html#exists): Check whether the node exists in the database.
-- [`has_all_columns`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-all-columns): Check whether the node properties contain all available columns of the node.
-- [`has_constraints`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-constraints): Check whether the given `node` has an appropriate number of constraints.
-- [`has_contract`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-contract): Check whether the node properties define a contract.
-- [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-description): Check whether the given `resource` has a description set.
-- [`has_expected_columns`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-expected-columns): Check whether the node properties contain the expected set of `columns`.
-- [`has_matching_description`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-matching-description): Check whether the given `node` has a description configured which matches the remote resource.
-- [`has_no_final_semicolon`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-no-final-semicolon): Check whether the given `node` has a no closing semicolon at the end of the script.
-- [`has_no_hardcoded_refs`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-no-hardcoded-refs): Check whether the given `node` has a no hardcoded upstream references.
-- [`has_properties`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-properties): Check whether the given `resource` has properties set in an appropriate properties file.
-- [`has_tests`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-tests): Check whether the given `node` has an appropriate number of tests.
-- [`has_valid_macro_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-valid-macro-dependencies): Check whether the given `node` has valid upstream macro dependencies.
-- [`has_valid_ref_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-valid-ref-dependencies): Check whether the given `node` has valid upstream ref dependencies.
-- [`has_valid_source_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-valid-source-dependencies): Check whether the given `node` has valid upstream source dependencies.
-- [`meta_has_accepted_values`](https://geo-martino.github.io/dbt-contracts/reference/models.html#meta-has-accepted-values): Check whether the resource's `meta` config is configured as expected.
-- [`meta_has_allowed_keys`](https://geo-martino.github.io/dbt-contracts/reference/models.html#meta-has-allowed-keys): Check whether the resource's `meta` config contains only allowed keys.
-- [`meta_has_required_keys`](https://geo-martino.github.io/dbt-contracts/reference/models.html#meta-has-required-keys): Check whether the resource's `meta` config contains all required keys.
-- [`tags_have_allowed_values`](https://geo-martino.github.io/dbt-contracts/reference/models.html#tags-have-allowed-values): Check whether the given `resource` has properties set in an appropriate properties file.
-- [`tags_have_required_values`](https://geo-martino.github.io/dbt-contracts/reference/models.html#tags-have-required-values): Check whether the given `resource` has properties set in an appropriate properties file.
+- [`has_properties`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-properties): Check whether the models have properties files defined.
+- [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-description): Check whether the models have descriptions defined in their properties.
+- [`has_required_tags`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-required-tags): Check whether the models have the expected set of required tags set.
+- [`has_allowed_tags`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-allowed-tags): Check whether the models have only tags set from a configured permitted list.
+- [`has_required_meta_keys`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-required-meta-keys): Check whether the models have the expected set of required meta keys set.
+- [`has_allowed_meta_keys`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-allowed-meta-keys): Check whether the models have only meta keys set from a configured permitted list.
+- [`has_allowed_meta_values`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-allowed-meta-values): Check whether the models have only meta values set from a configured permitted mapping of keys to values.
+- [`exists`](https://geo-martino.github.io/dbt-contracts/reference/models.html#exists): Check whether the models exist in the database.
+- [`has_tests`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-tests): Check whether models have an appropriate number of tests configured.
+- [`has_all_columns`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-all-columns): Check whether models have all columns set in their properties.
+- [`has_expected_columns`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-expected-columns): Check whether models have the expected names of columns set in their properties.
+- [`has_matching_description`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-matching-description): Check whether the descriptions configured in models' properties match the descriptions in the database.
+- [`has_contract`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-contract): Check whether models have appropriate configuration for a contract in their properties.
+- [`has_valid_ref_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-valid-ref-dependencies): Check whether models have an appropriate number of upstream dependencies
+- [`has_valid_source_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-valid-source-dependencies): Check whether models have an appropriate number of upstream dependencies for sources
+- [`has_valid_macro_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-valid-macro-dependencies): Check whether models have an appropriate number of upstream dependencies for macros
+- [`has_no_final_semi_colon`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-no-final-semi-colon): Check if models have a final semicolon present in their queries.
+- [`has_no_hardcoded_refs`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-no-hardcoded-refs): Check if models have any hardcoded references to database objects in their queries.
+- [`has_constraints`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-constraints): Check whether models have an appropriate number of constraints configured in their properties.
 
 
 ### Model Columns
 
 #### Filters
 
-- [`meta`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#meta): Check whether a given `resource` has any matching meta to the accepted_values.
-- [`name`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#name): Check whether a given `item` has a valid name.
+- [`name`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#name): Filter model columns based on their names.
+- [`tag`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#tag): Filter model columns based on their tags.
+- [`meta`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#meta): Filter model columns based on their meta values.
 
-#### Enforcements
+#### Terms
 
-- [`exists`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#exists): Check whether the column exists in the database.
-- [`has_data_type`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-data-type): Check whether the given `column` of the given `parent` has a data type set.
-- [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-description): Check whether the given `resource` has a description set.
-- [`has_expected_name`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-expected-name): Check whether the given `column` of the given `parent` has a name that matches some expectation.
-- [`has_matching_data_type`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-data-type): Check whether the given `column` of the given `parent`
-- [`has_matching_description`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-description): Check whether the given `column` of the given `parent`
-- [`has_matching_index`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-index): Check whether the given `column` of the given `parent`
-- [`has_tests`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-tests): Check whether the given `column` of the given `parent` has an appropriate number of tests.
-- [`meta_has_accepted_values`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#meta-has-accepted-values): Check whether the resource's `meta` config is configured as expected.
-- [`meta_has_allowed_keys`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#meta-has-allowed-keys): Check whether the resource's `meta` config contains only allowed keys.
-- [`meta_has_required_keys`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#meta-has-required-keys): Check whether the resource's `meta` config contains all required keys.
-- [`tags_have_allowed_values`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#tags-have-allowed-values): Check whether the given `resource` has properties set in an appropriate properties file.
-- [`tags_have_required_values`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#tags-have-required-values): Check whether the given `resource` has properties set in an appropriate properties file.
+- [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-description): Check whether the model columns have descriptions defined in their properties.
+- [`has_required_tags`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-required-tags): Check whether the model columns have the expected set of required tags set.
+- [`has_allowed_tags`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-allowed-tags): Check whether the model columns have only tags set from a configured permitted list.
+- [`has_required_meta_keys`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-required-meta-keys): Check whether the model columns have the expected set of required meta keys set.
+- [`has_allowed_meta_keys`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-allowed-meta-keys): Check whether the model columns have only meta keys set from a configured permitted list.
+- [`has_allowed_meta_values`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-allowed-meta-values): Check whether the model columns have only meta values set from a configured permitted mapping of keys to values.
+- [`exists`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#exists): Check whether the columns exist in the database.
+- [`has_tests`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-tests): Check whether columns have an appropriate number of tests configured.
+- [`has_expected_name`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-expected-name): Check whether columns have an expected name based on their data type.
+- [`has_data_type`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-data-type): Check whether columns have a data type configured in their properties.
+- [`has_matching_description`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-description): Check whether the descriptions configured in columns' properties matches the descriptions in the database.
+- [`has_matching_data_type`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-data-type): Check whether the data type configured in a column's properties matches the data type in the database.
+- [`has_matching_index`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-index): Check whether the index position within the properties of a column's table
 
 
 ### Sources
 
 #### Filters
 
-- [`is_enabled`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#is-enabled): Check whether the given `source` is enabled.
-- [`meta`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#meta): Check whether a given `resource` has any matching meta to the accepted_values.
-- [`name`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#name): Check whether a given `item` has a valid name.
-- [`paths`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#paths): Check whether a given `item` has a valid path.
+- [`name`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#name): Filter sources based on their names.
+- [`path`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#path): Filter sources based on their paths.
+- [`tag`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#tag): Filter sources based on their tags.
+- [`meta`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#meta): Filter sources based on their meta values.
+- [`is_enabled`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#is-enabled): Filter sources taking only those which are enabled.
 
-#### Enforcements
+#### Terms
 
-- [`exists`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#exists): Check whether the node exists in the database.
-- [`has_all_columns`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-all-columns): Check whether the node properties contain all available columns of the node.
-- [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-description): Check whether the given `resource` has a description set.
-- [`has_downstream_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-downstream-dependencies): Check whether the given `source` has freshness configured.
-- [`has_expected_columns`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-expected-columns): Check whether the node properties contain the expected set of `columns`.
-- [`has_freshness`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-freshness): Check whether the given `source` has freshness configured.
-- [`has_loader`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-loader): Check whether the given `source` has a loader configured.
-- [`has_matching_description`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-matching-description): Check whether the given `node` has a description configured which matches the remote resource.
-- [`has_properties`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-properties): Check whether the given `resource` has properties set in an appropriate properties file.
-- [`has_tests`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-tests): Check whether the given `node` has an appropriate number of tests.
-- [`meta_has_accepted_values`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#meta-has-accepted-values): Check whether the resource's `meta` config is configured as expected.
-- [`meta_has_allowed_keys`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#meta-has-allowed-keys): Check whether the resource's `meta` config contains only allowed keys.
-- [`meta_has_required_keys`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#meta-has-required-keys): Check whether the resource's `meta` config contains all required keys.
-- [`tags_have_allowed_values`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#tags-have-allowed-values): Check whether the given `resource` has properties set in an appropriate properties file.
-- [`tags_have_required_values`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#tags-have-required-values): Check whether the given `resource` has properties set in an appropriate properties file.
+- [`has_properties`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-properties): Check whether the sources have properties files defined.
+- [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-description): Check whether the sources have descriptions defined in their properties.
+- [`has_required_tags`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-required-tags): Check whether the sources have the expected set of required tags set.
+- [`has_allowed_tags`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-allowed-tags): Check whether the sources have only tags set from a configured permitted list.
+- [`has_required_meta_keys`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-required-meta-keys): Check whether the sources have the expected set of required meta keys set.
+- [`has_allowed_meta_keys`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-allowed-meta-keys): Check whether the sources have only meta keys set from a configured permitted list.
+- [`has_allowed_meta_values`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-allowed-meta-values): Check whether the sources have only meta values set from a configured permitted mapping of keys to values.
+- [`exists`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#exists): Check whether the sources exist in the database.
+- [`has_tests`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-tests): Check whether sources have an appropriate number of tests configured.
+- [`has_all_columns`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-all-columns): Check whether sources have all columns set in their properties.
+- [`has_expected_columns`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-expected-columns): Check whether sources have the expected names of columns set in their properties.
+- [`has_matching_description`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-matching-description): Check whether the descriptions configured in sources' properties match the descriptions in the database.
+- [`has_loader`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-loader): Check whether sources have appropriate configuration for a loader in their properties.
+- [`has_freshness`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-freshness): Check whether sources have freshness configured in their properties.
+- [`has_downstream_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-downstream-dependencies): Check whether sources have an appropriate number of downstream dependencies.
 
 
 ### Source Columns
 
 #### Filters
 
-- [`meta`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#meta): Check whether a given `resource` has any matching meta to the accepted_values.
-- [`name`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#name): Check whether a given `item` has a valid name.
+- [`name`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#name): Filter source columns based on their names.
+- [`tag`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#tag): Filter source columns based on their tags.
+- [`meta`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#meta): Filter source columns based on their meta values.
 
-#### Enforcements
+#### Terms
 
-- [`exists`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#exists): Check whether the column exists in the database.
-- [`has_data_type`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-data-type): Check whether the given `column` of the given `parent` has a data type set.
-- [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-description): Check whether the given `resource` has a description set.
-- [`has_expected_name`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-expected-name): Check whether the given `column` of the given `parent` has a name that matches some expectation.
-- [`has_matching_data_type`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-data-type): Check whether the given `column` of the given `parent`
-- [`has_matching_description`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-description): Check whether the given `column` of the given `parent`
-- [`has_matching_index`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-index): Check whether the given `column` of the given `parent`
-- [`has_tests`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-tests): Check whether the given `column` of the given `parent` has an appropriate number of tests.
-- [`meta_has_accepted_values`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#meta-has-accepted-values): Check whether the resource's `meta` config is configured as expected.
-- [`meta_has_allowed_keys`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#meta-has-allowed-keys): Check whether the resource's `meta` config contains only allowed keys.
-- [`meta_has_required_keys`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#meta-has-required-keys): Check whether the resource's `meta` config contains all required keys.
-- [`tags_have_allowed_values`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#tags-have-allowed-values): Check whether the given `resource` has properties set in an appropriate properties file.
-- [`tags_have_required_values`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#tags-have-required-values): Check whether the given `resource` has properties set in an appropriate properties file.
+- [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-description): Check whether the source columns have descriptions defined in their properties.
+- [`has_required_tags`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-required-tags): Check whether the source columns have the expected set of required tags set.
+- [`has_allowed_tags`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-allowed-tags): Check whether the source columns have only tags set from a configured permitted list.
+- [`has_required_meta_keys`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-required-meta-keys): Check whether the source columns have the expected set of required meta keys set.
+- [`has_allowed_meta_keys`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-allowed-meta-keys): Check whether the source columns have only meta keys set from a configured permitted list.
+- [`has_allowed_meta_values`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-allowed-meta-values): Check whether the source columns have only meta values set from a configured permitted mapping of keys to values.
+- [`exists`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#exists): Check whether the columns exist in the database.
+- [`has_tests`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-tests): Check whether columns have an appropriate number of tests configured.
+- [`has_expected_name`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-expected-name): Check whether columns have an expected name based on their data type.
+- [`has_data_type`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-data-type): Check whether columns have a data type configured in their properties.
+- [`has_matching_description`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-description): Check whether the descriptions configured in columns' properties matches the descriptions in the database.
+- [`has_matching_data_type`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-data-type): Check whether the data type configured in a column's properties matches the data type in the database.
+- [`has_matching_index`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-index): Check whether the index position within the properties of a column's table
 
 
 ### Macros
 
 #### Filters
 
-- [`name`](https://geo-martino.github.io/dbt-contracts/reference/macros.html#name): Check whether a given `item` has a valid name.
-- [`paths`](https://geo-martino.github.io/dbt-contracts/reference/macros.html#paths): Check whether a given `item` has a valid path.
+- [`name`](https://geo-martino.github.io/dbt-contracts/reference/macros.html#name): Filter macros based on their names.
+- [`path`](https://geo-martino.github.io/dbt-contracts/reference/macros.html#path): Filter macros based on their paths.
 
-#### Enforcements
+#### Terms
 
-- [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/macros.html#has-description): Check whether the given `resource` has a description set.
-- [`has_properties`](https://geo-martino.github.io/dbt-contracts/reference/macros.html#has-properties): Check whether the given `resource` has properties set in an appropriate properties file.
+- [`has_properties`](https://geo-martino.github.io/dbt-contracts/reference/macros.html#has-properties): Check whether the macros have properties files defined.
+- [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/macros.html#has-description): Check whether the macros have descriptions defined in their properties.
 
 
 ### Macro Arguments
 
 #### Filters
 
-- [`name`](https://geo-martino.github.io/dbt-contracts/reference/arguments.html#name): Check whether a given `item` has a valid name.
+- [`name`](https://geo-martino.github.io/dbt-contracts/reference/arguments.html#name): Filter macro arguments based on their names.
 
-#### Enforcements
+#### Terms
 
-- [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/arguments.html#has-description): Check whether the given `resource` has a description set.
-- [`has_type`](https://geo-martino.github.io/dbt-contracts/reference/arguments.html#has-type): Check whether the given `argument` has its type set in an appropriate properties file.
+- [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/arguments.html#has-description): Check whether the macro arguments have descriptions defined in their properties.
+- [`has_type`](https://geo-martino.github.io/dbt-contracts/reference/arguments.html#has-type): Check whether macro arguments have a data type configured in their properties.

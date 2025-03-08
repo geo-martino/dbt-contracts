@@ -1,0 +1,46 @@
+from collections.abc import Sequence
+from random import choice, sample
+from typing import Literal, Annotated, get_args
+
+from dbt.artifacts.resources.v1.components import ColumnInfo
+from pydantic import BeforeValidator, Field
+
+from dbt_contracts.contracts._core import ContractContext
+from dbt_contracts.contracts.generators._core import ChildPropertiesGenerator, CORE_FIELDS
+from dbt_contracts.contracts.utils import get_matching_catalog_table, to_tuple
+from dbt_contracts.types import NodeT
+
+COLUMN_FIELDS = Literal[CORE_FIELDS, "data_type"]
+
+
+class ColumnPropertiesGenerator[P: NodeT](ChildPropertiesGenerator[ColumnInfo, P]):
+    exclude: Annotated[Sequence[COLUMN_FIELDS], BeforeValidator(to_tuple)] = Field(
+        description="The fields to exclude from the generated properties.",
+        default=(),
+        examples=[choice(get_args(COLUMN_FIELDS)), sample(get_args(COLUMN_FIELDS), k=2)]
+    )
+
+    def _set_data_type(self, item: ColumnInfo, data_type: str | None) -> bool:
+        if "data_type" in self.exclude:
+            return False
+        if not data_type:
+            return False
+        if item.data_type and not self.overwrite:
+            return False
+        if item.data_type == data_type:
+            return False
+
+        item.data_type = data_type
+        return True
+
+    def merge(self, item: ColumnInfo, context: ContractContext, parent: P = None) -> bool:
+        if (table := get_matching_catalog_table(parent, catalog=context.catalog)) is None:
+            return False
+        if (column := next((col for col in table.columns.values() if col.name == item.name), None)) is None:
+            return False
+
+        modified = False
+        modified |= self._set_description(item, description=column.comment)
+        modified |= self._set_data_type(item, data_type=column.type)
+
+        return modified
