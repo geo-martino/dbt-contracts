@@ -24,7 +24,7 @@ class NodePropertiesGeneratorTester[I: NodeT](ParentPropertiesGeneratorTester, m
         assert all(val for val in table.values())
 
     @staticmethod
-    def test_merge_columns(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
+    def test_merge_columns_merges_and_sorts(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         table = {"columns": list(map(generator._generate_column_properties, item.columns.values()))}
         modified_columns = {col["name"]: col for col in sample(table["columns"], k=3)}
         for column in modified_columns.values():
@@ -43,6 +43,19 @@ class NodePropertiesGeneratorTester[I: NodeT](ParentPropertiesGeneratorTester, m
         generator._merge_columns(item, table)
         assert table["columns"] == expected_columns
         assert table["columns"] != list(modified_columns.values())  # sorted back to expected order after shuffle
+
+    @staticmethod
+    def test_merge_columns_drops(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
+        table = {"columns": list(map(generator._generate_column_properties, item.columns.values()))}
+        added_columns = [
+            generator._generate_column_properties(ColumnInfo(name=faker.word())) for _ in range(3)
+        ]
+        table["columns"].extend(added_columns)
+
+        expected_columns = list(map(generator._generate_column_properties, item.columns.values()))
+
+        generator._merge_columns(item, table)
+        assert table["columns"] == expected_columns
 
     @staticmethod
     def test_set_columns_skips_on_exclude(generator: NodePropertiesGenerator[I], item: I, faker: Faker):

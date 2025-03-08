@@ -43,11 +43,16 @@ class NodePropertiesGenerator[I: NodeT](ParentPropertiesGenerator[I], metaclass=
             return False
         if not columns:
             return False
-
-        added = any([self._set_column(item, column=column) for column in columns.values()])
-        removed = any([
+        result = [self._set_column(item, column=column) for column in columns.values()]
+        added = any(result)
+        if added:
+            print("added", result)
+        result = [
             self._drop_column(item, column=column, columns=columns) for column in list(item.columns.values())
-        ])
+        ]
+        removed = any(result)
+        if removed:
+            print("removed", result)
         return added or removed
 
     @staticmethod
@@ -88,14 +93,21 @@ class NodePropertiesGenerator[I: NodeT](ParentPropertiesGenerator[I], metaclass=
 
         modified = False
         modified |= self._set_description(item, description=table.metadata.comment)
+        print(item.name, modified)
         modified |= self._set_columns(item, columns=table.columns)
+        print(item.name, modified)
         modified |= self._reorder_columns(item, columns=table.columns)
+        print(item.name, modified)
 
         return modified
 
     def _merge_columns(self, item: I, table: dict[str, Any]) -> None:
         if "columns" not in table:
             table["columns"] = []
+
+        for column in table["columns"].copy():
+            if column["name"] not in item.columns:
+                table["columns"].remove(column)
 
         for index, column_info in enumerate(item.columns.values()):
             column = self._generate_column_properties(column_info)
