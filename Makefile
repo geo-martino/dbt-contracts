@@ -3,12 +3,12 @@
 
 # You can set these variables from the command line, and also
 # from the environment for the first two.
-VERSION       = $(shell hatch version)
+VERSION       = $(shell uv run hatch version)
 SPHINXOPTS    ?= -D release=${VERSION}
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = docs
 BUILDDIR      = docs/_build
-PROJECTNAME   = dbt-contracts
+PROJECTNAME   = dbt_contracts
 LINKCHECKDIR  = docs/_linkcheck
 
 # Put it first so that "make" without argument is like "make help".

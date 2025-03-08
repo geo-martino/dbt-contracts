@@ -6,7 +6,7 @@ import re
 import docstring_parser
 
 from dbt_contracts import PROGRAM_OWNER_USER, PROGRAM_NAME, DOCUMENTATION_URL
-from dbt_contracts.contracts import CONTRACTS, Contract, ParentContract
+from dbt_contracts.contracts import CONTRACT_CLASSES, Contract, ParentContract
 import docs.reference as docs
 
 SRC_FILENAME = "README.template.md"
@@ -14,43 +14,44 @@ TRG_FILENAME = SRC_FILENAME.replace(".template", "")
 
 
 def format_contract_title(contract: type[Contract], parent_key: str = "") -> str:
-    key = f"{parent_key.rstrip('s')}_{str(contract.config_key)}"
+    """Format the title for a contract"""
+    key = f"{parent_key.rstrip('s')}_{contract.__config_key__}"
     return key.replace("_", " ").title().strip()
 
 
 def format_contract_reference(contract: type[Contract], parent_key: str = "") -> list[str]:
     """Format the readme template for the contracts reference"""
-    contract.__new__(contract)  # needed to populate contract methods lists
-
     lines = []
 
-    key = str(contract.config_key)
+    key = contract.__config_key__
     title = format_contract_title(contract, parent_key)
     lines.extend((f"### {title}", ""))
 
-    method_map = {
-        "Filters": sorted(contract.__filtermethods__),
-        "Enforcements": sorted(contract.__enforcementmethods__),
+    # noinspection PyTypeChecker,PyProtectedMember
+    contract_parts_map = {
+        "Filters": contract.__supported_conditions__,
+        "Terms": contract.__supported_terms__,
     }
 
-    for header, methods in method_map.items():
+    for header, parts in contract_parts_map.items():
         lines.extend((f"#### {header}", ""))
 
-        for method_name in methods:
-            url = f"{DOCUMENTATION_URL}/{'/'.join(docs.URL_PATH)}/{key}.html#{method_name.replace('_', '-')}"
-            method = getattr(contract, method_name).func
-            doc = docstring_parser.parse(method.__doc__).short_description.strip()
+        for part in parts:
+            # noinspection PyProtectedMember
+            name = part._name()
+            url = f"{DOCUMENTATION_URL}/{'/'.join(docs.URL_PATH)}/{key}.html#{name.replace('_', '-')}"
+            doc = docstring_parser.parse(part.__doc__).short_description.strip().format(kind=title.lower())
             doc = re.sub(r"\s*\n\s+", " ", doc)
 
-            method_line = f"- [`{method_name}`]({url}): {doc}"
-            lines.append(method_line)
+            line = f"- [`{name}`]({url}): {doc}"
+            lines.append(line)
 
         lines.append("")
 
     lines.append("")
 
     if issubclass(contract, ParentContract):
-        lines.extend(format_contract_reference(contract.child_type, key))
+        lines.extend(format_contract_reference(contract.__child_contract__, key))
 
     return lines
 
@@ -58,7 +59,7 @@ def format_contract_reference(contract: type[Contract], parent_key: str = "") ->
 def format_contracts_reference() -> str:
     """Format the readme template for the contracts reference"""
     lines = []
-    for contract in CONTRACTS:
+    for contract in CONTRACT_CLASSES:
         lines.extend(format_contract_reference(contract))
 
     return "\n".join(lines)
@@ -74,11 +75,10 @@ def format_contracts_reference_toc() -> str:
     """Format the readme template for the contracts reference table of contents"""
     lines = []
 
-    for contract in CONTRACTS:
+    for contract in CONTRACT_CLASSES:
         lines.append(format_contracts_reference_toc_entry(contract))
         if issubclass(contract, ParentContract):
-            key = str(contract.config_key)
-            lines.append(format_contracts_reference_toc_entry(contract.child_type, key))
+            lines.append(format_contracts_reference_toc_entry(contract.__child_contract__, contract.__config_key__))
 
     return "\n".join(lines)
 

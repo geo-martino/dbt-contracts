@@ -1,13 +1,15 @@
 import argparse
+import logging
 import os
+from copy import deepcopy
+from pathlib import Path
 
 from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 
 from dbt_contracts import PROGRAM_NAME
-from dbt_contracts.contracts import CONTRACTS, ParentContract
-
-DEFAULT_CONFIG_FILE_NAME: str = "contracts.yml"
-DEFAULT_OUTPUT_FILE_NAME: str = "contracts_results"
+from dbt_contracts.contracts import CONTRACT_CLASSES
+from dbt_contracts.dbt_cli import get_config, clean_paths, install_dependencies
+from dbt_contracts.runner import ContractsRunner
 
 CORE_PARSER = argparse.ArgumentParser(
     prog=PROGRAM_NAME,
@@ -76,41 +78,16 @@ install_deps = CORE_PARSER.add_argument(
 )
 
 ################################################################################
-## Runner args
+## General runner args
 ################################################################################
 config = CORE_PARSER.add_argument(
     "--config",
     help="Either the path to a contracts configuration file, "
-         f"or the directory to look in for the {DEFAULT_CONFIG_FILE_NAME!r} file. "
+         f"or the directory to look in for the {ContractsRunner.default_config_file_name!r} file. "
          "Defaults to the project dir when not specified.",
     nargs="?",
     default=None,
-    type=str,
-)
-
-output = CORE_PARSER.add_argument(
-    "--output",
-    help="Either the path to a file to write to when formatting results output, "
-         f"or the directory to write a file to with filename {DEFAULT_OUTPUT_FILE_NAME!r}. "
-         "Defaults to the project's target folder when not specified.",
-    nargs="?",
-    default=None,
-    type=str,
-)
-
-output_format = CORE_PARSER.add_argument(
-    "--format",
-    help="Specify the format of results output if desired. Output file will not be generated when not specified.",
-    nargs="?",
-    default=None,
-    choices=["text", "json", "jsonl", "github-annotations"],
-    type=str,
-)
-
-no_fail = CORE_PARSER.add_argument(
-    "--no-fail",
-    help="When this option is passed, do not fail when contracts do not pass.",
-    action='store_true'
+    type=Path,
 )
 
 contract = CORE_PARSER.add_argument(
@@ -120,19 +97,10 @@ contract = CORE_PARSER.add_argument(
     nargs="?",
     default=None,
     choices=[
-        str(contract.config_key) for contract in CONTRACTS
-    ] + [
-        f"{contract.config_key}.{contract.child_type.config_key}"
-        for contract in CONTRACTS if issubclass(contract, ParentContract)
+        key for keys in (
+            (contract.__config_key__, contract.child_config_key) for contract in CONTRACT_CLASSES
+        ) for key in keys
     ],
-    type=str,
-)
-
-enforcements = CORE_PARSER.add_argument(
-    "--enforce",
-    help="Apply only these enforcements. If none given, apply all configured enforcements.",
-    nargs="+",
-    default=None,
     type=str,
 )
 
@@ -144,3 +112,115 @@ files = CORE_PARSER.add_argument(
     default=None,
     type=str,
 )
+
+################################################################################
+## Validator runner args
+################################################################################
+VALIDATOR_PARSER = deepcopy(CORE_PARSER)
+
+output = VALIDATOR_PARSER.add_argument(
+    "--output",
+    help="Either the path to a file to write to when formatting results output, "
+         f"or the directory to write a file to with filename {ContractsRunner.default_output_file_name!r}. "
+         "Defaults to the project's target folder when not specified.",
+    nargs="?",
+    default=None,
+    type=Path,
+)
+
+output_format = VALIDATOR_PARSER.add_argument(
+    "--format",
+    help="Specify the format of results output if desired. Output file will not be generated when not specified.",
+    nargs="?",
+    default=None,
+    choices=ContractsRunner.output_writers_map.keys(),
+    type=str,
+)
+
+no_fail = VALIDATOR_PARSER.add_argument(
+    "--no-fail",
+    help="When this option is passed, do not fail when contracts do not pass.",
+    action='store_true'
+)
+
+terms = VALIDATOR_PARSER.add_argument(
+    "--terms", "--term", "--validations", "--validation",
+    help="Apply only these validations/terms. If none given, apply all configured validations/terms.",
+    nargs="+",
+    default=None,
+    type=str,
+)
+
+################################################################################
+## Generator runner args
+################################################################################
+GENERATOR_PARSER = deepcopy(CORE_PARSER)
+
+
+def setup_runner(args: argparse.Namespace) -> ContractsRunner:
+    """Main entry point for the CLI"""
+    args.profiles_dir = str(Path(args.profiles_dir).resolve())
+    args.project_dir = str(Path(args.project_dir).resolve())
+
+    conf = get_config(args)
+
+    if args.clean:
+        clean_paths(config=conf)
+    if args.deps:
+        install_dependencies(config=conf)
+
+    if args.config is None and args.project_dir:
+        args.config = Path(args.project_dir)
+
+    args.config = Path(args.config).resolve()
+
+    return ContractsRunner.from_config(conf)
+
+
+def validate() -> None:
+    """Main entry point for the `validator` CLI command"""
+    args, _ = VALIDATOR_PARSER.parse_known_args()
+    runner = setup_runner(args)
+
+    if args.output is None:
+        args.output = Path(runner.config.project_root, runner.config.target_path)
+    args.output = Path(args.output).resolve()
+
+    results = runner.validate(contract_key=args.contract, terms=args.terms)
+
+    if args.format:
+        runner.write_results(results, path=args.output, output_type=args.format)
+
+    if not args.no_fail and results:
+        raise Exception(f"Found {len(results)} contract violations.")
+
+
+def generate() -> None:
+    """Main entry point for the `generate` CLI command"""
+    args, _ = GENERATOR_PARSER.parse_known_args()
+    runner = setup_runner(args)
+
+    runner.generate(contract_key=args.contract)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s", handlers=[logging.StreamHandler()], force=True)
+
+    operation = CORE_PARSER.add_argument(
+        "--operation",
+        help="Run this operation.",
+        nargs="?",
+        default="validate",
+        choices=["validate", "generate"],
+        type=str,
+    )
+    core_args, _ = CORE_PARSER.parse_known_args()
+
+    if core_args.operation == "validate":
+        validate()
+        exit(0)
+    elif core_args.operation == "generate":
+        generate()
+        exit(0)
+
+    raise RuntimeError(f"Unrecognised operation: {core_args.command!r}")

@@ -47,7 +47,7 @@ jobs:
       matrix:
         os: [ ubuntu-latest ]
         name: [ 🐧 Linux ]
-        python-version: [ 3.11, 3.12, 3.13 ]
+        python-version: [ 3.12, 3.13 ]
         include:
           - os: windows-latest
             name: 🪟 Windows
@@ -61,14 +61,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: ⚙️ Setup - Python 🐍
-        uses: actions/setup-python@v5
+      - name: ⚙️ Setup - UV 🐍
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: ⚙️ Setup - Install dependencies
+      - name: ⚙️ Setup - Python 🐍
         run: |
-          python -m pip install '.[test]'
+          uv sync
 
       - name: 🧪 Run tests
         run: |
@@ -97,14 +97,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: ⚙️ Setup - Python 🐍
-        uses: actions/setup-python@v5
+      - name: ⚙️ Setup - UV 🐍
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ env.python-version }}
+          python-version: ${{ matrix.python-version }}
 
-      - name: ⚙️ Setup - Install dependencies
+      - name: ⚙️ Setup - Python 🐍
         run: |
-          python -m pip install '.[build]'
+          uv sync
 
       - name: 📄 Sanitise readme
         run: |
@@ -112,8 +112,8 @@ jobs:
 
       - name: 🏗️ Build package
         run: |
-          echo "Building artifacts for v$(hatch version)"
-          hatch build
+          echo "Building artifacts for v$(uv run hatch version)"
+          uv build
 
       - name: 📦 Upload package artifacts
         id: upload

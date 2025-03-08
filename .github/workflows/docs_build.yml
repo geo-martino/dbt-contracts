@@ -29,18 +29,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: ⚙️ Setup - Python 🐍
-        uses: actions/setup-python@v5
+      - name: ⚙️ Setup - UV 🐍
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ env.python-version }}
+          python-version: ${{ matrix.python-version }}
+
+      - name: ⚙️ Setup - Python 🐍
+        run: |
+          sudo apt install graphviz
+          uv sync
 
       - name: ⚙️ Setup - Pages
         uses: actions/configure-pages@v5
-
-      - name: ⚙️ Setup - Install dependencies
-        run: |
-          sudo apt install graphviz
-          pip install -e '.[docs]'
 
       - name: 🏗️ Sphinx build
         run: |

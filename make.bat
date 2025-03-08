@@ -9,7 +9,7 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=docs
 set BUILDDIR=docs/_build
-set PROJECTNAME=dbt-contracts
+set PROJECTNAME=dbt_contracts
 
 %SPHINXBUILD% >NUL 2>NUL
 if errorlevel 9009 (
