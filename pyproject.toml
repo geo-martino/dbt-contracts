@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling", "versioningit"]
+requires = ["hatchling", "versioningit~=3.1"]
 build-backend = "hatchling.build"
 
 [project]
-dynamic = ["version"]
 name = "dbt-contracts"
+dynamic = ["version"]
 authors = [
   { name="George Martin Marino", email="gm.engineer+dbt-contracts@pm.me" },
 ]
@@ -13,14 +13,13 @@ readme = "README.md"
 license-files = { paths = ["LICENSE"] }
 requires-python = ">=3.12"
 classifiers = [
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "License :: OSI Approved :: MIT License",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: POSIX :: Linux",
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Natural Language :: English",
     "Intended Audience :: Developers",
 ]
@@ -29,14 +28,14 @@ dependencies = [
     "pydantic~=2.10",
 ]
 
-[project.optional-dependencies]
-# dev dependencies
-build = [
-    "hatch",
-    "versioningit",
+[dependency-groups]
+dev = [
+    "flake8",
+    "grip",
+    "jupyterlab",
+    "ipywidgets",
 ]
 test = [
-    "dbt-contracts",
     "pytest~=8.3",
     "pytest-asyncio>=0.24,<1.0",
     "pytest-xdist~=3.6",
@@ -44,27 +43,26 @@ test = [
     "Faker>=30.8,<31.0",
 ]
 docs = [
-    "dbt-contracts[build]",
     "sphinx>=8.1.3,<9.0",
     "sphinx-rtd-theme>=3.0.1,<4.0",
     "sphinx-design>=0.6.1,<1.0",
     "sphinx-new-tab-link>=0.6.1,<1.0",
     "docstring_parser>=0.16,<1.0",
 ]
-dev = [
-    "dbt-contracts[test,docs]",
-    "flake8",
-    "grip",
-    "jupyterlab",
-    "ipywidgets",
+build = [
+    "hatch",
 ]
+
+[tool.uv]
+default-groups = ["dev", "test", "docs", "build"]
 
 [project.scripts]
 dbt-clean = "dbt_contracts.dbt_cli:clean_paths"
 dbt-deps = "dbt_contracts.dbt_cli:install_dependencies"
 dbt-parse = "dbt_contracts.dbt_cli:get_manifest"
 dbt-docs = "dbt_contracts.dbt_cli:get_catalog"
-run-contracts = "dbt_contracts.cli:main"
+dbt-validate = "dbt_contracts.cli:validate"
+dbt-generate = "dbt_contracts.cli:generate"
 
 [project.urls]
 "Documentation" = "https://geo-martino.github.io/dbt-contracts/"
@@ -88,9 +86,6 @@ dirty = "{base_version}"
 distance-dirty = "{base_version}"
 #distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
 
-[tool.hatch.build.targets.sdist]
-include = ["dbt_contracts"]
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-color=yes"
@@ -99,3 +94,4 @@ markers = [
     "manual: marks tests to be run only when manually directed to by the developer",
 ]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"

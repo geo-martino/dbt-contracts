@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line, and also
 # from the environment for the first two.
-VERSION       = $(shell hatch version)
+VERSION       = $(shell uv run hatch version)
 SPHINXOPTS    ?= -D release=${VERSION}
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = docs

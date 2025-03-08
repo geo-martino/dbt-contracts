@@ -112,8 +112,8 @@ jobs:
 
       - name: 🏗️ Build package
         run: |
-          echo "Building artifacts for v$(hatch version)"
-          hatch build
+          echo "Building artifacts for v$(uv run hatch version)"
+          uv build
 
       - name: 📦 Upload package artifacts
         id: upload
