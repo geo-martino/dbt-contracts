@@ -199,6 +199,7 @@ class NodePropertiesGeneratorTester[I: NodeT](ParentPropertiesGeneratorTester, m
         assert not generator._reorder_columns(item, columns=columns)
         assert list(item.columns) == original_order
 
+    # TODO: flakey test - fix me
     @staticmethod
     def test_reorder_columns(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         item.columns |= {name: ColumnInfo(name=name) for name in faker.words()}
