@@ -40,8 +40,8 @@ jobs:
 
       - name: ⚙️ Setup - Additional dependencies
         run: |
-          sudo apt install graphviz
-          apt-get install python3-sphinx
+          sudo apt-get install graphviz
+          sudo apt-get install python3-sphinx
 
       - name: 🏗️ Sphinx build
         run: |
