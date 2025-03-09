@@ -38,10 +38,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: ⚙️ Setup - Additional dependencies
+      - name: ⚙️ Setup - Dependencies
         run: |
           sudo apt-get install graphviz python3-sphinx
           uv sync
+          ls
+          source .venv/bin/activate
 
       - name: 🏗️ Sphinx build
         run: |
