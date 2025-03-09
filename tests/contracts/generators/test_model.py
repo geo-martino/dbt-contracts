@@ -4,7 +4,6 @@ import pytest
 from dbt.contracts.graph.nodes import ModelNode
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.generators.column import ColumnPropertiesGenerator
 from dbt_contracts.contracts.generators.model import ModelPropertiesGenerator
 from tests.contracts.generators.test_node import NodePropertiesGeneratorTester
 

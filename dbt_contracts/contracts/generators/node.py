@@ -9,7 +9,6 @@ from pydantic import Field, BeforeValidator
 
 from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.generators._core import ParentPropertiesGenerator, CORE_FIELDS, PropertyGenerator
-from dbt_contracts.contracts.generators.column import ColumnPropertiesGenerator
 from dbt_contracts.contracts.generators.properties import SetDescription
 from dbt_contracts.contracts.utils import get_matching_catalog_table, merge_maps, to_tuple
 from dbt_contracts.types import NodeT
@@ -120,7 +119,6 @@ class NodePropertiesGenerator(ParentPropertiesGenerator[NodeT, NodePropertyGener
         description="Configuration for setting the columns",
         default=SetNodeColumns(),
     )
-
 
     def merge(self, item: NodeT, context: ContractContext) -> bool:
         if (table := get_matching_catalog_table(item, catalog=context.catalog)) is None:

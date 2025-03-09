@@ -135,6 +135,7 @@ class Contract[I: Any, T: ContractTerm, G: PropertiesGenerator | None](metaclass
         if part_cls is None:
             return
         if not isinstance(kwargs, Mapping):
+            # noinspection PyTypeChecker
             kwargs = {next(iter(part_cls.model_fields)): kwargs}
 
         return part_cls(**kwargs)

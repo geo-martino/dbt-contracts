@@ -1,7 +1,7 @@
 from abc import ABCMeta
 from collections.abc import Sequence
 from random import choice, sample
-from typing import Literal, Any, Annotated, get_args
+from typing import Literal, Annotated, get_args
 
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt_common.contracts.metadata import ColumnMetadata

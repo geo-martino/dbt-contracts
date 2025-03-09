@@ -1,9 +1,7 @@
 from typing import Any
 
-from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.nodes import SourceDefinition
 
-from dbt_contracts.contracts.generators.column import ColumnPropertiesGenerator
 from dbt_contracts.contracts.generators.node import NodePropertiesGenerator
 from dbt_contracts.contracts.utils import merge_maps
 

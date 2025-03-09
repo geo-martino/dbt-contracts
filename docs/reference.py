@@ -1,7 +1,6 @@
 """
 Handles automatic generation of contracts reference documentation from docstrings.
 """
-import inspect
 import shutil
 from collections.abc import Collection, Iterable, Callable, Mapping
 from pathlib import Path
@@ -13,7 +12,7 @@ import docstring_parser
 import yaml
 from pydantic import BaseModel
 # noinspection PyProtectedMember
-from pydantic.fields import FieldInfo, Field
+from pydantic.fields import FieldInfo
 
 from dbt_contracts.contracts import Contract, ParentContract, ChildContract, ContractPart, CONTRACT_CLASSES
 from dbt_contracts.contracts.generators import PropertiesGenerator
@@ -179,6 +178,7 @@ class ReferencePageBuilder:
             contract.__supported_terms__,
             k=randrange(min(len(contract.__supported_terms__), 3) - 1, len(contract.__supported_terms__))
         )
+        # noinspection PyProtectedMember
         example = {
             "filter": [
                 {cond._name(): self.generate_example_dict(cond)} if self.generate_example_dict(cond) else cond._name()
