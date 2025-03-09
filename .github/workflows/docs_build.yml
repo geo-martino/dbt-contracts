@@ -38,9 +38,13 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: 🏗️ Sphinx build
+      - name: ⚙️ Setup - Additional dependencies
         run: |
           sudo apt install graphviz
+          apt-get install python3-sphinx
+
+      - name: 🏗️ Sphinx build
+        run: |
           uv run docs/reference.py
           make html
           make linkcheck
