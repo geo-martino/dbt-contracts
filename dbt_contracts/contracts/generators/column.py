@@ -65,13 +65,3 @@ class ColumnPropertiesGenerator[P: NodeT](ChildPropertiesGenerator[ColumnInfo, P
             return False
 
         return any([generator.run(item, column) for generator in self.generators])
-
-    @staticmethod
-    def _generate_new_properties(column: ColumnInfo) -> dict[str, Any]:
-        column = {
-            "name": column.name,
-            "description": column.description,
-            "data_type": column.data_type,
-        }
-
-        return {key: val for key, val in column.items() if val}

@@ -104,11 +104,6 @@ class TestColumnPropertiesGenerator(
     def parent(self, node: CompiledNode) -> CompiledNode:
         return node
 
-    @staticmethod
-    def test_generate_new_properties(generator: ColumnPropertiesGenerator, item: ColumnInfo):
-        table = generator._generate_new_properties(item)
-        assert all(val for val in table.values())
-
     def test_merge_skips_on_no_table_in_database(
             self,
             generator: ColumnPropertiesGenerator,

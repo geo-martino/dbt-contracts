@@ -123,8 +123,8 @@ class NodePropertiesGenerator(ParentPropertiesGenerator[NodeT, NodePropertyGener
 
         return any([generator.run(item, table) for generator in self.generators])
 
-    @staticmethod
-    def _merge_columns(item: NodeT, table: dict[str, Any]) -> None:
+    @classmethod
+    def _merge_columns(cls, item: NodeT, table: dict[str, Any]) -> None:
         if "columns" not in table:
             table["columns"] = []
 
@@ -133,7 +133,7 @@ class NodePropertiesGenerator(ParentPropertiesGenerator[NodeT, NodePropertyGener
                 table["columns"].remove(column)
 
         for index, column_info in enumerate(item.columns.values()):
-            column = ColumnPropertiesGenerator._generate_new_properties(column_info)
+            column = cls._generate_column_properties(column_info)
             index_in_props, column_in_props = next(
                 ((i, col) for i, col in enumerate(table["columns"]) if col["name"] == column_info.name),
                 (None, None)
@@ -147,3 +147,13 @@ class NodePropertiesGenerator(ParentPropertiesGenerator[NodeT, NodePropertyGener
             if index_in_props is not None and index_in_props != index:
                 table["columns"].pop(index_in_props)
                 table["columns"].insert(index, column_in_props)
+
+    @staticmethod
+    def _generate_column_properties(column: ColumnInfo) -> dict[str, Any]:
+        column = {
+            "name": column.name,
+            "description": column.description,
+            "data_type": column.data_type,
+        }
+
+        return {key: val for key, val in column.items() if val}

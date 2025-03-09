@@ -26,11 +26,11 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
         table = generator._generate_table_properties(item)
         assert all(val for val in table.values())
 
-    def test_generate_new_properties(self, generator: SourcePropertiesGenerator, item: SourceDefinition):
-        properties = generator._generate_new_properties(item)
+    def test_generate_properties(self, generator: SourcePropertiesGenerator, item: SourceDefinition):
+        properties = generator._generate_properties(item)
         assert item.resource_type.pluralize() in properties
 
-        columns = list(map(ColumnPropertiesGenerator._generate_new_properties, item.columns.values()))
+        columns = list(map(generator._generate_column_properties, item.columns.values()))
         table = generator._generate_table_properties(item) | {"columns": columns}
         source = generator._generate_source_properties(item) | {"tables": [table]}
 
@@ -43,7 +43,7 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
     ):
         key = item.resource_type.pluralize()
         properties = {}
-        expected_source = generator._generate_new_properties(item)[key][0]
+        expected_source = generator._generate_properties(item)[key][0]
 
         assert generator._update_existing_properties(item, properties=properties) is properties
         assert len(properties[key]) == 1
@@ -59,11 +59,11 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
     ):
         key = item.resource_type.pluralize()
         sources = sample([source for source in sources if source.name != item.name], k=5)
-        properties = {key: [sources[key][0] for sources in map(generator._generate_new_properties, sources)]}
+        properties = {key: [sources[key][0] for sources in map(generator._generate_properties, sources)]}
         assert not any(source["name"] == item.source_name for source in properties[key])
 
         original_sources_count = len(properties[key])
-        expected_source = generator._generate_new_properties(item)[key][0]
+        expected_source = generator._generate_properties(item)[key][0]
 
         generator._update_existing_properties(item, properties=properties)
         assert len(properties[key]) == original_sources_count + 1
@@ -79,12 +79,12 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
     ):
         key = item.resource_type.pluralize()
         sources = sample([source for source in sources if source.name != item.name], k=5)
-        properties = {key: [sources[key][0] for sources in map(generator._generate_new_properties, sources)]}
-        properties[key].append(generator._generate_new_properties(item)[key][0])
+        properties = {key: [sources[key][0] for sources in map(generator._generate_properties, sources)]}
+        properties[key].append(generator._generate_properties(item)[key][0])
         assert sum(source["name"] == item.source_name for source in properties[key]) == 1
 
         original_sources_count = len(properties[key])
-        expected_columns = list(map(ColumnPropertiesGenerator._generate_new_properties, item.columns.values()))
+        expected_columns = list(map(generator._generate_column_properties, item.columns.values()))
         expected_table = generator._generate_table_properties(item) | {"columns": expected_columns}
 
         generator._update_existing_properties(item, properties=properties)
@@ -104,8 +104,8 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
     ):
         key = item.resource_type.pluralize()
         sources = sample([source for source in sources if source.name != item.name], k=5)
-        source = generator._generate_new_properties(item)[key][0]
-        properties = {key: [sources[key][0] for sources in map(generator._generate_new_properties, sources)] + [source]}
+        source = generator._generate_properties(item)[key][0]
+        properties = {key: [sources[key][0] for sources in map(generator._generate_properties, sources)] + [source]}
         assert sum(source["name"] == item.source_name for source in properties[key]) == 1
         assert len(source["tables"]) == 1
 

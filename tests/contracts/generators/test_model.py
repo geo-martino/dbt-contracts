@@ -22,11 +22,11 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
         table = generator._generate_table_properties(item)
         assert all(val for val in table.values())
 
-    def test_generate_new_properties(self, generator: ModelPropertiesGenerator, item: ModelNode):
-        properties = generator._generate_new_properties(item)
+    def test_generate_properties(self, generator: ModelPropertiesGenerator, item: ModelNode):
+        properties = generator._generate_properties(item)
         assert item.resource_type.pluralize() in properties
 
-        columns = list(map(ColumnPropertiesGenerator._generate_new_properties, item.columns.values()))
+        columns = list(map(generator._generate_column_properties, item.columns.values()))
         table = generator._generate_table_properties(item) | {"columns": columns}
 
         assert table in properties[item.resource_type.pluralize()]
@@ -38,7 +38,7 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
     ):
         key = item.resource_type.pluralize()
         properties = {}
-        expected_table = generator._generate_new_properties(item)[key][0]
+        expected_table = generator._generate_properties(item)[key][0]
 
         generator._update_existing_properties(item, properties=properties)
         assert len(properties[key]) == 1
@@ -53,10 +53,10 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
     ):
         key = item.resource_type.pluralize()
         models = sample([model for model in models if model.name != item.name], k=5)
-        properties = {key: [models[key][0] for models in map(generator._generate_new_properties, models)]}
+        properties = {key: [models[key][0] for models in map(generator._generate_properties, models)]}
         original_count = len(properties[key])
 
-        expected_columns = list(map(ColumnPropertiesGenerator._generate_new_properties, item.columns.values()))
+        expected_columns = list(map(generator._generate_column_properties, item.columns.values()))
         expected_table = generator._generate_table_properties(item) | {"columns": expected_columns}
 
         generator._update_existing_properties(item, properties=properties)
@@ -73,7 +73,7 @@ class TestModelPropertiesGenerator(NodePropertiesGeneratorTester[ModelNode]):
         key = item.resource_type.pluralize()
         models = sample([model for model in models if model.name != item.name], k=5)
         table = generator._generate_table_properties(item)
-        properties = {key: [models[key][0] for models in map(generator._generate_new_properties, models)] + [table]}
+        properties = {key: [models[key][0] for models in map(generator._generate_properties, models)] + [table]}
         original_count = len(properties[key])
 
         # should update the description in the properties

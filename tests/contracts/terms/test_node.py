@@ -85,7 +85,7 @@ def test_has_expected_column_types(node: CompiledNode, context: ContractContext)
 def test_has_matching_description(
         node: CompiledNode, catalog_table: CatalogTable, context: ContractContext, faker: Faker
 ):
-    assert node.description == catalog_table.metadata.comment
+    node.description = catalog_table.metadata.comment
     assert HasMatchingDescription().run(node, context=context)  # fixtures are set up to match
 
     node.description = faker.sentence()

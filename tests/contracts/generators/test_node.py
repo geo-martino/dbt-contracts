@@ -185,10 +185,16 @@ class NodePropertiesGeneratorTester[I: NodeT](
     def generator(self) -> NodePropertiesGenerator[I]:
         raise NotImplementedError
 
+    @staticmethod
+    def test_generate_column_properties(generator: ColumnPropertiesGenerator, item: I):
+        column = choice(list(item.columns.values()))
+        table = generator._generate_column_properties(column)
+        assert all(val for val in table.values())
+
     # TODO: flakey test - fix me
     @staticmethod
     def test_merge_columns_merges_and_sorts(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
-        table = {"columns": list(map(ColumnPropertiesGenerator._generate_new_properties, item.columns.values()))}
+        table = {"columns": list(map(generator._generate_column_properties, item.columns.values()))}
         modified_columns = {col["name"]: col for col in sample(table["columns"], k=3)}
         for column in modified_columns.values():
             column["description"] = faker.sentence()
@@ -197,7 +203,7 @@ class NodePropertiesGeneratorTester[I: NodeT](
         while table["columns"] == list(modified_columns.values()):
             shuffle(table["columns"])
 
-        expected_columns = list(map(ColumnPropertiesGenerator._generate_new_properties, item.columns.values()))
+        expected_columns = list(map(generator._generate_column_properties, item.columns.values()))
         for column in expected_columns:
             if not (modified_column := modified_columns.get(column["name"])):
                 continue
@@ -209,13 +215,13 @@ class NodePropertiesGeneratorTester[I: NodeT](
 
     @staticmethod
     def test_merge_columns_drops(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
-        table = {"columns": list(map(ColumnPropertiesGenerator._generate_new_properties, item.columns.values()))}
+        table = {"columns": list(map(generator._generate_column_properties, item.columns.values()))}
         added_columns = [
-            ColumnPropertiesGenerator._generate_new_properties(ColumnInfo(name=faker.word())) for _ in range(3)
+            generator._generate_column_properties(ColumnInfo(name=faker.word())) for _ in range(3)
         ]
         table["columns"].extend(added_columns)
 
-        expected_columns = list(map(ColumnPropertiesGenerator._generate_new_properties, item.columns.values()))
+        expected_columns = list(map(generator._generate_column_properties, item.columns.values()))
 
         generator._merge_columns(item, table)
         assert table["columns"] == expected_columns

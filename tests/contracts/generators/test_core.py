@@ -59,7 +59,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT, G: PropertyGenerator](
 
         with (
             mock.patch.object(generator.__class__, "_update_existing_properties") as mock_update,
-            mock.patch.object(generator.__class__, "_generate_new_properties") as mock_generate,
+            mock.patch.object(generator.__class__, "_generate_properties") as mock_generate,
             mock.patch.object(PropertiesIO, "__getitem__", return_value=None) as mock_get,
             mock.patch.object(PropertiesIO, "__setitem__") as mock_set,
         ):
@@ -93,7 +93,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT, G: PropertyGenerator](
 
         with (
             mock.patch.object(generator.__class__, "_update_existing_properties") as mock_update,
-            mock.patch.object(generator.__class__, "_generate_new_properties") as mock_generate,
+            mock.patch.object(generator.__class__, "_generate_properties") as mock_generate,
             mock.patch.object(PropertiesIO, "__getitem__", return_value=None) as mock_get,
             mock.patch.object(PropertiesIO, "__setitem__") as mock_set,
         ):
@@ -115,7 +115,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT, G: PropertyGenerator](
 
         with (
             mock.patch.object(generator.__class__, "_update_existing_properties") as mock_update,
-            mock.patch.object(generator.__class__, "_generate_new_properties") as mock_generate,
+            mock.patch.object(generator.__class__, "_generate_properties") as mock_generate,
             mock.patch.object(PropertiesIO, "__getitem__", return_value=properties) as mock_get,
             mock.patch.object(PropertiesIO, "__setitem__") as mock_set,
         ):

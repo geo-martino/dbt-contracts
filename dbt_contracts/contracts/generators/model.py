@@ -1,5 +1,6 @@
 from typing import Any
 
+from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.nodes import ModelNode
 
 from dbt_contracts.contracts.generators.column import ColumnPropertiesGenerator
@@ -26,9 +27,9 @@ class ModelPropertiesGenerator(NodePropertiesGenerator):
 
         return properties
 
-    def _generate_new_properties(self, item: ModelNode) -> dict[str, Any]:
+    def _generate_properties(self, item: ModelNode) -> dict[str, Any]:
         key = item.resource_type.pluralize()
-        columns = list(map(ColumnPropertiesGenerator._generate_new_properties, item.columns.values()))
+        columns = list(map(self._generate_column_properties, item.columns.values()))
         table = self._generate_table_properties(item) | {"columns": columns}
 
         return self._properties_defaults | {key: [table]}
