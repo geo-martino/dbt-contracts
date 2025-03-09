@@ -41,17 +41,12 @@ jobs:
       - name: ⚙️ Setup - Dependencies
         run: |
           sudo apt-get install graphviz python3-sphinx
-          uv sync
-          ls -lh
-          source .venv/bin/activate
 
       - name: 🏗️ Sphinx build
         run: |
-          source .venv/bin/activate
           uv run docs/reference.py
-          source .venv/bin/activate
-          make html
-          make linkcheck
+          uv run make html
+          uv run make linkcheck
 
       - name: 📦 Upload build artifacts
         uses: actions/upload-pages-artifact@v3
