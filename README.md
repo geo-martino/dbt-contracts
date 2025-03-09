@@ -76,7 +76,7 @@ Refer to this list to help when designing your contract file.
 - [`has_no_hardcoded_refs`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-no-hardcoded-refs): Check if models have any hardcoded references to database objects in their queries.
 - [`has_constraints`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-constraints): Check whether models have an appropriate number of constraints configured in their properties.
 
-You may also [configure a generator](https://geo-martino.github.io/dbt-contracts/reference/models.html#generators) to automatically and dynamically generate properties files for these models from database objects
+You may also [configure a generator](https://geo-martino.github.io/dbt-contracts/reference/models.html#generator) to automatically and dynamically generate properties files for these models from database objects.
 
 ### Model Columns
 
@@ -102,7 +102,7 @@ You may also [configure a generator](https://geo-martino.github.io/dbt-contracts
 - [`has_matching_data_type`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-data-type): Check whether the data type configured in a column's properties matches the data type in the database.
 - [`has_matching_index`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-index): Check whether the index position within the properties of a column's table
 
-You may also [configure a generator](https://geo-martino.github.io/dbt-contracts/reference/columns.html#generators) to automatically and dynamically generate properties files for these columns from database objects
+You may also [configure a generator](https://geo-martino.github.io/dbt-contracts/reference/columns.html#generator) to automatically and dynamically generate properties files for these columns from database objects.
 
 ### Sources
 
@@ -132,7 +132,7 @@ You may also [configure a generator](https://geo-martino.github.io/dbt-contracts
 - [`has_freshness`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-freshness): Check whether sources have freshness configured in their properties.
 - [`has_downstream_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-downstream-dependencies): Check whether sources have an appropriate number of downstream dependencies.
 
-You may also [configure a generator](https://geo-martino.github.io/dbt-contracts/reference/sources.html#generators) to automatically and dynamically generate properties files for these sources from database objects
+You may also [configure a generator](https://geo-martino.github.io/dbt-contracts/reference/sources.html#generator) to automatically and dynamically generate properties files for these sources from database objects.
 
 ### Source Columns
 
@@ -158,7 +158,7 @@ You may also [configure a generator](https://geo-martino.github.io/dbt-contracts
 - [`has_matching_data_type`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-data-type): Check whether the data type configured in a column's properties matches the data type in the database.
 - [`has_matching_index`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-index): Check whether the index position within the properties of a column's table
 
-You may also [configure a generator](https://geo-martino.github.io/dbt-contracts/reference/columns.html#generators) to automatically and dynamically generate properties files for these columns from database objects
+You may also [configure a generator](https://geo-martino.github.io/dbt-contracts/reference/columns.html#generator) to automatically and dynamically generate properties files for these columns from database objects.
 
 ### Macros
 

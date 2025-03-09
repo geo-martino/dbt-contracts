@@ -40,10 +40,10 @@ def format_contract_reference(contract: type[Contract], parent_key: str = "") ->
         if parts is None:
             continue
         elif issubclass(parts, PropertiesGenerator):
-            url = f"{DOCUMENTATION_URL}/{'/'.join(docs.URL_PATH)}/{key}.html#generators"
+            url = f"{DOCUMENTATION_URL}/{'/'.join(docs.URL_PATH)}/{key}.html#{header.lower()}"
             line = (
                 f"You may also [configure a generator]({url}) to automatically and dynamically "
-                f"generate properties files for these {key} from database objects"
+                f"generate properties files for these {key} from database objects."
             )
             lines.append(line)
             continue
