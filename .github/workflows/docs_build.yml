@@ -42,12 +42,14 @@ jobs:
         run: |
           sudo apt-get install graphviz python3-sphinx
           uv sync
-          ls
+          ls -lh
           source .venv/bin/activate
 
       - name: 🏗️ Sphinx build
         run: |
+          source .venv/bin/activate
           uv run docs/reference.py
+          source .venv/bin/activate
           make html
           make linkcheck
 
