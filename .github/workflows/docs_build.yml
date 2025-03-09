@@ -37,13 +37,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: ⚙️ Setup - Python 🐍
-        run: |
-          sudo apt install graphviz
-          uv sync
-
       - name: 🏗️ Sphinx build
         run: |
+          sudo apt install graphviz
           uv run docs/reference.py
           make html
           make linkcheck

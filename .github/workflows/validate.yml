@@ -66,13 +66,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: ⚙️ Setup - Python 🐍
-        run: |
-          uv sync
-
       - name: 🧪 Run tests
         run: |
-          pytest -n auto -m "not manual" --junit-xml=test-results.xml
+          uv run pytest -n auto -m "not manual" --junit-xml=test-results.xml
 
       - name: 📃 Publish test results report
         uses: pmeier/pytest-results-action@main
@@ -101,10 +97,6 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: ⚙️ Setup - Python 🐍
-        run: |
-          uv sync
 
       - name: 📄 Sanitise readme
         run: |
