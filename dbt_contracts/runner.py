@@ -253,7 +253,7 @@ class ContractsRunner:
 
         contracts = [contract]
         if isinstance(contract, ParentContract):
-            contracts.append(contract.create_child_contract_from_dict(config))
+            contracts.extend(contract.create_child_contract_from_dict(config))
 
         return contracts
 

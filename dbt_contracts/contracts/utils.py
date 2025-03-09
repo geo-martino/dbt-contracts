@@ -44,6 +44,7 @@ def merge_maps[T: MutableMapping](source: T, new: Mapping, extend: bool = True, 
             source[k] = list(to_tuple(source.get(k, []))) + list(to_tuple(v))
         elif overwrite or source.get(k) is None:
             source[k] = v
+
     return source
 
 

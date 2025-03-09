@@ -36,7 +36,7 @@ class ContractTerm[I: ItemT](ContractPart, metaclass=ABCMeta):
     @abstractmethod
     def run(self, item: I, context: ContractContext) -> bool:
         """
-        Run this term on the given item and its parent.
+        Run this term on the given item.
 
         :param item: The item to check.
         :param context: The contract context to use.

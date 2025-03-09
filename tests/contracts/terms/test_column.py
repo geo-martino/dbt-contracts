@@ -28,13 +28,13 @@ def test_validate_node(node: NodeT, node_column: ColumnInfo, context: ContractCo
 
 
 def test_get_and_validate_table(
-        node: NodeT, node_column: ColumnInfo, node_table: CatalogTable, context: ContractContext
+        node: NodeT, node_column: ColumnInfo, catalog_table: CatalogTable, context: ContractContext
 ):
-    assert Exists()._get_and_validate_table(node=node, column=node_column, context=context) == node_table
+    assert Exists()._get_and_validate_table(node=node, column=node_column, context=context) == catalog_table
 
 
 def test_get_and_validate_table_unmatched_table(
-        node: NodeT, node_column: ColumnInfo, node_table: CatalogTable, context: ContractContext
+        node: NodeT, node_column: ColumnInfo, catalog_table: CatalogTable, context: ContractContext
 ):
     node.unique_id = "unknown_id"
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
@@ -44,10 +44,10 @@ def test_get_and_validate_table_unmatched_table(
 
 # noinspection PyTestUnpassedFixture
 def test_get_and_validate_table_missing_column(
-        node: NodeT, node_column: ColumnInfo, node_table: CatalogTable, context: ContractContext
+        node: NodeT, node_column: ColumnInfo, catalog_table: CatalogTable, context: ContractContext
 ):
     # add a new column to the node to simulate a column being remove
-    # preferred way to set up test as the node_table should not be modified to ensure other tests pass
+    # preferred way to set up test as the catalog_table should not be modified to ensure other tests pass
     new_column = deepcopy(node_column)
     new_column.name = "new_columns"
     node.columns[new_column.name] = new_column
@@ -111,10 +111,10 @@ def test_has_tests(node: CompiledNode, node_column: ColumnInfo, context: Contrac
 
 
 def test_get_column_data_type(
-        node: CompiledNode, node_column: ColumnInfo, node_table: CatalogTable, context: ContractContext
+        node: CompiledNode, node_column: ColumnInfo, catalog_table: CatalogTable, context: ContractContext
 ):
     node_column.data_type = "int"
-    node_table.columns[node_column.name].type = "str"
+    catalog_table.columns[node_column.name].type = "str"
 
     # gets data type from node
     assert HasExpectedName()._get_column_data_type(column=node_column, node=node, context=context) == "int"
@@ -131,7 +131,7 @@ def test_get_column_data_type(
 
 
 def test_has_expected_name(
-        node: CompiledNode, node_column: ColumnInfo, node_table: CatalogTable, context: ContractContext
+        node: CompiledNode, node_column: ColumnInfo, catalog_table: CatalogTable, context: ContractContext
 ):
     node_column.data_type = "boolean"
     # always returns true when data type is defined in patterns
@@ -146,7 +146,7 @@ def test_has_expected_name(
 
 
 def test_has_data_type(
-        node: CompiledNode, node_column: ColumnInfo, node_table: CatalogTable, context: ContractContext
+        node: CompiledNode, node_column: ColumnInfo, catalog_table: CatalogTable, context: ContractContext
 ):
     node_column.data_type = "int"
     assert HasDataType().run(node_column, parent=node, context=context)
@@ -158,9 +158,9 @@ def test_has_data_type(
 
 
 def test_has_matching_description(
-        node: CompiledNode, node_column: ColumnInfo, node_table: CatalogTable, faker: Faker, context: ContractContext
+        node: CompiledNode, node_column: ColumnInfo, catalog_table: CatalogTable, faker: Faker, context: ContractContext
 ):
-    assert node_column.description == node_table.columns[node_column.name].comment
+    node_column.description = catalog_table.columns[node_column.name].comment
     assert HasMatchingDescription().run(node_column, parent=node, context=context)
 
     node_column.description = faker.sentence()
@@ -170,9 +170,9 @@ def test_has_matching_description(
 
 
 def test_has_matching_data_type(
-        node: CompiledNode, node_column: ColumnInfo, node_table: CatalogTable, faker: Faker, context: ContractContext
+        node: CompiledNode, node_column: ColumnInfo, catalog_table: CatalogTable, faker: Faker, context: ContractContext
 ):
-    node_column.data_type = node_table.columns[node_column.name].type
+    node_column.data_type = catalog_table.columns[node_column.name].type
     assert HasMatchingDataType().run(node_column, parent=node, context=context)
 
     node_column.data_type = "_".join(faker.words())
@@ -182,9 +182,9 @@ def test_has_matching_data_type(
 
 
 def test_has_matching_index(
-        node: CompiledNode, node_column: ColumnInfo, node_table: CatalogTable, context: ContractContext
+        node: CompiledNode, node_column: ColumnInfo, catalog_table: CatalogTable, context: ContractContext
 ):
-    assert list(node.columns).index(node_column.name) == node_table.columns[node_column.name].index
+    assert list(node.columns).index(node_column.name) == catalog_table.columns[node_column.name].index
     assert HasMatchingIndex().run(node_column, parent=node, context=context)
 
     # reorder columns
