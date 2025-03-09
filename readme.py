@@ -9,6 +9,8 @@ from dbt_contracts import PROGRAM_OWNER_USER, PROGRAM_NAME, DOCUMENTATION_URL
 from dbt_contracts.contracts import CONTRACT_CLASSES, Contract, ParentContract
 import docs.reference as docs
 
+from dbt_contracts.contracts.generators import PropertiesGenerator
+
 SRC_FILENAME = "README.template.md"
 TRG_FILENAME = SRC_FILENAME.replace(".template", "")
 
@@ -31,11 +33,22 @@ def format_contract_reference(contract: type[Contract], parent_key: str = "") ->
     contract_parts_map = {
         "Filters": contract.__supported_conditions__,
         "Terms": contract.__supported_terms__,
+        "Generator": contract.__supported_generator__,
     }
 
     for header, parts in contract_parts_map.items():
-        lines.extend((f"#### {header}", ""))
+        if parts is None:
+            continue
+        elif issubclass(parts, PropertiesGenerator):
+            url = f"{DOCUMENTATION_URL}/{'/'.join(docs.URL_PATH)}/{key}.html#generators"
+            line = (
+                f"You may also [configure a generator]({url}) to generate properties files "
+                f"for these {key} from database objects"
+            )
+            lines.append(line)
+            continue
 
+        lines.extend((f"#### {header}", ""))
         for part in parts:
             # noinspection PyProtectedMember
             name = part._name()

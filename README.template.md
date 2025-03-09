@@ -30,9 +30,34 @@ pip install {program_name_lower}
 python -m pip install {program_name_lower}
 ```
 
+## Getting Started
+
+#### TODO
+
 ## Contracts Reference
 
 Below you will find a list of all available contracts grouped by the dbt object it operates on.
 Refer to this list to help when designing your contract file.
 
 {contracts_reference}
+
+## Motivation and Aims
+
+#### TODO
+
+## Release History
+
+For change and release history, 
+check out the [documentation](https://{program_owner_user}.github.io/{program_name_lower}/info/release-history.html).
+
+
+## Contributing and Reporting Issues
+
+If you have any suggestions, wish to contribute, or have any issues to report, please do let me know 
+via the issues tab or make a new pull request with your new feature for review. 
+
+For more info on how to contribute to {program_name}, 
+check out the [documentation](https://{program_owner_user}.github.io/{program_name_lower}/info/contributing.html).
+
+
+I hope you enjoy using {program_name}!

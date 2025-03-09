@@ -35,6 +35,10 @@ pip install dbt-contracts
 python -m pip install dbt-contracts
 ```
 
+## Getting Started
+
+#### TODO
+
 ## Contracts Reference
 
 Below you will find a list of all available contracts grouped by the dbt object it operates on.
@@ -68,10 +72,11 @@ Refer to this list to help when designing your contract file.
 - [`has_valid_ref_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-valid-ref-dependencies): Check whether models have an appropriate number of upstream dependencies
 - [`has_valid_source_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-valid-source-dependencies): Check whether models have an appropriate number of upstream dependencies for sources
 - [`has_valid_macro_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-valid-macro-dependencies): Check whether models have an appropriate number of upstream dependencies for macros
-- [`has_no_final_semi_colon`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-no-final-semi-colon): Check if models have a final semicolon present in their queries.
+- [`has_no_final_semicolon`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-no-final-semicolon): Check if models have a final semicolon present in their queries.
 - [`has_no_hardcoded_refs`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-no-hardcoded-refs): Check if models have any hardcoded references to database objects in their queries.
 - [`has_constraints`](https://geo-martino.github.io/dbt-contracts/reference/models.html#has-constraints): Check whether models have an appropriate number of constraints configured in their properties.
 
+You may also [configure a generator](https://geo-martino.github.io/dbt-contracts/reference/models.html#generators) to generate properties files for these models from database objects
 
 ### Model Columns
 
@@ -97,6 +102,7 @@ Refer to this list to help when designing your contract file.
 - [`has_matching_data_type`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-data-type): Check whether the data type configured in a column's properties matches the data type in the database.
 - [`has_matching_index`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-index): Check whether the index position within the properties of a column's table
 
+You may also [configure a generator](https://geo-martino.github.io/dbt-contracts/reference/columns.html#generators) to generate properties files for these columns from database objects
 
 ### Sources
 
@@ -126,6 +132,7 @@ Refer to this list to help when designing your contract file.
 - [`has_freshness`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-freshness): Check whether sources have freshness configured in their properties.
 - [`has_downstream_dependencies`](https://geo-martino.github.io/dbt-contracts/reference/sources.html#has-downstream-dependencies): Check whether sources have an appropriate number of downstream dependencies.
 
+You may also [configure a generator](https://geo-martino.github.io/dbt-contracts/reference/sources.html#generators) to generate properties files for these sources from database objects
 
 ### Source Columns
 
@@ -151,6 +158,7 @@ Refer to this list to help when designing your contract file.
 - [`has_matching_data_type`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-data-type): Check whether the data type configured in a column's properties matches the data type in the database.
 - [`has_matching_index`](https://geo-martino.github.io/dbt-contracts/reference/columns.html#has-matching-index): Check whether the index position within the properties of a column's table
 
+You may also [configure a generator](https://geo-martino.github.io/dbt-contracts/reference/columns.html#generators) to generate properties files for these columns from database objects
 
 ### Macros
 
@@ -175,3 +183,24 @@ Refer to this list to help when designing your contract file.
 
 - [`has_description`](https://geo-martino.github.io/dbt-contracts/reference/arguments.html#has-description): Check whether the macro arguments have descriptions defined in their properties.
 - [`has_type`](https://geo-martino.github.io/dbt-contracts/reference/arguments.html#has-type): Check whether macro arguments have a data type configured in their properties.
+
+## Motivation and Aims
+
+#### TODO
+
+## Release History
+
+For change and release history, 
+check out the [documentation](https://geo-martino.github.io/dbt-contracts/info/release-history.html).
+
+
+## Contributing and Reporting Issues
+
+If you have any suggestions, wish to contribute, or have any issues to report, please do let me know 
+via the issues tab or make a new pull request with your new feature for review. 
+
+For more info on how to contribute to dbt-contracts, 
+check out the [documentation](https://geo-martino.github.io/dbt-contracts/info/contributing.html).
+
+
+I hope you enjoy using dbt-contracts!
