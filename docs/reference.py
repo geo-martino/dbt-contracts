@@ -348,3 +348,5 @@ if __name__ == "__main__":
         builder.build(contract_cls)
         if issubclass(contract_cls, ParentContract):
             builder.build(contract_cls.__child_contract__)
+
+    print("done")
