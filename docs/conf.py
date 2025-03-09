@@ -7,7 +7,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-sys.path.insert(0, os.path.abspath(os.path.join('..', 'dbt_contracts')))
+sys.path.insert(0, os.path.abspath('..'))
 
 from dbt_contracts import MODULE_ROOT, PROGRAM_OWNER_NAME, PROGRAM_OWNER_USER, PROGRAM_NAME  # noqa: E402
 
