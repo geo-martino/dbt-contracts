@@ -41,6 +41,7 @@ jobs:
       - name: ⚙️ Setup - Additional dependencies
         run: |
           sudo apt-get install graphviz python3-sphinx
+          uv sync
 
       - name: 🏗️ Sphinx build
         run: |
