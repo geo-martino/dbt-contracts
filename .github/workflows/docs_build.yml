@@ -29,6 +29,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: ⚙️ Setup - Pages
+        uses: actions/configure-pages@v5
+
       - name: ⚙️ Setup - UV 🐍
         uses: astral-sh/setup-uv@v5
         with:
@@ -38,9 +41,6 @@ jobs:
         run: |
           sudo apt install graphviz
           uv sync
-
-      - name: ⚙️ Setup - Pages
-        uses: actions/configure-pages@v5
 
       - name: 🏗️ Sphinx build
         run: |
