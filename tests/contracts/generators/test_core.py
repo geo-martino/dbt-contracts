@@ -7,16 +7,17 @@ from dbt.artifacts.resources.v1.components import ParsedResource
 from dbt.flags import GLOBAL_FLAGS
 
 from dbt_contracts.contracts import ContractContext
-from dbt_contracts.contracts.generators import PropertiesGenerator, ParentPropertiesGenerator, ChildPropertiesGenerator
+from dbt_contracts.contracts.generators import PropertyGenerator, PropertiesGenerator, ParentPropertiesGenerator, \
+    ChildPropertiesGenerator
 from dbt_contracts.properties import PropertiesIO
 from dbt_contracts.types import ItemT, PropertiesT
 
 
-class ContractPropertiesGeneratorTester[I: ItemT](metaclass=ABCMeta):
+class PropertiesGeneratorTester[I: ItemT, G: PropertyGenerator](metaclass=ABCMeta):
     """Base class for testing contract generators."""
     @abstractmethod
-    def generator(self) -> PropertiesGenerator[I]:
-        """Fixture for the contract generator to test."""
+    def generator(self) -> PropertiesGenerator[I, G]:
+        """Fixture for the properties generator to test."""
         raise NotImplementedError
 
     @abstractmethod
@@ -25,92 +26,26 @@ class ContractPropertiesGeneratorTester[I: ItemT](metaclass=ABCMeta):
         raise NotImplementedError
 
     @staticmethod
-    def test_set_description_skips_on_exclude(generator: PropertiesGenerator[I], item: ItemT) -> None:
-        original_description = item.description
-        description = "description"
-        assert item.description != description
-
-        generator.exclude = ["description"]
-        generator.overwrite = True
-        generator.description_terminator = None
-
-        assert not generator._set_description(item, description=description)
-        assert item.description == original_description
-
-    @staticmethod
-    def test_set_description_skips_on_empty_description(generator: PropertiesGenerator[I], item: ItemT) -> None:
-        original_description = item.description
-
+    def test_get_generators(generator: PropertiesGenerator[I, G]):
         assert not generator.exclude
-        generator.overwrite = True
-        generator.description_terminator = None
+        assert generator.generators
+        assert all(isinstance(gen, PropertyGenerator) for gen in generator.generators)
 
-        assert not generator._set_description(item, description=None)
-        assert not generator._set_description(item, description="")
-        assert item.description == original_description
-
-    @staticmethod
-    def test_set_description_skips_on_not_overwrite(generator: PropertiesGenerator[I], item: ItemT) -> None:
-        original_description = "old description"
-        item.description = original_description
-        description = "new description"
-
-        assert not generator.exclude
-        generator.overwrite = False
-        generator.description_terminator = None
-
-        assert not generator._set_description(item, description=description)
-        assert item.description == original_description
-
-    @staticmethod
-    def test_set_description_skips_on_matching_description(generator: PropertiesGenerator[I], item: ItemT) -> None:
-        original_description = "description line 1\ndescription line 2"
-        item.description = original_description
-
-        assert not generator.exclude
-        generator.overwrite = True
-        generator.description_terminator = None
-
-        assert not generator._set_description(item, description=original_description)
-        assert item.description == original_description
-
-        generator.description_terminator = "\n"
-        original_description_line_1 = original_description.split(generator.description_terminator)[0]
-        item.description = original_description_line_1
-        assert not generator._set_description(item, description=original_description)
-        assert item.description == original_description_line_1
-
-    @staticmethod
-    def test_set_description(generator: PropertiesGenerator[I], item: ItemT) -> None:
-        original_description = "old description"
-        item.description = original_description
-        description = "new description"
-
-        assert not generator.exclude
-        generator.overwrite = True
-        generator.description_terminator = None
-
-        assert generator._set_description(item, description=description)
-        assert item.description == description
-
-        item.description = original_description
-        generator.description_terminator = "\n"
-        assert generator._set_description(item, description=description + "\n")
-        assert item.description == description
-
-        item.description = original_description
-        assert generator._set_description(item, description=description + "\nanother line")
-        assert item.description == description
+        excluded = generator.generators[0]
+        generator.exclude = [excluded.name]
+        assert excluded not in generator.generators
 
 
-class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGeneratorTester[I], metaclass=ABCMeta):
+class ParentPropertiesGeneratorTester[I: PropertiesT, G: PropertyGenerator](
+    PropertiesGeneratorTester[I, G], metaclass=ABCMeta
+):
     @abstractmethod
-    def generator(self) -> ParentPropertiesGenerator[I]:
+    def generator(self) -> ParentPropertiesGenerator[I, G]:
         raise NotImplementedError
 
     @staticmethod
     def test_update_with_no_existing_properties_path(
-            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
+            generator: ParentPropertiesGenerator[I, G], item: PropertiesT, context: ContractContext, tmp_path: Path
     ):
         GLOBAL_FLAGS.PROJECT_DIR = tmp_path
 
@@ -124,7 +59,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
 
         with (
             mock.patch.object(generator.__class__, "_update_existing_properties") as mock_update,
-            mock.patch.object(generator.__class__, "_generate_new_properties") as mock_generate,
+            mock.patch.object(generator.__class__, "_generate_properties") as mock_generate,
             mock.patch.object(PropertiesIO, "__getitem__", return_value=None) as mock_get,
             mock.patch.object(PropertiesIO, "__setitem__") as mock_set,
         ):
@@ -147,7 +82,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
 
     @staticmethod
     def test_update_with_existing_properties_path(
-            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext, tmp_path: Path
+            generator: ParentPropertiesGenerator[I, G], item: PropertiesT, context: ContractContext, tmp_path: Path
     ):
         assert context.properties.get_path(item)
 
@@ -158,7 +93,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
 
         with (
             mock.patch.object(generator.__class__, "_update_existing_properties") as mock_update,
-            mock.patch.object(generator.__class__, "_generate_new_properties") as mock_generate,
+            mock.patch.object(generator.__class__, "_generate_properties") as mock_generate,
             mock.patch.object(PropertiesIO, "__getitem__", return_value=None) as mock_get,
             mock.patch.object(PropertiesIO, "__setitem__") as mock_set,
         ):
@@ -171,7 +106,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
 
     @staticmethod
     def test_update_with_existing_properties_file(
-            generator: ParentPropertiesGenerator[I], item: PropertiesT, context: ContractContext
+            generator: ParentPropertiesGenerator[I, G], item: PropertiesT, context: ContractContext
     ):
         properties = {"key": "value"}
         item.original_file_path = ""
@@ -180,7 +115,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
 
         with (
             mock.patch.object(generator.__class__, "_update_existing_properties") as mock_update,
-            mock.patch.object(generator.__class__, "_generate_new_properties") as mock_generate,
+            mock.patch.object(generator.__class__, "_generate_properties") as mock_generate,
             mock.patch.object(PropertiesIO, "__getitem__", return_value=properties) as mock_get,
             mock.patch.object(PropertiesIO, "__setitem__") as mock_set,
         ):
@@ -193,7 +128,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
 
     @staticmethod
     def test_generate_properties_path_with_no_set_depth(
-            generator: ParentPropertiesGenerator[I], item: PropertiesT, tmp_path: Path
+            generator: ParentPropertiesGenerator[I, G], item: PropertiesT, tmp_path: Path
     ):
         GLOBAL_FLAGS.PROJECT_DIR = tmp_path
         assert generator.depth is None
@@ -206,7 +141,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
 
     @staticmethod
     def test_generates_properties_path_with_depth(
-            generator: ParentPropertiesGenerator[I], item: PropertiesT, tmp_path: Path
+            generator: ParentPropertiesGenerator[I, G], item: PropertiesT, tmp_path: Path
     ):
         GLOBAL_FLAGS.PROJECT_DIR = tmp_path
         item.path = str(tmp_path.joinpath("path", "to", "a", "model"))
@@ -220,9 +155,9 @@ class ParentPropertiesGeneratorTester[I: PropertiesT](ContractPropertiesGenerato
             assert generator.generate_properties_path(item) == expected
 
 
-class ChildPropertiesGeneratorTester[I: ItemT, P: PropertiesT](ContractPropertiesGeneratorTester[I], metaclass=ABCMeta):
+class ChildPropertiesGeneratorTester[I: ItemT, P: PropertiesT, G](PropertiesGeneratorTester[I, G], metaclass=ABCMeta):
     @abstractmethod
-    def generator(self) -> ChildPropertiesGenerator[I, P]:
+    def generator(self) -> ChildPropertiesGenerator[I, P, G]:
         raise NotImplementedError
 
     @abstractmethod

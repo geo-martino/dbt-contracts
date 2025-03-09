@@ -49,7 +49,7 @@ class PropertiesIO(MutableMapping[Path, dict[str, Any]]):
 
         if not path.is_file():
             raise KeyError(f"File {path} not found.")
-        if path.suffix not in {".yml", ".yaml"}:
+        if path.suffix.casefold() not in {".yml", ".yaml"}:
             raise KeyError("Extension of the given properties path is not a yaml file")
 
         properties = self._read_file(path)
@@ -86,8 +86,9 @@ class PropertiesIO(MutableMapping[Path, dict[str, Any]]):
         properties_path = None
         if isinstance(item, ParsedResource) and item.patch_path:
             properties_path = Path(item.patch_path.split("://")[1])
-        elif isinstance(item, BaseResource) and (path := Path(item.original_file_path)).suffix in {".yml", ".yaml"}:
-            properties_path = path
+        elif isinstance(item, BaseResource):
+            if (path := Path(item.original_file_path)).suffix.casefold() in {".yml", ".yaml"}:
+                properties_path = path
 
         if properties_path is None or not to_absolute or properties_path.is_absolute():
             return properties_path

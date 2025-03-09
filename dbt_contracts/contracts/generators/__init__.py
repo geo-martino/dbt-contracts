@@ -1,1 +1,1 @@
-from ._core import PropertiesGenerator, ParentPropertiesGenerator, ChildPropertiesGenerator
+from ._core import PropertyGenerator, PropertiesGenerator, ParentPropertiesGenerator, ChildPropertiesGenerator

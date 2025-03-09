@@ -25,11 +25,14 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
         table = generator._generate_table_properties(item)
         assert all(val for val in table.values())
 
-    def test_generate_new_properties(self, generator: SourcePropertiesGenerator, item: SourceDefinition):
-        properties = generator._generate_new_properties(item)
+    def test_generate_properties(self, generator: SourcePropertiesGenerator, item: SourceDefinition):
+        properties = generator._generate_properties(item)
         assert item.resource_type.pluralize() in properties
 
-        source = generator._generate_full_properties(item)
+        columns = list(map(generator._generate_column_properties, item.columns.values()))
+        table = generator._generate_table_properties(item) | {"columns": columns}
+        source = generator._generate_source_properties(item) | {"tables": [table]}
+
         assert source in properties[item.resource_type.pluralize()]
         for key, val in generator._properties_defaults.items():
             assert properties[key] == val
@@ -39,12 +42,13 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
     ):
         key = item.resource_type.pluralize()
         properties = {}
-        expected_source = generator._generate_full_properties(item)
+        expected_source = generator._generate_properties(item)[key][0]
 
         assert generator._update_existing_properties(item, properties=properties) is properties
         assert len(properties[key]) == 1
         assert expected_source in properties[key]
 
+    # noinspection PyTestUnpassedFixture
     def test_update_existing_properties_with_new_source(
             self,
             generator: SourcePropertiesGenerator,
@@ -54,16 +58,17 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
     ):
         key = item.resource_type.pluralize()
         sources = sample([source for source in sources if source.name != item.name], k=5)
-        properties = {key: list(map(generator._generate_full_properties, sources))}
+        properties = {key: [sources[key][0] for sources in map(generator._generate_properties, sources)]}
         assert not any(source["name"] == item.source_name for source in properties[key])
 
         original_sources_count = len(properties[key])
-        expected_source = generator._generate_full_properties(item)
+        expected_source = generator._generate_properties(item)[key][0]
 
         generator._update_existing_properties(item, properties=properties)
         assert len(properties[key]) == original_sources_count + 1
         assert expected_source in properties[key]
 
+    # noinspection PyTestUnpassedFixture
     def test_update_existing_properties_with_new_table(
             self,
             generator: SourcePropertiesGenerator,
@@ -73,8 +78,8 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
     ):
         key = item.resource_type.pluralize()
         sources = sample([source for source in sources if source.name != item.name], k=5)
-        properties = {key: list(map(generator._generate_full_properties, sources))}
-        properties[key].append(generator._generate_source_properties(item))
+        properties = {key: [sources[key][0] for sources in map(generator._generate_properties, sources)]}
+        properties[key].append(generator._generate_properties(item)[key][0])
         assert sum(source["name"] == item.source_name for source in properties[key]) == 1
 
         original_sources_count = len(properties[key])
@@ -88,6 +93,7 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
         assert len(actual_sources) == 1
         assert expected_table in actual_sources[0]["tables"]
 
+    # noinspection PyTestUnpassedFixture
     def test_update_existing_properties_with_existing_table(
             self,
             generator: SourcePropertiesGenerator,
@@ -97,8 +103,8 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
     ):
         key = item.resource_type.pluralize()
         sources = sample([source for source in sources if source.name != item.name], k=5)
-        source = generator._generate_full_properties(item)
-        properties = {key: list(map(generator._generate_full_properties, sources)) + [source]}
+        source = generator._generate_properties(item)[key][0]
+        properties = {key: [sources[key][0] for sources in map(generator._generate_properties, sources)] + [source]}
         assert sum(source["name"] == item.source_name for source in properties[key]) == 1
         assert len(source["tables"]) == 1
 

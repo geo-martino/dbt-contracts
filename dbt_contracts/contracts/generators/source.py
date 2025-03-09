@@ -6,7 +6,7 @@ from dbt_contracts.contracts.generators.node import NodePropertiesGenerator
 from dbt_contracts.contracts.utils import merge_maps
 
 
-class SourcePropertiesGenerator(NodePropertiesGenerator[SourceDefinition]):
+class SourcePropertiesGenerator(NodePropertiesGenerator):
 
     def _update_existing_properties(self, item: SourceDefinition, properties: dict[str, Any]) -> dict[str, Any]:
         key = item.resource_type.pluralize()
@@ -32,16 +32,13 @@ class SourcePropertiesGenerator(NodePropertiesGenerator[SourceDefinition]):
 
         return properties
 
-    def _generate_new_properties(self, item: SourceDefinition) -> dict[str, Any]:
+    def _generate_properties(self, item: SourceDefinition) -> dict[str, Any]:
         key = item.resource_type.pluralize()
-        source = self._generate_full_properties(item)
-        return self._properties_defaults | {key: [source]}
+        columns = list(map(self._generate_column_properties, item.columns.values()))
+        table = self._generate_table_properties(item) | {"columns": columns}
+        source = self._generate_source_properties(item) | {"tables": [table]}
 
-    @classmethod
-    def _generate_full_properties(cls, item: SourceDefinition) -> dict[str, Any]:
-        columns = list(map(cls._generate_column_properties, item.columns.values()))
-        table = cls._generate_table_properties(item) | {"columns": columns}
-        return cls._generate_source_properties(item) | {"tables": [table]}
+        return self._properties_defaults | {key: [source]}
 
     @staticmethod
     def _generate_source_properties(item: SourceDefinition) -> dict[str, Any]:
@@ -58,6 +55,5 @@ class SourcePropertiesGenerator(NodePropertiesGenerator[SourceDefinition]):
         table = {
             "name": item.name,
             "description": item.description,
-            "identifier": item.identifier,
         }
         return {key: val for key, val in table.items() if val}
