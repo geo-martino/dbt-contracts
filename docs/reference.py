@@ -1,10 +1,11 @@
 """
 Handles automatic generation of contracts reference documentation from docstrings.
 """
+import inspect
 import shutil
 from collections.abc import Collection, Iterable, Callable, Mapping
 from pathlib import Path
-from random import choice
+from random import choice, sample, randrange
 from types import GenericAlias, UnionType
 from typing import Any
 
@@ -12,25 +13,31 @@ import docstring_parser
 import yaml
 from pydantic import BaseModel
 # noinspection PyProtectedMember
-from pydantic.fields import FieldInfo
+from pydantic.fields import FieldInfo, Field
 
 from dbt_contracts.contracts import Contract, ParentContract, ChildContract, ContractPart, CONTRACT_CLASSES
+from dbt_contracts.contracts.generators import PropertiesGenerator
 
 HEADER_SECTION_CHARS = ("=", "-", "^", '"')
 
 SECTIONS: dict[str, Callable[[type[Contract]], Collection[type[ContractPart]]]] = {
     "Filters": lambda contract: contract.__supported_conditions__,
-    "Terms": lambda contract: contract.__supported_terms__,
+    "Validations": lambda contract: contract.__supported_terms__,
+    "Generator": lambda contract: contract.__supported_generator__ if contract.__supported_generator__ else (),
 }
 SECTION_DESCRIPTIONS = {
     "Filters": [
-        "Filters for reducing the scope of the contract.",
+        "Filters (or Conditions) for reducing the scope of the contract.",
         "You may limit the number of {kind} processed by the rules of this contract "
         "by defining one or more of the following filters."
     ],
-    "Terms": [
-        "Terms to apply to the resources of this contract.",
+    "Validations": [
+        "Validations (or Terms) to apply to the resources of this contract.",
         "These enforce certain standards that must be followed in order for the contract to be fulfilled."
+    ],
+    "Generator": [
+        "You may also configure a Generator for your contract.",
+        "A Generator creates/updates properties files for {kind} from the attributes found on the database resource.",
     ]
 }
 
@@ -119,39 +126,89 @@ class ReferencePageBuilder:
 
     def generate_schema_ref(self, model: type[BaseModel], name: str) -> None:
         schema = self.generate_schema_dict(model)
-        if not schema:
+        if not (properties := schema.get("properties")):
             return
 
         self.add_code_block_lines(self._get_dropdown_block("Schema", icon="gear"))
 
-        schema_block = [".. code-block:: yaml", "", *yaml.dump({name: schema}).splitlines()]
-        self.add_code_block_lines(schema_block, indent=1)
+        properties_block = [".. code-block:: yaml", "", *yaml.dump({name: properties}, sort_keys=False).splitlines()]
+        self.add_code_block_lines(properties_block, indent=1)
+        self.add_empty_lines()
+
+        if not (defs := self.generate_schema_dict_for_defs(schema.get("$defs"))):
+            return
+
+        self.add_code_block_lines(["**defs**", ""], indent=1)
+        def_block = [".. code-block:: yaml", "", *yaml.dump(defs, sort_keys=False).splitlines()]
+        self.add_code_block_lines(def_block, indent=1)
         self.add_empty_lines()
 
     def generate_schema_dict(self, model: type[BaseModel]) -> dict[str, Any]:
-        schema = model.model_json_schema()["properties"]
-        self._trim_schema(schema)
+        schema = model.model_json_schema()
+        self._trim_schema(schema.get("properties"))
         return schema
+
+    def generate_schema_dict_for_defs(self, defs: dict[str, Any]) -> dict[str, Any] | None:
+        if not defs:
+            return
+
+        result = {}
+        for name, schema_def in defs.items():
+            if not (properties := schema_def.get("properties")):
+                continue
+            self._trim_schema(properties)
+            result[name] = properties
+
+        return result
 
     @staticmethod
     def _trim_schema(schema: dict[str, Any]) -> None:
+        if not schema:
+            return
+
         for value in schema.values():
             value.pop("examples", "")
             value.pop("title", "")
+
+    def generate_example_ref_for_contract(self, contract: type[Contract]) -> None:
+        conditions = sample(
+            contract.__supported_conditions__,
+            k=randrange(min(len(contract.__supported_conditions__), 3) - 1, len(contract.__supported_conditions__))
+        )
+        terms = sample(
+            contract.__supported_terms__,
+            k=randrange(min(len(contract.__supported_terms__), 3) - 1, len(contract.__supported_terms__))
+        )
+        example = {
+            "filter": [
+                {cond._name(): self.generate_example_dict(cond)} if self.generate_example_dict(cond) else cond._name()
+                for cond in conditions
+            ],
+            "validations": [
+                {term._name(): self.generate_example_dict(term)} if self.generate_example_dict(term) else term._name()
+                for term in terms
+            ]
+        }
+        if contract.__supported_generator__ is not None:
+            example["generator"] = self.generate_example_dict(contract.__supported_generator__)
+
+        if issubclass(contract, ParentContract):
+            example = {"contracts": {contract.__config_key__: example}}
+        else:
+            parent_contract = next(cls for cls in CONTRACT_CLASSES if cls.__child_contract__ is contract)
+            example = {"contracts": {parent_contract.__config_key__: {contract.__config_key__: example}}}
+
+        self._generate_example_dropdown(example, key="Full Example")
 
     def generate_example_ref(self, model: type[BaseModel], name: str) -> None:
         example = self.generate_example_dict(model)
         if not example:
             return
 
-        self.add_code_block_lines(self._get_dropdown_block("Example", colour="info", icon="code"))
-
-        example_block = [".. code-block:: yaml", "", *yaml.dump({name: example}).splitlines()]
-        self.add_code_block_lines(example_block, indent=1)
-        self.add_empty_lines(2)
+        self._generate_example_dropdown({name: example}, key="Example")
 
         doc = docstring_parser.parse(model.__doc__)
-        if "__EXAMPLE__" in doc.description:
+        if doc.description and "__EXAMPLE__" in doc.description:
             self.add_code_block_lines(doc.description.strip().split("__EXAMPLE__")[1].splitlines())
             self.add_empty_lines()
 
@@ -170,25 +227,35 @@ class ReferencePageBuilder:
         self.add_code_block_lines(first_field_example_desc, indent=1)
         self.add_empty_lines()
 
-        example_block = [".. code-block:: yaml", "", *yaml.dump({name: example}).splitlines()]
+        example_block = [".. code-block:: yaml", "", *yaml.dump({name: example}, sort_keys=False).splitlines()]
         self.add_code_block_lines(example_block, indent=1)
         self.add_empty_lines()
 
+    def _generate_example_dropdown(self, example: dict[str, Any], key: str) -> None:
+        self.add_code_block_lines(self._get_dropdown_block(key, colour="info", icon="code"))
+
+        example_block = [".. code-block:: yaml", "", *yaml.dump(example, sort_keys=False).splitlines()]
+        self.add_code_block_lines(example_block, indent=1)
+        self.add_empty_lines(2)
+
     def generate_example_dict(self, model: type[BaseModel]) -> dict[str, Any]:
-        examples = {}
         # noinspection PyUnresolvedReferences
-        for name, field in model.model_fields.items():
-            field: FieldInfo
-            if field.examples:
-                examples[name] = choice(field.examples)
-            elif isinstance(field.annotation, (GenericAlias, UnionType)):
-                continue
-            elif issubclass(field.annotation, BaseModel):
-                examples[name] = self.generate_example_dict(field.annotation)
+        examples = {name: self._generate_example_for_field(field) for name, field in model.model_fields.items()}
+        return {key: val for key, val in examples.items() if val is not None}
 
-        return examples
+    def _generate_example_for_field(self, field: FieldInfo) -> Any:
+        if field.examples:
+            return choice(field.examples)
+        elif isinstance(field.annotation, (GenericAlias, UnionType)):
+            field = choice([arg for arg in field.annotation.__args__ if arg is not type(None)])
+            if issubclass(field, BaseModel):
+                return self.generate_example_dict(field)
+        elif issubclass(field.annotation, BaseModel):
+            return self.generate_example_dict(field.annotation)
 
-    def generate_contract_parts(self, parts: Collection[type[ContractPart]], kind: str, title: str) -> None:
+    def generate_contract_parts(
+            self, parts: type[ContractPart] | Collection[type[ContractPart]], kind: str, title: str
+    ) -> None:
         description = self._get_description(kind, format_map={"kind": title.lower()})
 
         kind = self.make_title(kind)
@@ -197,13 +264,18 @@ class ReferencePageBuilder:
             self.add_lines(description)
             self.add_empty_lines()
 
+        if not isinstance(parts, Collection):
+            title = None
+            parts = [parts]
+
         for part in parts:
             self.generate_contract_part(part, title=title)
 
-    def generate_contract_part(self, part: type[ContractPart], title: str) -> None:
+    def generate_contract_part(self, part: type[ContractPart], title: str | None) -> None:
         # noinspection PyProtectedMember
-        name = part._name()
-        self.add_header(name, section=1)
+        name = part._name() if not issubclass(part, PropertiesGenerator) else "generator"
+        if title:
+            self.add_header(name, section=1)
 
         doc = docstring_parser.parse(part.__doc__)
         if doc.description:
@@ -216,7 +288,11 @@ class ReferencePageBuilder:
         title = self.make_title(contract.__config_key__)
 
         for key, getter in SECTIONS.items():
-            self.generate_contract_parts(parts=getter(contract), kind=key, title=title)
+            parts = getter(contract)
+            if not parts:
+                continue
+
+            self.generate_contract_parts(parts=parts, kind=key, title=title)
 
     def generate_ref_to_child_page(self, contract: type[ChildContract], parent_title: str) -> None:
         key = contract.__config_key__
@@ -240,6 +316,8 @@ class ReferencePageBuilder:
         title = self.make_title(key)
         self.add_lines(f".. _{key}:")
         self.add_header(title)
+
+        self.generate_example_ref_for_contract(contract)
 
         if description:
             self.add_lines(description)

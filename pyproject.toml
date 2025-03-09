@@ -25,7 +25,7 @@ classifiers = [
 ]
 dependencies = [
     "dbt-core>=1.9,<2.0",
-    "pydantic>=2.10,<3.0",
+    "pydantic>=2.11.0b1,<3.0",
 ]
 
 [dependency-groups]

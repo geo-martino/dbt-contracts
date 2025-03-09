@@ -1,16 +1,17 @@
 from abc import ABCMeta
-from collections.abc import Mapping
-from typing import Literal, Any
+from collections.abc import Mapping, Sequence
+from random import choice, sample
+from typing import Literal, Any, Annotated, get_args
 
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt_common.contracts.metadata import ColumnMetadata, CatalogTable
-from pydantic import Field
+from pydantic import Field, BeforeValidator
 
 from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.generators._core import ParentPropertiesGenerator, CORE_FIELDS, PropertyGenerator
 from dbt_contracts.contracts.generators.column import ColumnPropertiesGenerator
 from dbt_contracts.contracts.generators.properties import SetDescription
-from dbt_contracts.contracts.utils import get_matching_catalog_table, merge_maps
+from dbt_contracts.contracts.utils import get_matching_catalog_table, merge_maps, to_tuple
 from dbt_contracts.types import NodeT
 
 NODE_FIELDS = Literal[CORE_FIELDS, "columns"]
@@ -102,12 +103,15 @@ class SetNodeColumns[S: NodeT](NodePropertyGenerator[S]):
         return added or removed or ordered
 
 
-class NodePropertiesGenerator(ParentPropertiesGenerator[NodeT, NodePropertyGenerator], metaclass=ABCMeta):
-    __supported_generators__ = (
-        SetNodeDescription,
-        SetNodeColumns,
-    )
+EXCLUDE_TYPES = Literal["description", "columns"]
 
+
+class NodePropertiesGenerator(ParentPropertiesGenerator[NodeT, NodePropertyGenerator], metaclass=ABCMeta):
+    exclude: Annotated[Sequence[EXCLUDE_TYPES], BeforeValidator(to_tuple)] = Field(
+        description="The fields to exclude from the generated properties.",
+        default=(),
+        examples=[choice(get_args(EXCLUDE_TYPES)), sample(get_args(EXCLUDE_TYPES), k=2)]
+    )
     description: SetNodeDescription | None = Field(
         description="Configuration for setting the description",
         default=SetNodeDescription(),
@@ -116,6 +120,7 @@ class NodePropertiesGenerator(ParentPropertiesGenerator[NodeT, NodePropertyGener
         description="Configuration for setting the columns",
         default=SetNodeColumns(),
     )
+
 
     def merge(self, item: NodeT, context: ContractContext) -> bool:
         if (table := get_matching_catalog_table(item, catalog=context.catalog)) is None:

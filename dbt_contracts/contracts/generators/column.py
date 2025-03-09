@@ -1,14 +1,16 @@
 from abc import ABCMeta
-from typing import Literal, Any
+from collections.abc import Sequence
+from random import choice, sample
+from typing import Literal, Any, Annotated, get_args
 
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt_common.contracts.metadata import ColumnMetadata
-from pydantic import Field
+from pydantic import Field, BeforeValidator
 
 from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.generators._core import ChildPropertiesGenerator, CORE_FIELDS, PropertyGenerator
 from dbt_contracts.contracts.generators.properties import SetDescription
-from dbt_contracts.contracts.utils import get_matching_catalog_table
+from dbt_contracts.contracts.utils import get_matching_catalog_table, to_tuple
 from dbt_contracts.types import NodeT
 
 COLUMN_FIELDS = Literal[CORE_FIELDS, "data_type"]
@@ -43,12 +45,15 @@ class SetDataType(ColumnPropertyGenerator):
         return self._set_data_type(source, data_type=target.type)
 
 
-class ColumnPropertiesGenerator[P: NodeT](ChildPropertiesGenerator[ColumnInfo, P, ColumnPropertyGenerator]):
-    __supported_generators__ = (
-        SetColumnDescription,
-        SetDataType,
-    )
+EXCLUDE_TYPES = Literal["description", "data_type"]
 
+
+class ColumnPropertiesGenerator[P: NodeT](ChildPropertiesGenerator[ColumnInfo, P, ColumnPropertyGenerator]):
+    exclude: Annotated[Sequence[EXCLUDE_TYPES], BeforeValidator(to_tuple)] = Field(
+        description="The fields to exclude from the generated properties.",
+        default=(),
+        examples=[choice(get_args(EXCLUDE_TYPES)), sample(get_args(EXCLUDE_TYPES), k=2)]
+    )
     description: SetColumnDescription = Field(
         description="Configuration for setting the column description",
         default=SetColumnDescription(),
