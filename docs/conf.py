@@ -2,10 +2,14 @@
 #
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
+import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
-from dbt_contracts import MODULE_ROOT, PROGRAM_OWNER_NAME, PROGRAM_OWNER_USER, PROGRAM_NAME
+sys.path.insert(0, os.path.abspath(os.path.join('..', '..', 'src')))
+
+from dbt_contracts import MODULE_ROOT, PROGRAM_OWNER_NAME, PROGRAM_OWNER_USER, PROGRAM_NAME  # noqa: E402
 
 
 # -- Project information -----------------------------------------------------
