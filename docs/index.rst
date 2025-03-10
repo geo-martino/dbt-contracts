@@ -24,16 +24,18 @@ What's in this documentation
    :maxdepth: 1
    :caption: 📜 Guides & Getting Started
 
+   quickstart
+
 
 .. toctree::
    :maxdepth: 1
    :caption: 📖 Contracts Reference
 
-   reference/models
-   reference/sources
-   reference/columns
-   reference/macros
-   reference/arguments
+   reference/contracts/models
+   reference/contracts/sources
+   reference/contracts/columns
+   reference/contracts/macros
+   reference/contracts/arguments
 
 
 .. toctree::

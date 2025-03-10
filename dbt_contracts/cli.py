@@ -8,7 +8,7 @@ from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 
 from dbt_contracts import PROGRAM_NAME
 from dbt_contracts.contracts import CONTRACT_CLASSES
-from dbt_contracts.dbt_cli import get_config, clean_paths, install_dependencies
+from dbt_contracts.dbt_cli import get_config, clean_paths, install_dependencies, get_manifest, get_catalog
 from dbt_contracts.runner import ContractsRunner
 
 CORE_PARSER = argparse.ArgumentParser(
@@ -64,14 +64,14 @@ threads = CORE_PARSER.add_argument(
 ################################################################################
 ## DBT commands
 ################################################################################
-clean = CORE_PARSER.add_argument(
+CORE_PARSER.add_argument(
     "--clean",
     help="When this option is passed, run `dbt clean` before operations. "
          "If not passed, will attempt to load artifacts from the target folder before operations.",
     action='store_true'
 )
 
-install_deps = CORE_PARSER.add_argument(
+CORE_PARSER.add_argument(
     "--deps",
     help="When this option is passed, run `dbt deps` before operations.",
     action='store_true'
@@ -80,7 +80,7 @@ install_deps = CORE_PARSER.add_argument(
 ################################################################################
 ## General runner args
 ################################################################################
-config = CORE_PARSER.add_argument(
+CORE_PARSER.add_argument(
     "--config",
     help="Either the path to a contracts configuration file, "
          f"or the directory to look in for the {ContractsRunner.default_config_file_name!r} file. "
@@ -90,7 +90,7 @@ config = CORE_PARSER.add_argument(
     type=Path,
 )
 
-contract = CORE_PARSER.add_argument(
+CORE_PARSER.add_argument(
     "--contract",
     help="Run only this contract. If none given, apply all configured contracts. "
          "Specify granular contracts by separating keys by a '.' e.g. 'model', 'model.columns'",
@@ -104,7 +104,7 @@ contract = CORE_PARSER.add_argument(
     type=str,
 )
 
-files = CORE_PARSER.add_argument(
+CORE_PARSER.add_argument(
     "files",
     help="Apply contract to only these files. "
          "Must either be relative to the current folder, relative to the project folder, or absolute.",
@@ -117,8 +117,9 @@ files = CORE_PARSER.add_argument(
 ## Validator runner args
 ################################################################################
 VALIDATOR_PARSER = deepcopy(CORE_PARSER)
+VALIDATOR_PARSER.prog = "dbt-validate"
 
-output = VALIDATOR_PARSER.add_argument(
+VALIDATOR_PARSER.add_argument(
     "--output",
     help="Either the path to a file to write to when formatting results output, "
          f"or the directory to write a file to with filename {ContractsRunner.default_output_file_name!r}. "
@@ -128,7 +129,7 @@ output = VALIDATOR_PARSER.add_argument(
     type=Path,
 )
 
-output_format = VALIDATOR_PARSER.add_argument(
+VALIDATOR_PARSER.add_argument(
     "--format",
     help="Specify the format of results output if desired. Output file will not be generated when not specified.",
     nargs="?",
@@ -137,13 +138,13 @@ output_format = VALIDATOR_PARSER.add_argument(
     type=str,
 )
 
-no_fail = VALIDATOR_PARSER.add_argument(
+VALIDATOR_PARSER.add_argument(
     "--no-fail",
     help="When this option is passed, do not fail when contracts do not pass.",
     action='store_true'
 )
 
-terms = VALIDATOR_PARSER.add_argument(
+VALIDATOR_PARSER.add_argument(
     "--terms", "--term", "--validations", "--validation",
     help="Apply only these validations/terms. If none given, apply all configured validations/terms.",
     nargs="+",
@@ -155,6 +156,39 @@ terms = VALIDATOR_PARSER.add_argument(
 ## Generator runner args
 ################################################################################
 GENERATOR_PARSER = deepcopy(CORE_PARSER)
+GENERATOR_PARSER.prog = "dbt-generate"
+
+
+def clean() -> None:
+    """Main entry point for executing `dbt clean`"""
+    CORE_PARSER.prog = "dbt-clean"
+    args, _ = CORE_PARSER.parse_known_args()
+    config = get_config(args)
+    clean_paths(config=config)
+
+
+def deps() -> None:
+    """Main entry point for executing `dbt deps`"""
+    CORE_PARSER.prog = "dbt-deps"
+    args, _ = CORE_PARSER.parse_known_args()
+    config = get_config(args)
+    install_dependencies(config=config)
+
+
+def parse() -> None:
+    """Main entry point for executing `dbt parse`"""
+    CORE_PARSER.prog = "dbt-parse"
+    args, _ = CORE_PARSER.parse_known_args()
+    config = get_config(args)
+    get_manifest(config=config)
+
+
+def docs() -> None:
+    """Main entry point for executing `dbt docs generate`"""
+    CORE_PARSER.prog = "dbt-docs"
+    args, _ = CORE_PARSER.parse_known_args()
+    config = get_config(args)
+    get_catalog(config=config)
 
 
 def setup_runner(args: argparse.Namespace) -> ContractsRunner:
@@ -162,19 +196,19 @@ def setup_runner(args: argparse.Namespace) -> ContractsRunner:
     args.profiles_dir = str(Path(args.profiles_dir).resolve())
     args.project_dir = str(Path(args.project_dir).resolve())
 
-    conf = get_config(args)
+    config = get_config(args)
 
     if args.clean:
-        clean_paths(config=conf)
+        clean_paths(config=config)
     if args.deps:
-        install_dependencies(config=conf)
+        install_dependencies(config=config)
 
     if args.config is None and args.project_dir:
         args.config = Path(args.project_dir)
 
     args.config = Path(args.config).resolve()
 
-    return ContractsRunner.from_config(conf)
+    return ContractsRunner.from_config(config)
 
 
 def validate() -> None:

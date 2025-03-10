@@ -40,7 +40,7 @@ SECTION_DESCRIPTIONS = {
     ]
 }
 
-URL_PATH = ("reference",)
+URL_PATH = ("reference", "contracts")
 
 
 class ReferencePageBuilder:
@@ -170,27 +170,7 @@ class ReferencePageBuilder:
             value.pop("title", "")
 
     def generate_example_ref_for_contract(self, contract: type[Contract]) -> None:
-        conditions = sample(
-            contract.__supported_conditions__,
-            k=randrange(min(len(contract.__supported_conditions__), 3) - 1, len(contract.__supported_conditions__))
-        )
-        terms = sample(
-            contract.__supported_terms__,
-            k=randrange(min(len(contract.__supported_terms__), 3) - 1, len(contract.__supported_terms__))
-        )
-        # noinspection PyProtectedMember
-        example = {
-            "filter": [
-                {cond._name(): self.generate_example_dict(cond)} if self.generate_example_dict(cond) else cond._name()
-                for cond in conditions
-            ],
-            "validations": [
-                {term._name(): self.generate_example_dict(term)} if self.generate_example_dict(term) else term._name()
-                for term in terms
-            ]
-        }
-        if contract.__supported_generator__ is not None:
-            example["generator"] = self.generate_example_dict(contract.__supported_generator__)
+        example = self.generate_example_dict_for_contract(contract)
 
         if issubclass(contract, ParentContract):
             example = {"contracts": {contract.__config_key__: example}}
@@ -199,6 +179,32 @@ class ReferencePageBuilder:
             example = {"contracts": {parent_contract.__config_key__: {contract.__config_key__: example}}}
 
         self._generate_example_dropdown(example, key="Full Example")
+
+    @classmethod
+    def generate_example_dict_for_contract(cls, contract: type[Contract]) -> dict[str, Any]:
+        conditions_count = randrange(
+            min(len(contract.__supported_conditions__), 3) - 1, len(contract.__supported_conditions__)
+        )
+        conditions = sample(contract.__supported_conditions__, k=max(1, conditions_count))
+
+        terms_count = randrange(min(len(contract.__supported_terms__), 3) - 1, len(contract.__supported_terms__))
+        terms = sample(contract.__supported_terms__, k=max(1, terms_count))
+
+        # noinspection PyProtectedMember
+        example = {
+            "filter": [
+                {cond._name(): cls.generate_example_dict(cond)} if cls.generate_example_dict(cond) else cond._name()
+                for cond in conditions
+            ],
+            "validations": [
+                {term._name(): cls.generate_example_dict(term)} if cls.generate_example_dict(term) else term._name()
+                for term in terms
+            ]
+        }
+        if contract.__supported_generator__ is not None:
+            example["generator"] = cls.generate_example_dict(contract.__supported_generator__)
+
+        return example
 
     def generate_example_ref(self, model: type[BaseModel], name: str) -> None:
         example = self.generate_example_dict(model)
@@ -222,7 +228,7 @@ class ReferencePageBuilder:
             return
 
         first_field_example_desc = (
-            f"You may also define the parameters for ``{field_1_name}`` directly on the term definition like below."
+            f"You may also define the parameters for ``{field_1_name}`` directly on the definition like below."
         )
         self.add_code_block_lines(first_field_example_desc, indent=1)
         self.add_empty_lines()
@@ -238,20 +244,22 @@ class ReferencePageBuilder:
         self.add_code_block_lines(example_block, indent=1)
         self.add_empty_lines(2)
 
-    def generate_example_dict(self, model: type[BaseModel]) -> dict[str, Any]:
+    @classmethod
+    def generate_example_dict(cls, model: type[BaseModel]) -> dict[str, Any]:
         # noinspection PyUnresolvedReferences
-        examples = {name: self._generate_example_for_field(field) for name, field in model.model_fields.items()}
+        examples = {name: cls._generate_example_for_field(field) for name, field in model.model_fields.items()}
         return {key: val for key, val in examples.items() if val is not None}
 
-    def _generate_example_for_field(self, field: FieldInfo) -> Any:
+    @classmethod
+    def _generate_example_for_field(cls, field: FieldInfo) -> Any:
         if field.examples:
             return choice(field.examples)
         elif isinstance(field.annotation, (GenericAlias, UnionType)):
             field = choice([arg for arg in field.annotation.__args__ if arg is not type(None)])
             if issubclass(field, BaseModel):
-                return self.generate_example_dict(field)
+                return cls.generate_example_dict(field)
         elif issubclass(field.annotation, BaseModel):
-            return self.generate_example_dict(field.annotation)
+            return cls.generate_example_dict(field.annotation)
 
     def generate_contract_parts(
             self, parts: type[ContractPart] | Collection[type[ContractPart]], kind: str, title: str
@@ -349,4 +357,4 @@ if __name__ == "__main__":
         if issubclass(contract_cls, ParentContract):
             builder.build(contract_cls.__child_contract__)
 
-    print("done")
+    print(f"Generated references for all contracts")

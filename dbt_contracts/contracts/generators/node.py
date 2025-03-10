@@ -111,11 +111,11 @@ class NodePropertiesGenerator(ParentPropertiesGenerator[NodeT, NodePropertyGener
         default=(),
         examples=[choice(get_args(EXCLUDE_TYPES)), sample(get_args(EXCLUDE_TYPES), k=2)]
     )
-    description: SetNodeDescription | None = Field(
+    description: SetNodeDescription = Field(
         description="Configuration for setting the description",
         default=SetNodeDescription(),
     )
-    columns: SetNodeColumns | None = Field(
+    columns: SetNodeColumns = Field(
         description="Configuration for setting the columns",
         default=SetNodeColumns(),
     )

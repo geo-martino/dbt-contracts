@@ -2,14 +2,17 @@
 Fills in the variable fields of the README template and generates README.md file.
 """
 import re
+from random import sample
 
 import docstring_parser
+import yaml
 
 from dbt_contracts import PROGRAM_OWNER_USER, PROGRAM_NAME, DOCUMENTATION_URL
 from dbt_contracts.contracts import CONTRACT_CLASSES, Contract, ParentContract
-import docs.reference as docs
+import docs.contracts as docs
 
 from dbt_contracts.contracts.generators import PropertiesGenerator
+from dbt_contracts.runner import ContractsRunner
 
 SRC_FILENAME = "README.template.md"
 TRG_FILENAME = SRC_FILENAME.replace(".template", "")
@@ -19,6 +22,22 @@ def format_contract_title(contract: type[Contract], parent_key: str = "") -> str
     """Format the title for a contract"""
     key = f"{parent_key.rstrip('s')}_{contract.__config_key__}"
     return key.replace("_", " ").title().strip()
+
+
+def format_contracts_example() -> str:
+    contracts = {}
+
+    for cls in sample(CONTRACT_CLASSES, k=2):
+        example = docs.ReferencePageBuilder.generate_example_dict_for_contract(cls)
+        if issubclass(cls, ParentContract):
+            cls_child = cls.__child_contract__
+            example[cls_child.__config_key__] = docs.ReferencePageBuilder.generate_example_dict_for_contract(cls_child)
+
+        contracts[cls.__config_key__] = example
+
+    example = {"contracts": contracts}
+
+    return f"   ```yaml\n{yaml.dump(example, sort_keys=False).strip()}\n```".replace("\n", "\n   ")
 
 
 def format_contract_reference(contract: type[Contract], parent_key: str = "") -> list[str]:
@@ -103,6 +122,8 @@ def format_readme():
         "program_name_lower": PROGRAM_NAME.lower(),
         "program_owner_user": PROGRAM_OWNER_USER,
         "documentation_url": DOCUMENTATION_URL,
+        "default_contracts_filename": ContractsRunner.default_config_file_name,
+        "contracts_example": format_contracts_example(),
         "contracts_reference": format_contracts_reference().strip(),
         "contracts_reference_toc": format_contracts_reference_toc().rstrip(),
     }
