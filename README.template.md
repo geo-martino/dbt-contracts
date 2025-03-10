@@ -49,17 +49,17 @@ Follow the installation guide for [`pre-commit`](# TODO) to set this up if neede
    For a full reference of the available configuration for this file,
    check out the [documentation]({documentation_url}).
 
-2. If configured, run [`dbt-generate`]({documentation_url}/quickstart.html#commands)
+2. If configured, run [`dbt-generate`]({documentation_url}/guides/commands.html)
    to generate properties files from database objects.
    It can be useful to run this before validations if your validations require properties 
    set which can be generated from database objects.
 
-3. If configured, run [`dbt-validate`]({documentation_url}/quickstart.html#commands)
+3. If configured, run [`dbt-validate`]({documentation_url}/guides/commands.html)
    to validate your contracts against the terms set in the configuration file.
 
 4. Once you are satisfied with your configuration and the validations are passing,
-   you may want to set [`pre-commit`](# TODO) hooks to automatically validate your project when running
-   git commands against it. Here's an example configuration.
+   you may want to set [`pre-commit`]({documentation_url}/guides/precommit.html) hooks to automatically validate your project when running
+   git commands against it.
 
 ### Example configuration
 
@@ -73,7 +73,8 @@ Follow the installation guide below to set this up if needed.
 Each contract operation is set up to take a list files that have changed since the last commit
 as is required for `pre-commit` hooks to function as expected. 
 
-Set up and add the `dbt-contracts` operations to your `.pre-commit-hooks.yaml` file like the example below.
+Set up and add the `dbt-contracts` operations to your [`.pre-commit-hooks.yaml`](# TODO)
+file like the example below.
 
 ```yaml
 default_stages: [manual]

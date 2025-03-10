@@ -30,10 +30,11 @@ def format_contracts_example() -> str:
     for cls in sample(CONTRACT_CLASSES, k=2):
         example = docs.ReferencePageBuilder.generate_example_dict_for_contract(cls)
         if issubclass(cls, ParentContract):
-            cls_child = cls.__child_contract__
-            example[cls_child.__config_key__] = docs.ReferencePageBuilder.generate_example_dict_for_contract(cls_child)
+            child_cls = cls.__child_contract__
+            child_example = docs.ReferencePageBuilder.generate_example_dict_for_contract(child_cls)
+            example[child_cls.__config_key__] = [child_example]
 
-        contracts[cls.__config_key__] = example
+        contracts[cls.__config_key__] = [example]
 
     example = {"contracts": contracts}
 

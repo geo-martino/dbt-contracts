@@ -173,10 +173,10 @@ class ReferencePageBuilder:
         example = self.generate_example_dict_for_contract(contract)
 
         if issubclass(contract, ParentContract):
-            example = {"contracts": {contract.__config_key__: example}}
+            example = {"contracts": {contract.__config_key__: [example]}}
         else:
             parent_contract = next(cls for cls in CONTRACT_CLASSES if cls.__child_contract__ is contract)
-            example = {"contracts": {parent_contract.__config_key__: {contract.__config_key__: example}}}
+            example = {"contracts": {parent_contract.__config_key__: [{contract.__config_key__: [example]}]}}
 
         self._generate_example_dropdown(example, key="Full Example")
 

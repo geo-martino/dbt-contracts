@@ -26,7 +26,10 @@ What's in this documentation
    :maxdepth: 1
    :caption: 📜 Guides & Getting Started
 
-   quickstart
+   guides/install
+   guides/quickstart
+   guides/commands
+   guides/precommit
 
 
 .. toctree::

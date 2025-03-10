@@ -54,115 +54,110 @@ Follow the installation guide for [`pre-commit`](# TODO) to set this up if neede
    For a full reference of the available configuration for this file,
    check out the [documentation](https://geo-martino.github.io/dbt-contracts).
 
-2. If configured, run [`dbt-generate`](https://geo-martino.github.io/dbt-contracts/quickstart.html#commands)
+2. If configured, run [`dbt-generate`](https://geo-martino.github.io/dbt-contracts/guides/commands.html)
    to generate properties files from database objects.
    It can be useful to run this before validations if your validations require properties 
    set which can be generated from database objects.
 
-3. If configured, run [`dbt-validate`](https://geo-martino.github.io/dbt-contracts/quickstart.html#commands)
+3. If configured, run [`dbt-validate`](https://geo-martino.github.io/dbt-contracts/guides/commands.html)
    to validate your contracts against the terms set in the configuration file.
 
 4. Once you are satisfied with your configuration and the validations are passing,
-   you may want to set [`pre-commit`](# TODO) hooks to automatically validate your project when running
-   git commands against it. Here's an example configuration.
+   you may want to set [`pre-commit`](https://geo-martino.github.io/dbt-contracts/guides/precommit.html) hooks to automatically validate your project when running
+   git commands against it.
 
 ### Example configuration
 
    ```yaml
    contracts:
-     sources:
-       filter:
-       - meta:
-           meta:
-             key1: val1
-             key2:
-             - val2
-             - val3
+     macros:
+     - filter:
        - name:
-           include: .*i\s+am\s+a\s+regex\s+pattern.*
-           exclude: &id001
+           include:
+           - ^\w+\d+\s{1,3}$
+           - include[_-]this
+           exclude:
            - ^\w+\d+\s{1,3}$
            - exclude[_-]this
            match_all: false
-       - path:
-           include: &id002
-           - ^\w+\d+\s{1,3}$
-           - include[_-]this
-           exclude: *id001
-           match_all: false
        validations:
+       - has_description
+       arguments:
+       - filter:
+         - name:
+             include: .*i\s+am\s+a\s+regex\s+pattern.*
+             exclude: .*i\s+am\s+a\s+regex\s+pattern.*
+             match_all: false
+         validations:
+         - has_description
+     sources:
+     - filter:
+       - tag:
+           tags:
+           - tag1
+           - tag2
+       - is_enabled
+       validations:
+       - has_tests:
+           min_count: 2
+           max_count: 5
        - has_matching_description:
            ignore_whitespace: false
-           case_insensitive: false
-           compare_start_only: false
-       - has_loader
-       - exists
-       - has_downstream_dependencies:
-           min_count: 3
-           max_count: 4
-       - has_allowed_meta_keys:
-           keys:
-           - key1
-           - key2
-       - has_description
-       - has_freshness
-       - has_all_columns
-       - has_allowed_tags:
-           tags: tag1
+           case_insensitive: true
+           compare_start_only: true
        - has_required_meta_keys:
            keys: key1
        generator:
-         exclude: columns
-         filename: config.yml
-         depth: 0
+         exclude:
+         - description
+         - columns
+         filename: properties.yml
+         depth: 1
          description:
-           overwrite: false
+           overwrite: true
            terminator: \n
          columns:
-           overwrite: false
+           overwrite: true
            add: true
            remove: true
            order: false
        columns:
-         filter:
+       - filter:
+         - meta:
+             meta:
+               key1: val1
+               key2:
+               - val2
+               - val3
          - tag:
-             tags:
-             - tag1
-             - tag2
-         - name:
-             include: *id002
-             exclude: .*i\s+am\s+a\s+regex\s+pattern.*
-             match_all: false
+             tags: tag1
          validations:
-         - has_data_type
-         - has_matching_data_type:
-             ignore_whitespace: true
-             case_insensitive: true
-             compare_start_only: true
+         - has_tests:
+             min_count: 1
+             max_count: 4
+         - has_allowed_meta_values:
+             meta:
+               key1: val1
+               key2:
+               - val2
+               - val3
          - exists
+         - has_required_meta_keys:
+             keys: key1
+         - has_allowed_tags:
+             tags: tag1
+         - has_matching_data_type:
+             ignore_whitespace: false
+             case_insensitive: false
+             compare_start_only: true
+         - has_description
          generator:
            exclude: description
            description:
-             overwrite: false
+             overwrite: true
              terminator: __END__
            data_type:
-             overwrite: true
-     macros:
-       filter:
-       - name:
-           include: *id002
-           exclude: *id001
-           match_all: true
-       validations:
-       - has_properties
-       arguments:
-         filter:
-         - name:
-             include: *id002
-             exclude: *id001
-             match_all: true
-         validations:
-         - has_description
+             overwrite: false
    ```
 
 ## Pre-commit configuration
@@ -173,7 +168,8 @@ Follow the installation guide below to set this up if needed.
 Each contract operation is set up to take a list files that have changed since the last commit
 as is required for `pre-commit` hooks to function as expected. 
 
-Set up and add the `dbt-contracts` operations to your `.pre-commit-hooks.yaml` file like the example below.
+Set up and add the `dbt-contracts` operations to your [`.pre-commit-hooks.yaml`](# TODO)
+file like the example below.
 
 ```yaml
 default_stages: [manual]
