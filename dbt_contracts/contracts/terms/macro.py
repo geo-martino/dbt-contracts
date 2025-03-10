@@ -9,9 +9,9 @@ class HasType(ChildContractTerm[MacroArgument, Macro]):
     """Check whether macro arguments have a data type configured in their properties."""
     @validate_context
     def run(self, item: MacroArgument, context: ContractContext, parent: Macro = None) -> bool:
-        missing_type = not item.type
-        if missing_type:
+        has_type = bool(item.type)
+        if not has_type:
             message = "Argument does not have a type configured"
             context.add_result(name=self.name, message=message, item=item, parent=parent)
 
-        return not missing_type
+        return has_type

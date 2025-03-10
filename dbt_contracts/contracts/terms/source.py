@@ -10,24 +10,24 @@ class HasLoader(NodeContractTerm[SourceDefinition]):
     """Check whether sources have appropriate configuration for a loader in their properties."""
     @validate_context
     def run(self, item: SourceDefinition, context: ContractContext) -> bool:
-        missing_loader = not item.loader
-        if missing_loader:
+        has_loader = bool(item.loader)
+        if not has_loader:
             message = "Loader is not correctly configured"
             context.add_result(name=self.name, message=message, item=item)
 
-        return not missing_loader
+        return has_loader
 
 
 class HasFreshness(NodeContractTerm[SourceDefinition]):
     """Check whether sources have freshness configured in their properties."""
     @validate_context
     def run(self, item: SourceDefinition, context: ContractContext) -> bool:
-        missing_freshness = not bool(item.loaded_at_field) or not item.has_freshness
-        if missing_freshness:
+        has_freshness = bool(item.loaded_at_field) and item.has_freshness
+        if not has_freshness:
             message = "Freshness is not correctly configured"
             context.add_result(name=self.name, message=message, item=item)
 
-        return not missing_freshness
+        return has_freshness
 
 
 class HasDownstreamDependencies(NodeContractTerm[SourceDefinition], RangeMatcher):

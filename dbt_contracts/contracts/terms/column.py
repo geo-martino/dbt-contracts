@@ -19,12 +19,12 @@ from dbt_contracts.types import NodeT
 
 class ColumnContractTerm[T: NodeT](ChildContractTerm[ColumnInfo, T], metaclass=ABCMeta):
     def _validate_node(self, column: ColumnInfo, node: NodeT, context: ContractContext) -> bool:
-        missing_column = column not in node.columns.values()
-        if missing_column:
+        has_column = column in node.columns.values()
+        if not has_column:
             message = f"The column cannot be found in the {node.resource_type.lower()}"
             context.add_result(name=self.name, message=message, item=column, parent=node)
 
-        return not missing_column
+        return has_column
 
     def _get_and_validate_table(self, column: ColumnInfo, node: T, context: ContractContext) -> CatalogTable | None:
         table = get_matching_catalog_table(item=node, catalog=context.catalog)
@@ -33,8 +33,8 @@ class ColumnContractTerm[T: NodeT](ChildContractTerm[ColumnInfo, T], metaclass=A
             context.add_result(name=self.name, message=message, item=column, parent=node)
             return
 
-        missing_column = column.name not in table.columns.keys()
-        if missing_column:
+        has_column = column.name in table.columns.keys()
+        if not has_column:
             message = f"The column cannot be found in the {table.metadata.type} {table.unique_id!r}"
             context.add_result(name=self.name, message=message, item=column, parent=node)
             return
@@ -135,14 +135,14 @@ class HasExpectedName[T: NodeT](ColumnContractTerm[T], StringMatcher):
         if not patterns:  # no patterns defined for this data type
             return True
 
-        unexpected_name = not all(re.match(pattern, item.name) for pattern in patterns)
-        if unexpected_name:
+        expected_name = any(re.match(pattern, item.name) for pattern in patterns)
+        if not expected_name:
             patterns_log = ', '.join(patterns)
             message = "Column name does not match expected patterns "
             message += f"for type {data_type!r}: {patterns_log}" if data_type else f": {patterns_log}"
             context.add_result(name=self.name, message=message, item=item, parent=parent)
 
-        return not unexpected_name
+        return expected_name
 
 
 class HasDataType[T: NodeT](ColumnContractTerm[T]):
@@ -152,12 +152,12 @@ class HasDataType[T: NodeT](ColumnContractTerm[T]):
         if not self._validate_node(column=item, node=parent, context=context):
             return False
 
-        missing_data_type = not item.data_type
-        if missing_data_type:
+        has_data_type = bool(item.data_type)
+        if not has_data_type:
             message = "Data type not configured for this column"
             context.add_result(name=self.name, message=message, item=item, parent=parent)
 
-        return not missing_data_type
+        return has_data_type
 
 
 class HasMatchingDescription[T: NodeT](ColumnContractTerm[T], StringMatcher):
@@ -174,12 +174,12 @@ class HasMatchingDescription[T: NodeT](ColumnContractTerm[T], StringMatcher):
         node_description = item.description
         table_description = table.columns[item.name].comment
 
-        unmatched_description = not self._match(node_description, table_description)
-        if unmatched_description:
+        matched_description = self._match(node_description, table_description)
+        if not matched_description:
             message = f"Description does not match remote entity: {node_description!r} != {table_description!r}"
             context.add_result(name=self.name, message=message, item=item, parent=parent)
 
-        return not unmatched_description
+        return matched_description
 
 
 class HasMatchingDataType[T: NodeT](ColumnContractTerm[T], StringMatcher):
@@ -196,12 +196,12 @@ class HasMatchingDataType[T: NodeT](ColumnContractTerm[T], StringMatcher):
         node_type = item.data_type
         table_type = table.columns[item.name].type
 
-        unmatched_type = not self._match(node_type, table_type)
-        if unmatched_type:
+        matched_type = self._match(node_type, table_type)
+        if not matched_type:
             message = f"Data type does not match remote entity: {node_type!r} != {table_type!r}"
             context.add_result(name=self.name, message=message, item=item, parent=parent)
 
-        return not unmatched_type
+        return matched_type
 
 
 class HasMatchingIndex[T: NodeT](ColumnContractTerm[T], StringMatcher):
@@ -221,9 +221,9 @@ class HasMatchingIndex[T: NodeT](ColumnContractTerm[T], StringMatcher):
         node_index = list(parent.columns).index(item.name)
         table_index = table.columns[item.name].index
 
-        unmatched_index = node_index != table_index
-        if unmatched_index:
+        matched_index = node_index == table_index
+        if not matched_index:
             message = f"Column index does not match remote entity: {node_index} != {table_index}"
             context.add_result(name=self.name, message=message, item=item, parent=parent)
 
-        return not unmatched_index
+        return matched_index

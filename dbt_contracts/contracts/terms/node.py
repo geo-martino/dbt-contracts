@@ -89,7 +89,7 @@ class HasAllColumns[T: NodeT](NodeContractTerm[T]):
             )
             context.add_result(name=self.name, message=message, item=item)
 
-        return not missing_columns
+        return not missing_columns and not extra_columns
 
 
 class HasExpectedColumns[T: NodeT](NodeContractTerm[T]):
@@ -144,32 +144,32 @@ class HasMatchingDescription[T: NodeT](NodeContractTerm[T], StringMatcher):
         if not table:
             return False
 
-        unmatched_description = not self._match(item.description, table.metadata.comment)
-        if unmatched_description:
+        matched_description = self._match(item.description, table.metadata.comment)
+        if not matched_description:
             message = f"Description does not match remote entity: {item.description!r} != {table.metadata.comment!r}"
             context.add_result(name=self.name, message=message, item=item)
 
-        return not unmatched_description
+        return matched_description
 
 
 class HasContract[T: CompiledNode](NodeContractTerm[T]):
     """Check whether {kind} have appropriate configuration for a contract in their properties."""
     @validate_context
     def run(self, item: T, context: ContractContext) -> bool:
-        missing_contract = not item.contract.enforced
-        if missing_contract:
+        has_contract = bool(item.contract.enforced)
+        if not has_contract:
             message = "Contract not enforced"
             context.add_result(name=self.name, message=message, item=item)
 
         # node must have all columns defined for contract to be valid
-        missing_columns = not HasAllColumns().run(item, context=context)
+        has_all_columns = HasAllColumns().run(item, context=context)
 
-        missing_data_types = any(not column.data_type for column in item.columns.values())
-        if missing_data_types:
+        has_data_types = all(column.data_type for column in item.columns.values())
+        if not has_data_types:
             message = "To enforce a contract, all data types must be declared"
             context.add_result(name=self.name, message=message, item=item)
 
-        return not any((missing_contract, missing_columns, missing_data_types))
+        return all((has_contract, has_all_columns, has_data_types))
 
 
 class HasValidUpstreamDependencies[T: CompiledNode](NodeContractTerm[T], metaclass=ABCMeta):
