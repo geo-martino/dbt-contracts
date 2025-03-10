@@ -15,6 +15,11 @@
 
 ### Enforce standards for your dbt projects through automated checks and generators
 
+* Validate that the metadata and properties of objects in your project match required standards
+* Automatically generate properties in your project from their related database objects
+* Apply complex filtering and validation rules setting for highly granular operations
+* Execute these operations as `pre-commit` hooks for automatic project validation
+
 ## Contents
 * [Installation](#installation)
 * [Quick Start](#quick-start)
@@ -65,105 +70,99 @@ Follow the installation guide for [`pre-commit`](# TODO) to set this up if neede
 
    ```yaml
    contracts:
-     macros:
+     sources:
        filter:
-       - path:
-           include:
-           - ^\w+\d+\s{1,3}$
-           - include[_-]this
-           exclude: .*i\s+am\s+a\s+regex\s+pattern.*
-           match_all: true
-       validations:
-       - has_description
-       arguments:
-         filter:
-         - name:
-             include: .*i\s+am\s+a\s+regex\s+pattern.*
-             exclude:
-             - ^\w+\d+\s{1,3}$
-             - exclude[_-]this
-             match_all: true
-         validations:
-         - has_type
-     models:
-       filter:
-       - is_materialized
        - meta:
-           meta: &id001
-             key1: val1
-             key2:
-             - val2
-             - val3
-       validations:
-       - has_allowed_meta_values:
            meta:
              key1: val1
              key2:
              - val2
              - val3
-       - has_all_columns
-       - has_valid_ref_dependencies
-       - has_no_hardcoded_refs
-       - has_properties
-       - has_contract
-       - has_valid_macro_dependencies
-       - has_expected_columns:
-           columns:
-           - column1
-           - column2
-           - column3
-       - has_constraints:
-           min_count: 2
-           max_count: 5
-       - has_tests:
-           min_count: 1
+       - name:
+           include: .*i\s+am\s+a\s+regex\s+pattern.*
+           exclude: &id001
+           - ^\w+\d+\s{1,3}$
+           - exclude[_-]this
+           match_all: false
+       - path:
+           include: &id002
+           - ^\w+\d+\s{1,3}$
+           - include[_-]this
+           exclude: *id001
+           match_all: false
+       validations:
+       - has_matching_description:
+           ignore_whitespace: false
+           case_insensitive: false
+           compare_start_only: false
+       - has_loader
+       - exists
+       - has_downstream_dependencies:
+           min_count: 3
            max_count: 4
-       - has_no_final_semicolon
-       - has_valid_source_dependencies
-       - has_required_tags:
+       - has_allowed_meta_keys:
+           keys:
+           - key1
+           - key2
+       - has_description
+       - has_freshness
+       - has_all_columns
+       - has_allowed_tags:
            tags: tag1
+       - has_required_meta_keys:
+           keys: key1
        generator:
-         exclude: description
-         filename: properties.yml
+         exclude: columns
+         filename: config.yml
          depth: 0
          description:
-           overwrite: true
-           terminator: .
+           overwrite: false
+           terminator: \n
          columns:
-           overwrite: true
-           add: false
-           remove: false
+           overwrite: false
+           add: true
+           remove: true
            order: false
        columns:
          filter:
-         - meta:
-             meta: *id001
          - tag:
              tags:
              - tag1
              - tag2
+         - name:
+             include: *id002
+             exclude: .*i\s+am\s+a\s+regex\s+pattern.*
+             match_all: false
          validations:
-         - has_expected_name:
+         - has_data_type
+         - has_matching_data_type:
              ignore_whitespace: true
              case_insensitive: true
-             compare_start_only: false
-             patterns:
-               BOOLEAN:
-               - (is|has|do)_.*
-               TIMESTAMP:
-               - .*_at
-               null:
-               - name_.*
+             compare_start_only: true
          - exists
-         - has_allowed_meta_keys:
-             keys: key1
          generator:
-           exclude: data_type
+           exclude: description
            description:
-             overwrite: true
-             terminator: \n
-           data_type:
              overwrite: false
+             terminator: __END__
+           data_type:
+             overwrite: true
+     macros:
+       filter:
+       - name:
+           include: *id002
+           exclude: *id001
+           match_all: true
+       validations:
+       - has_properties
+       arguments:
+         filter:
+         - name:
+             include: *id002
+             exclude: *id001
+             match_all: true
+         validations:
+         - has_description
    ```
 
 ## Pre-commit configuration

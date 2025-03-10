@@ -5,8 +5,10 @@ Welcome to dbt-contracts!
 Enforce standards for your dbt projects through automated checks and generators
 -------------------------------------------------------------------------------
 
-..
-  TODO:
+* Validate that the metadata and properties of objects in your project match required standards
+* Automatically generate properties in your project from their related database objects
+* Apply complex filtering and validation rules setting for highly granular operations
+* Execute these operations as `pre-commit` hooks for automatic project validation
 
 
 What's in this documentation
