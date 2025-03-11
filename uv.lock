@@ -402,7 +402,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "dbt-core", specifier = ">=1.9,<2.0" },
-    { name = "pydantic", specifier = ">=2.11.0b1,<3.0" },
+    { name = "pydantic", specifier = ">=2.10,<3.0" },
 ]
 
 [package.metadata.requires-dev]

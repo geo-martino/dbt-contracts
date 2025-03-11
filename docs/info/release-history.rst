@@ -31,6 +31,14 @@ Release History
 The format is based on `Keep a Changelog <https://keepachangelog.com/en>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_
 
+1.0.3
+=====
+
+Changed
+-------
+
+* Drop requirement for pre-release pydantic version
+
 
 1.0.2
 =====
@@ -39,7 +47,6 @@ Fixed
 -----
 
 * CLI functions now set logging to INFO by default. Results can now be viewed in terminal output.
-
 
 
 1.0.1
