@@ -179,7 +179,11 @@ def _setup_runner(args: argparse.Namespace) -> ContractsRunner:
 
     args.config = Path(args.config).resolve()
 
-    return ContractsRunner.from_config(config)
+    runner = ContractsRunner.from_config(config)
+    if args.files:
+        runner.paths = config.args.files
+
+    return runner
 
 
 def clean() -> None:

@@ -32,6 +32,15 @@ The format is based on `Keep a Changelog <https://keepachangelog.com/en>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_
 
 
+1.0.5
+=====
+
+Fixed
+-----
+
+* Paths were not assigned to runner when passed via CLI. Now passed as expected.
+
+
 1.0.4
 =====
 

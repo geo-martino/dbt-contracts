@@ -340,13 +340,21 @@ class TestContractsRunner:
     def test_set_artifacts_on_contracts_sets_paths(self, runner: ContractsRunner):
         runner.__dict__["manifest"] = "manifest"
         runner._paths = c_properties.PathCondition(include="path/to/model.sql")
-        runner._set_artifacts_on_contracts(runner._contracts)
 
+        runner._set_artifacts_on_contracts(runner._contracts)
         for contract in runner._contracts:
             if c_properties.PathCondition in contract.__supported_conditions__:
                 assert runner.paths in contract.conditions
             else:
                 assert runner.paths not in contract.conditions
+
+        # only adds the condition once
+        runner._set_artifacts_on_contracts(runner._contracts)
+        for contract in runner._contracts:
+            if c_properties.PathCondition in contract.__supported_conditions__:
+                assert contract.conditions.count(runner.paths) == 1
+            else:
+                assert contract.conditions.count(runner.paths) == 0
 
     def test_get_contract_by_key(self, runner: ContractsRunner):
         contract = choice(list(runner._contracts))
