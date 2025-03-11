@@ -45,7 +45,7 @@ python -m pip install dbt-contracts
 ```
 
 dbt-contracts is best utilised when used in conjunction with `pre-commit` hooks.
-Follow the installation guide for [`pre-commit`](# TODO) to set this up if needed.
+Follow the installation guide for [`pre-commit`](https://pre-commit.com/#installation) to set this up if needed.
 
 ## Quick Start
 
@@ -168,7 +168,7 @@ Follow the installation guide below to set this up if needed.
 Each contract operation is set up to take a list files that have changed since the last commit
 as is required for `pre-commit` hooks to function as expected. 
 
-Set up and add the `dbt-contracts` operations to your [`.pre-commit-hooks.yaml`](# TODO)
+Set up and add the `dbt-contracts` operations to your [`.pre-commit-hooks.yaml`](https://pre-commit.com/#2-add-a-pre-commit-configuration)
 file like the example below.
 
 ```yaml

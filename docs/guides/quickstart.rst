@@ -18,7 +18,7 @@ Quick Start
 
 4. Once you are satisfied with your configuration and the validations are passing,
    you may want to set :ref:`precommit` hooks to automatically validate your project when running
-   git commands against it. Follow the installation guide for `pre-commit <# TODO>`_ to set this up if needed.
+   git commands against it. Follow the installation guide for `pre-commit <https://pre-commit.com/#installation>`_ to set this up if needed.
 
 Example configuration
 =====================

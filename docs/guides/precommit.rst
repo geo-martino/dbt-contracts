@@ -10,7 +10,7 @@ Follow the installation guide below to set this up if needed.
 Each contract operation is set up to take a list files that have changed since the last commit
 as is required for pre-commit hooks to function as expected.
 
-Set up and add the `dbt-contracts` operations to your `.pre-commit-hooks.yaml <# TODO>`_
+Set up and add the `dbt-contracts` operations to your `.pre-commit-hooks.yaml <https://pre-commit.com/#2-add-a-pre-commit-configuration>`_
 file like the example below.
 
 .. code-block:: yaml
