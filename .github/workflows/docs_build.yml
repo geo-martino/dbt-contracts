@@ -44,7 +44,7 @@ jobs:
 
       - name: 🏗️ Sphinx build
         run: |
-          uv run docs/reference.py
+          uv run docs/contracts.py
           uv run make html
           uv run make linkcheck
 

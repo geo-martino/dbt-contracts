@@ -18,24 +18,24 @@ class HasProperties[I: PropertiesT](ParentContractTerm[I]):
         if isinstance(item, SourceDefinition):  # sources always have properties files defined
             return True
 
-        missing_properties = item.patch_path is None
-        if missing_properties:
+        has_properties = bool(item.patch_path)
+        if not has_properties:
             message = "No properties file found"
             context.add_result(name=self.name, message=message, item=item)
 
-        return not missing_properties
+        return has_properties
 
 
 class HasDescription[I: DescriptionT, P: ParentT](ChildContractTerm[I, P]):
     """Check whether the {kind} have descriptions defined in their properties."""
     @validate_context
     def run(self, item: I, context: ContractContext, parent: P = None) -> bool:
-        missing_description = not item.description
-        if missing_description:
+        has_description = bool(item.description)
+        if not has_description:
             message = "Missing description"
             context.add_result(name=self.name, message=message, item=item, parent=parent)
 
-        return not missing_description
+        return has_description
 
 
 class HasRequiredTags[I: TagT, P: ParentT](ChildContractTerm[I, P]):
