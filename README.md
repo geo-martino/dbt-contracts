@@ -72,111 +72,107 @@ Follow the installation guide for [`pre-commit`](https://pre-commit.com/#install
    contracts:
      macros:
      - filter:
-       - name:
-           include: .*i\s+am\s+a\s+regex\s+pattern.*
-           exclude: .*i\s+am\s+a\s+regex\s+pattern.*
-           match_all: false
+       - path:
+           include: &id002
+           - ^\w+\d+\s{1,3}$
+           - include[_-]this
+           exclude: &id001
+           - ^\w+\d+\s{1,3}$
+           - exclude[_-]this
+           match_all: true
        validations:
        - has_properties
        arguments:
        - filter:
          - name:
              include: .*i\s+am\s+a\s+regex\s+pattern.*
-             exclude: &id001
-             - ^\w+\d+\s{1,3}$
-             - exclude[_-]this
-             match_all: false
+             exclude: *id001
+             match_all: true
          validations:
          - has_description
-     models:
+     sources:
      - filter:
-       - path:
-           include:
-           - ^\w+\d+\s{1,3}$
-           - include[_-]this
-           exclude: *id001
-           match_all: false
-       - is_materialized
-       - meta:
-           meta: &id002
-             key1: val1
-             key2:
-             - val2
-             - val3
-       validations:
-       - has_allowed_meta_values:
-           meta:
-             key1: val1
-             key2:
-             - val2
-             - val3
-       - has_expected_columns:
-           columns:
-             column1: VARCHAR
-             column2: INT
-       - has_contract
-       - has_constraints:
-           min_count: 1
-           max_count: 4
-       - has_description
-       - has_required_tags:
-           tags: &id003
+       - tag:
+           tags:
            - tag1
            - tag2
-       - has_all_columns
+       - name:
+           include: *id002
+           exclude: .*i\s+am\s+a\s+regex\s+pattern.*
+           match_all: false
+       - path:
+           include: .*i\s+am\s+a\s+regex\s+pattern.*
+           exclude: *id001
+           match_all: false
+       validations:
+       - has_tests:
+           min_count: 2
+           max_count: 6
+       - has_required_tags:
+           tags:
+           - tag1
+           - tag2
+       - has_properties
        - has_required_meta_keys:
            keys:
            - key1
            - key2
+       - has_allowed_tags:
+           tags: &id003
+           - tag1
+           - tag2
        - exists
-       - has_valid_source_dependencies
-       - has_tests:
-           min_count: 2
-           max_count: 6
-       - has_valid_ref_dependencies
        generator:
          exclude:
-         - description
          - columns
-         filename: properties.yml
+         - description
+         filename: config.yml
          depth: 2
          description:
-           overwrite: true
-           terminator: \n
+           overwrite: false
+           terminator: __END__
          columns:
            overwrite: false
            add: true
-           remove: true
-           order: true
+           remove: false
+           order: false
        columns:
        - filter:
          - meta:
-             meta: *id002
-         - name:
-             include: .*i\s+am\s+a\s+regex\s+pattern.*
-             exclude: *id001
-             match_all: true
+             meta:
+               key1: val1
+               key2:
+               - val2
+               - val3
+         - tag:
+             tags: tag1
          validations:
-         - has_tests:
-             min_count: 1
-             max_count: 5
-         - exists
+         - has_matching_data_type:
+             ignore_whitespace: true
+             case_insensitive: false
+             compare_start_only: false
+         - has_description
+         - has_matching_description:
+             ignore_whitespace: false
+             case_insensitive: true
+             compare_start_only: false
          - has_allowed_meta_keys:
-             keys:
-             - key1
-             - key2
-         - has_data_type
-         - has_required_tags:
-             tags: *id003
-         - has_required_meta_keys:
              keys: key1
+         - has_matching_index:
+             ignore_whitespace: true
+             case_insensitive: false
+             compare_start_only: true
+         - has_data_type
+         - has_tests:
+             min_count: 2
+             max_count: 4
+         - has_allowed_tags:
+             tags: *id003
          generator:
-           exclude:
-           - description
-           - data_type
+           exclude: data_type
            description:
              overwrite: true
-             terminator: .
+             terminator: \n
            data_type:
              overwrite: false
    ```
@@ -228,19 +224,19 @@ repos:
        additional_dependencies: [dbt-postgres]
      - id: dbt-validate
        alias: dbt-validate-no-output
-       name: Run models contracts
+       name: Run sources contracts
        stages: [pre-commit]
        args:
          - --contract
-         - models
+         - sources
        additional_dependencies: [dbt-postgres]
      - id: dbt-validate
        alias: dbt-validate-no-output
-       name: Run model columns contracts
+       name: Run source columns contracts
        stages: [pre-commit]
        args:
          - --contract
-         - models.columns
+         - sources.columns
        additional_dependencies: [dbt-postgres]
 
      - id: dbt-validate

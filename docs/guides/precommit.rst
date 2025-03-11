@@ -50,19 +50,19 @@ file like the example below.
          additional_dependencies: [dbt-postgres]
        - id: dbt-validate
          alias: dbt-validate-no-output
-         name: Run models contracts
+         name: Run sources contracts
          stages: [pre-commit]
          args:
            - --contract
-           - models
+           - sources
          additional_dependencies: [dbt-postgres]
        - id: dbt-validate
          alias: dbt-validate-no-output
-         name: Run model columns contracts
+         name: Run source columns contracts
          stages: [pre-commit]
          args:
            - --contract
-           - models.columns
+           - sources.columns
          additional_dependencies: [dbt-postgres]
 
        - id: dbt-validate
