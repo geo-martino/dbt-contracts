@@ -32,6 +32,16 @@ The format is based on `Keep a Changelog <https://keepachangelog.com/en>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_
 
 
+1.0.6
+=====
+
+Fixed
+-----
+
+* When selecting only a child contract with ``dbt-validate``,
+  paths were not being set on parent contracts leading to overprocessing. Paths are now set correctly.
+
+
 1.0.5
 =====
 

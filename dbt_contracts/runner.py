@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from argparse import Namespace
-from collections.abc import Collection, Mapping, Callable
+from collections.abc import Collection, Mapping, Callable, MutableSequence
 from functools import cached_property
 from pathlib import Path
 from typing import Self, Any
@@ -16,7 +16,7 @@ from dbt.config import RuntimeConfig
 from dbt.contracts.graph.manifest import Manifest
 
 from dbt_contracts import dbt_cli
-from dbt_contracts.contracts import Contract, CONTRACT_MAP, ParentContract, ContractContext
+from dbt_contracts.contracts import Contract, CONTRACT_MAP, ParentContract, ContractContext, ChildContract
 from dbt_contracts.contracts.conditions.properties import PathCondition
 from dbt_contracts.contracts.result import Result
 from dbt_contracts.contracts.utils import get_absolute_project_path, to_tuple
@@ -285,14 +285,6 @@ class ContractsRunner:
         contracts = [self._get_contract_by_key(contract_key)] if contract_key is not None else self._contracts
         self._set_artifacts_on_contracts(contracts, force=False)
 
-        self.logger.info(str(self.paths))
-        for contract in contracts:
-            items = list(contract.filtered_items)
-            self.logger.info(str([contract.config_key, len(items), contract.conditions]))
-            # for item in contract.items:
-            #     results = [cond.run(item) for cond in contract.conditions]
-            #     print(item, [cond.run(item) for cond in contract.conditions])
-
         results: list[Result] = []
         for contract in contracts:
             contract.validate(terms=terms)
@@ -361,7 +353,7 @@ class ContractsRunner:
             for contract in self._contracts:
                 contract.catalog = self.catalog
 
-        for contract in contracts:
+        for contract in self._contracts:
             if self.paths is not None and contract.validate_conditions(self.paths):
                 if self.paths in contract.conditions:
                     continue
