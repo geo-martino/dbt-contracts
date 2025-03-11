@@ -159,6 +159,29 @@ GENERATOR_PARSER = deepcopy(CORE_PARSER)
 GENERATOR_PARSER.prog = "dbt-generate"
 
 
+def _setup_logging() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s", handlers=[logging.StreamHandler()], force=True)
+
+
+def _setup_runner(args: argparse.Namespace) -> ContractsRunner:
+    args.profiles_dir = str(Path(args.profiles_dir).resolve())
+    args.project_dir = str(Path(args.project_dir).resolve())
+
+    config = get_config(args)
+
+    if args.clean:
+        clean_paths(config=config)
+    if args.deps:
+        install_dependencies(config=config)
+
+    if args.config is None and args.project_dir:
+        args.config = Path(args.project_dir)
+
+    args.config = Path(args.config).resolve()
+
+    return ContractsRunner.from_config(config)
+
+
 def clean() -> None:
     """Main entry point for executing `dbt clean`"""
     CORE_PARSER.prog = "dbt-clean"
@@ -191,30 +214,12 @@ def docs() -> None:
     get_catalog(config=config)
 
 
-def setup_runner(args: argparse.Namespace) -> ContractsRunner:
-    """Main entry point for the CLI"""
-    args.profiles_dir = str(Path(args.profiles_dir).resolve())
-    args.project_dir = str(Path(args.project_dir).resolve())
-
-    config = get_config(args)
-
-    if args.clean:
-        clean_paths(config=config)
-    if args.deps:
-        install_dependencies(config=config)
-
-    if args.config is None and args.project_dir:
-        args.config = Path(args.project_dir)
-
-    args.config = Path(args.config).resolve()
-
-    return ContractsRunner.from_config(config)
-
-
 def validate() -> None:
     """Main entry point for the `validator` CLI command"""
+    _setup_logging()
+
     args, _ = VALIDATOR_PARSER.parse_known_args()
-    runner = setup_runner(args)
+    runner = _setup_runner(args)
 
     if args.output is None:
         args.output = Path(runner.config.project_root, runner.config.target_path)
@@ -231,15 +236,15 @@ def validate() -> None:
 
 def generate() -> None:
     """Main entry point for the `generate` CLI command"""
+    _setup_logging()
+
     args, _ = GENERATOR_PARSER.parse_known_args()
-    runner = setup_runner(args)
+    runner = _setup_runner(args)
 
     runner.generate(contract_key=args.contract)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(message)s", handlers=[logging.StreamHandler()], force=True)
-
     operation = CORE_PARSER.add_argument(
         "--operation",
         help="Run this operation.",
