@@ -57,10 +57,10 @@ build = [
 default-groups = ["dev", "test", "docs", "build"]
 
 [project.scripts]
-dbt-clean = "dbt_contracts.dbt_cli:clean_paths"
-dbt-deps = "dbt_contracts.dbt_cli:install_dependencies"
-dbt-parse = "dbt_contracts.dbt_cli:get_manifest"
-dbt-docs = "dbt_contracts.dbt_cli:get_catalog"
+dbt-clean = "dbt_contracts.cli:clean"
+dbt-deps = "dbt_contracts.cli:deps"
+dbt-parse = "dbt_contracts.cli:parse"
+dbt-docs = "dbt_contracts.cli:docs"
 dbt-validate = "dbt_contracts.cli:validate"
 dbt-generate = "dbt_contracts.cli:generate"
 
