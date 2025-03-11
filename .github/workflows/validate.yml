@@ -49,9 +49,10 @@ jobs:
         name: [ 🐧 Linux ]
         python-version: [ 3.12, 3.13 ]
         include:
-          - os: windows-latest
-            name: 🪟 Windows
-            python-version: 3.13
+          # TODO: disabled due to bug in uv action causing post-step to fail
+#          - os: windows-latest
+#            name: 🪟 Windows
+#            python-version: 3.13
           - os: macos-latest
             name: 🍎 Mac
             python-version: 3.13
