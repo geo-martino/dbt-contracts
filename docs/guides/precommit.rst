@@ -18,60 +18,64 @@ file like the example below.
   default_stages: [manual]
 
   repos:
-    - repo: meta
-      hooks:
-        - id: identity
-          name: List files
-          stages: [ manual, pre-commit ]
-    - repo: https://github.com/geo-martino/dbt-contracts
-      rev: v1.0.0
-      hooks:
-        - id: dbt-clean
-          stages: [manual, pre-commit]
-          additional_dependencies: [dbt-postgres]
-        - id: dbt-deps
-          stages: [manual]
-          additional_dependencies: [dbt-postgres]
-        - id: run-contracts
-          alias: run-contracts-no-output
-          name: Run models contracts
-          stages: [pre-commit]
-          args:
-            - --contract
-            - models
-          additional_dependencies: [dbt-postgres]
-        - id: run-contracts
-          alias: run-contracts-no-output
-          name: Run model columns contracts
-          stages: [pre-commit]
-          args:
-            - --contract
-            - models.columns
-          additional_dependencies: [dbt-postgres]
-        - id: run-contracts
-          alias: run-contracts-no-output
-          name: Run macro contracts
-          stages: [pre-commit]
-          args:
-            - --contract
-            - macros
-          additional_dependencies: [dbt-postgres]
-        - id: run-contracts
-          alias: run-contracts-no-output
-          name: Run macro arguments contracts
-          stages: [pre-commit]
-          args:
-            - --contract
-            - macros.arguments
-          additional_dependencies: [dbt-postgres]
+   - repo: meta
+     hooks:
+       - id: identity
+         name: List files
+         stages: [ manual, pre-commit ]
+   - repo: https://github.com/geo-martino/dbt-contracts
+     rev: v1.0.0
+     hooks:
+       - id: dbt-clean
+         stages: [manual, pre-commit]
+         additional_dependencies: [dbt-postgres]
+       - id: dbt-deps
+         stages: [manual]
+         additional_dependencies: [dbt-postgres]
+       - id: dbt-validate
+         alias: dbt-validate-no-output
+         name: Run models contracts
+         stages: [pre-commit]
+         args:
+           - --contract
+           - models
+         additional_dependencies: [dbt-postgres]
+       - id: dbt-validate
+         alias: dbt-validate-no-output
+         name: Run model columns contracts
+         stages: [pre-commit]
+         args:
+           - --contract
+           - models.columns
+         additional_dependencies: [dbt-postgres]
+       - id: dbt-validate
+         alias: dbt-validate-no-output
+         name: Run models contracts
+         stages: [pre-commit]
+         args:
+           - --contract
+           - models
+         additional_dependencies: [dbt-postgres]
+       - id: dbt-validate
+         alias: dbt-validate-no-output
+         name: Run model columns contracts
+         stages: [pre-commit]
+         args:
+           - --contract
+           - models.columns
+         additional_dependencies: [dbt-postgres]
 
-        - id: run-contracts
-          alias: run-contracts-output-annotations
-          name: Run all contracts
-          stages: [manual]
-          args:
-            - --format
-            - github-annotations
-            - --output
-            - contracts_results.json
-          additional_dependencies: [dbt-postgres]
+       - id: dbt-validate
+         alias: dbt-validate-output-annotations
+         name: Run all contracts
+         stages: [manual]
+         args:
+           - --format
+           - github-annotations
+           - --output
+           - contracts_results.json
+         additional_dependencies: [dbt-postgres]
+       - id: dbt-generate
+         name: Generate properties for all contracts
+         stages: [manual]
+         additional_dependencies: [dbt-postgres]

@@ -189,32 +189,32 @@ repos:
      - id: dbt-deps
        stages: [manual]
        additional_dependencies: [dbt-postgres]
-     - id: run-contracts
-       alias: run-contracts-no-output
+     - id: dbt-validate
+       alias: dbt-validate-no-output
        name: Run models contracts
        stages: [pre-commit]
        args:
          - --contract
          - models
        additional_dependencies: [dbt-postgres]
-     - id: run-contracts
-       alias: run-contracts-no-output
+     - id: dbt-validate
+       alias: dbt-validate-no-output
        name: Run model columns contracts
        stages: [pre-commit]
        args:
          - --contract
          - models.columns
        additional_dependencies: [dbt-postgres]
-     - id: run-contracts
-       alias: run-contracts-no-output
+     - id: dbt-validate
+       alias: dbt-validate-no-output
        name: Run macro contracts
        stages: [pre-commit]
        args:
          - --contract
          - macros
        additional_dependencies: [dbt-postgres]
-     - id: run-contracts
-       alias: run-contracts-no-output
+     - id: dbt-validate
+       alias: dbt-validate-no-output
        name: Run macro arguments contracts
        stages: [pre-commit]
        args:
@@ -222,8 +222,8 @@ repos:
          - macros.arguments
        additional_dependencies: [dbt-postgres]
 
-     - id: run-contracts
-       alias: run-contracts-output-annotations
+     - id: dbt-validate
+       alias: dbt-validate-output-annotations
        name: Run all contracts
        stages: [manual]
        args:

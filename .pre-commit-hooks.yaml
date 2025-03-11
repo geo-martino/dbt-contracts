@@ -22,10 +22,17 @@
   entry: dbt-docs
   language: python
   pass_filenames: false
-- id: run-contracts
-  name: Run contracts
-  description: Run the configured contracts.
-  entry: run-contracts
+- id: dbt-validate
+  name: Validate contracts
+  description: Validate the configured contracts.
+  entry: dbt-validate
+  language: python
+  require_serial: true
+  types_or: [sql, yaml]
+- id: dbt-generate
+  name: Generate properties
+  description: Generate properties from database objects
+  entry: dbt-generate
   language: python
   require_serial: true
   types_or: [sql, yaml]

@@ -94,41 +94,41 @@ repos:
      - id: dbt-deps
        stages: [manual]
        additional_dependencies: [dbt-postgres]
-     - id: run-contracts
-       alias: run-contracts-no-output
+     - id: dbt-validate
+       alias: dbt-validate-no-output
        name: Run models contracts
        stages: [pre-commit]
        args:
          - --contract
          - models
        additional_dependencies: [dbt-postgres]
-     - id: run-contracts
-       alias: run-contracts-no-output
+     - id: dbt-validate
+       alias: dbt-validate-no-output
        name: Run model columns contracts
        stages: [pre-commit]
        args:
          - --contract
          - models.columns
        additional_dependencies: [dbt-postgres]
-     - id: run-contracts
-       alias: run-contracts-no-output
-       name: Run macro contracts
+     - id: dbt-validate
+       alias: dbt-validate-no-output
+       name: Run models contracts
        stages: [pre-commit]
        args:
          - --contract
-         - macros
+         - models
        additional_dependencies: [dbt-postgres]
-     - id: run-contracts
-       alias: run-contracts-no-output
-       name: Run macro arguments contracts
+     - id: dbt-validate
+       alias: dbt-validate-no-output
+       name: Run model columns contracts
        stages: [pre-commit]
        args:
          - --contract
-         - macros.arguments
+         - models.columns
        additional_dependencies: [dbt-postgres]
 
-     - id: run-contracts
-       alias: run-contracts-output-annotations
+     - id: dbt-validate
+       alias: dbt-validate-output-annotations
        name: Run all contracts
        stages: [manual]
        args:
@@ -136,6 +136,10 @@ repos:
          - github-annotations
          - --output
          - contracts_results.json
+       additional_dependencies: [dbt-postgres]
+     - id: dbt-generate
+       name: Generate properties for all contracts
+       stages: [manual]
        additional_dependencies: [dbt-postgres]
 ```
 
