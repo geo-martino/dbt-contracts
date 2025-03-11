@@ -315,10 +315,10 @@ class ContractsRunner:
         contracts = [self._get_contract_by_key(contract_key)] if contract_key is not None else self._contracts
         self._set_artifacts_on_contracts(contracts, force=True)
 
-        print(self.paths)
+        self.logger.info(str(self.paths))
         for contract in contracts:
             items = list(contract.filtered_items)
-            print(contract.config_key, len(items), contract.conditions)
+            self.logger.info(str([contract.config_key, len(items), contract.conditions]))
             # for item in contract.items:
             #     results = [cond.run(item) for cond in contract.conditions]
             #     print(item, [cond.run(item) for cond in contract.conditions])
