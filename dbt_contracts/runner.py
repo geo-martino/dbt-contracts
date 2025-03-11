@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from argparse import Namespace
-from collections.abc import Collection, Mapping, Callable, MutableSequence
+from collections.abc import Collection, Mapping, Callable
 from functools import cached_property
 from pathlib import Path
 from typing import Self, Any
@@ -16,7 +16,7 @@ from dbt.config import RuntimeConfig
 from dbt.contracts.graph.manifest import Manifest
 
 from dbt_contracts import dbt_cli
-from dbt_contracts.contracts import Contract, CONTRACT_MAP, ParentContract, ContractContext, ChildContract
+from dbt_contracts.contracts import Contract, CONTRACT_MAP, ParentContract, ContractContext
 from dbt_contracts.contracts.conditions.properties import PathCondition
 from dbt_contracts.contracts.result import Result
 from dbt_contracts.contracts.utils import get_absolute_project_path, to_tuple
