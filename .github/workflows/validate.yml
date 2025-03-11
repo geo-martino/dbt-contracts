@@ -50,6 +50,7 @@ jobs:
         python-version: [ 3.12, 3.13 ]
         include:
           # TODO: disabled due to bug in uv action causing post-step to fail
+          # Issue tracker: https://github.com/astral-sh/setup-uv/issues/226
 #          - os: windows-latest
 #            name: 🪟 Windows
 #            python-version: 3.13
