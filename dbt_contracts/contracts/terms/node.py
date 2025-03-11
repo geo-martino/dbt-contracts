@@ -85,7 +85,7 @@ class HasAllColumns[T: NodeT](NodeContractTerm[T]):
         if extra_columns:
             message = (
                 f"{item.resource_type.title()} config contains too many columns. "
-                f"Extra {', '.join(missing_columns)}"
+                f"Extra {', '.join(extra_columns)}"
             )
             context.add_result(name=self.name, message=message, item=item)
 

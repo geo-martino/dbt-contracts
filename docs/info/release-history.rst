@@ -34,6 +34,15 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 1.0.3
 =====
 
+Fixed
+-----
+
+* :py:class:`.HasAllColumns` was not logging the correct extra columns. This is now fixed.
+
+
+1.0.3
+=====
+
 Changed
 -------
 
