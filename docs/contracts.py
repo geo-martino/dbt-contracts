@@ -357,4 +357,4 @@ if __name__ == "__main__":
         if issubclass(contract_cls, ParentContract):
             builder.build(contract_cls.__child_contract__)
 
-    print(f"Generated references for all contracts")
+    print("Generated references for all contracts")
