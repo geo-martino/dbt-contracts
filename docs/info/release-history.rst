@@ -32,7 +32,10 @@ The format is based on `Keep a Changelog <https://keepachangelog.com/en>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_
 
 
-0.1.0
+1.0.0
 =====
 
-Initial release! 🎉
+Stable release! 🎉
+
+* Complete redesign to improve modularity and performance
+* Add generators for properties generation from database objects
