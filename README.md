@@ -73,89 +73,110 @@ Follow the installation guide for [`pre-commit`](https://pre-commit.com/#install
      macros:
      - filter:
        - name:
-           include:
-           - ^\w+\d+\s{1,3}$
-           - include[_-]this
-           exclude:
-           - ^\w+\d+\s{1,3}$
-           - exclude[_-]this
+           include: .*i\s+am\s+a\s+regex\s+pattern.*
+           exclude: .*i\s+am\s+a\s+regex\s+pattern.*
            match_all: false
        validations:
-       - has_description
+       - has_properties
        arguments:
        - filter:
          - name:
              include: .*i\s+am\s+a\s+regex\s+pattern.*
-             exclude: .*i\s+am\s+a\s+regex\s+pattern.*
+             exclude: &id001
+             - ^\w+\d+\s{1,3}$
+             - exclude[_-]this
              match_all: false
          validations:
          - has_description
-     sources:
+     models:
      - filter:
-       - tag:
-           tags:
+       - path:
+           include:
+           - ^\w+\d+\s{1,3}$
+           - include[_-]this
+           exclude: *id001
+           match_all: false
+       - is_materialized
+       - meta:
+           meta: &id002
+             key1: val1
+             key2:
+             - val2
+             - val3
+       validations:
+       - has_allowed_meta_values:
+           meta:
+             key1: val1
+             key2:
+             - val2
+             - val3
+       - has_expected_columns:
+           columns:
+             column1: VARCHAR
+             column2: INT
+       - has_contract
+       - has_constraints:
+           min_count: 1
+           max_count: 4
+       - has_description
+       - has_required_tags:
+           tags: &id003
            - tag1
            - tag2
-       - is_enabled
-       validations:
+       - has_all_columns
+       - has_required_meta_keys:
+           keys:
+           - key1
+           - key2
+       - exists
+       - has_valid_source_dependencies
        - has_tests:
            min_count: 2
-           max_count: 5
-       - has_matching_description:
-           ignore_whitespace: false
-           case_insensitive: true
-           compare_start_only: true
-       - has_required_meta_keys:
-           keys: key1
+           max_count: 6
+       - has_valid_ref_dependencies
        generator:
          exclude:
          - description
          - columns
          filename: properties.yml
-         depth: 1
+         depth: 2
          description:
            overwrite: true
            terminator: \n
          columns:
-           overwrite: true
+           overwrite: false
            add: true
            remove: true
-           order: false
+           order: true
        columns:
        - filter:
          - meta:
-             meta:
-               key1: val1
-               key2:
-               - val2
-               - val3
-         - tag:
-             tags: tag1
+             meta: *id002
+         - name:
+             include: .*i\s+am\s+a\s+regex\s+pattern.*
+             exclude: *id001
+             match_all: true
          validations:
          - has_tests:
              min_count: 1
-             max_count: 4
-         - has_allowed_meta_values:
-             meta:
-               key1: val1
-               key2:
-               - val2
-               - val3
+             max_count: 5
          - exists
+         - has_allowed_meta_keys:
+             keys:
+             - key1
+             - key2
+         - has_data_type
+         - has_required_tags:
+             tags: *id003
          - has_required_meta_keys:
              keys: key1
-         - has_allowed_tags:
-             tags: tag1
-         - has_matching_data_type:
-             ignore_whitespace: false
-             case_insensitive: false
-             compare_start_only: true
-         - has_description
          generator:
-           exclude: description
+           exclude:
+           - description
+           - data_type
            description:
              overwrite: true
-             terminator: __END__
+             terminator: .
            data_type:
              overwrite: false
    ```
@@ -207,19 +228,19 @@ repos:
        additional_dependencies: [dbt-postgres]
      - id: dbt-validate
        alias: dbt-validate-no-output
-       name: Run macro contracts
+       name: Run models contracts
        stages: [pre-commit]
        args:
          - --contract
-         - macros
+         - models
        additional_dependencies: [dbt-postgres]
      - id: dbt-validate
        alias: dbt-validate-no-output
-       name: Run macro arguments contracts
+       name: Run model columns contracts
        stages: [pre-commit]
        args:
          - --contract
-         - macros.arguments
+         - models.columns
        additional_dependencies: [dbt-postgres]
 
      - id: dbt-validate
@@ -231,6 +252,10 @@ repos:
          - github-annotations
          - --output
          - contracts_results.json
+       additional_dependencies: [dbt-postgres]
+     - id: dbt-generate
+       name: Generate properties for all contracts
+       stages: [manual]
        additional_dependencies: [dbt-postgres]
 ```
 
