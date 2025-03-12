@@ -32,6 +32,15 @@ The format is based on `Keep a Changelog <https://keepachangelog.com/en>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_
 
 
+1.0.7
+=====
+
+Changed
+-------
+
+* Properties files now outputted with extra indentation for arrays
+
+
 1.0.6
 =====
 

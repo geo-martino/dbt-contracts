@@ -24,6 +24,14 @@ class SafeLineLoader(yaml.SafeLoader):
         return mapping
 
 
+class IndentedDumper(yaml.Dumper):
+    """YAML dumper which sets extra indentation for flow collections"""
+
+    # noinspection PyMissingOrEmptyDocstring,SpellCheckingInspection
+    def increase_indent(self, flow=False, indentless=False):
+        return super(IndentedDumper, self).increase_indent(flow, False)
+
+
 class PropertiesIO(MutableMapping[Path, dict[str, Any]]):
     """Manages loading and saving of properties for dbt objects from/to their associated properties files"""
 
@@ -111,7 +119,7 @@ class PropertiesIO(MutableMapping[Path, dict[str, Any]]):
             properties = self._clean_properties(self._properties[path])
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("w") as file:
-                yaml.dump(properties, file, sort_keys=False)
+                yaml.dump(properties, file, Dumper=IndentedDumper, sort_keys=False, allow_unicode=True)
 
             paths_updated.append(path)
 
