@@ -25,7 +25,9 @@ def test_path_validation(model: ModelNode, faker: Faker):
     assert PathCondition().run(model)
     assert PathCondition(include=paths + [model.path]).run(model)
     assert not PathCondition(exclude=paths + [model.patch_path.split("://")[1]]).run(model)
-    assert not PathCondition(include=paths + [model.path], exclude=paths + [model.patch_path.split("://")[1]]).run(model)
+    assert not PathCondition(
+        include=paths + [model.path], exclude=paths + [model.patch_path.split("://")[1]]
+    ).run(model)
 
 
 def test_path_condition_unifies_chunked_path_values():
