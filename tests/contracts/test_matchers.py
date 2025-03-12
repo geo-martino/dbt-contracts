@@ -56,6 +56,10 @@ class TestPatternMatcher:
         assert not PatternMatcher(include="*")._match(None)
         assert PatternMatcher()._match("i am a value")
 
+    def test_match_includes_all_on_no_include_patterns(self):
+        assert PatternMatcher(include=())._match("i am a value")
+        assert PatternMatcher(exclude="exclude me")._match("i am a value")
+
     def test_match_on_simple_patterns(self):
         assert PatternMatcher(include="i am a value")._match("i am a value")
         assert not PatternMatcher(exclude="i am a value")._match("i am a value")

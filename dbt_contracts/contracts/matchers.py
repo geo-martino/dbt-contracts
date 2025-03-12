@@ -1,5 +1,5 @@
 import re
-from collections.abc import Sequence
+from collections.abc import Sequence, Collection
 from typing import Annotated, Self
 
 from pydantic import BaseModel, Field, BeforeValidator, model_validator
@@ -95,17 +95,41 @@ class PatternMatcher(BaseModel):
         examples=[True, False],
     )
 
-    def _match(self, value: str | None) -> bool | None:
+    def _match(self, value: str | None) -> bool:
         if not value:
             return False
         if not self.include and not self.exclude:
             return True
 
-        if self.exclude:
-            if self.match_all and all(pattern == value or re.match(pattern, value) for pattern in self.exclude):
-                return False
-            elif any(pattern == value or re.match(pattern, value) for pattern in self.exclude):
-                return False
+        if self._match_exclude(value):
+            return False
+        return self._match_include(value)
+
+    def _match_values(self, values: Collection[str | None]) -> bool:
+        if not self.include and not self.exclude:
+            return True
+
+        if any(map(self._match_exclude, values)):
+            return False
+        return any(map(self._match_include, values))
+
+    def _match_exclude(self, value: str | None) -> bool:
+        if not value:
+            return True
+        if not self.exclude:
+            return False
+
+        if self.match_all and all(pattern == value or re.match(pattern, value) for pattern in self.exclude):
+            return True
+        if any(pattern == value or re.match(pattern, value) for pattern in self.exclude):
+            return True
+        return False
+
+    def _match_include(self, value: str) -> bool:
+        if not value:
+            return True
+        if not self.include:
+            return True  # include all when no include patterns are given
 
         if self.match_all:
             return all(pattern == value or re.match(pattern, value) for pattern in self.include)

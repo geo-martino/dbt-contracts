@@ -70,7 +70,8 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
         paths = [item.original_file_path, item.path]
         if isinstance(item, ParsedResource) and item.patch_path:
             paths.append(item.patch_path.split("://")[1])
-        return any(map(self._match, paths))
+
+        return self._match_values(paths)
 
 
 class TagCondition(ContractCondition[TagT]):
