@@ -43,6 +43,17 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
         - ["path", "to", "another", "folder3"]
     """
     # noinspection PyNestedDecorators
+    @field_validator("include", "exclude", mode="after", check_fields=True)
+    @classmethod
+    def escape_backslashes_in_windows_paths[T: Sequence[str]](cls, values: T) -> T:
+        """
+        Replace all single backslashes with double backslashes in Windows paths.
+
+        This is needed to ensure regex patterns are correctly interpreted and avoid any 'bad escape' errors.
+        """
+        return values.__class__(path.replace("\\", "\\\\") for path in values)
+
+    # noinspection PyNestedDecorators
     @field_validator("include", "exclude", mode="before")
     @classmethod
     def unify_chunked_path_values(cls, values: str | Sequence[str] | Sequence[Sequence[str]]) -> tuple[str, ...]:
@@ -71,6 +82,7 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
         if isinstance(item, ParsedResource) and item.patch_path:
             paths.append(item.patch_path.split("://")[1])
 
+        paths = [path.replace("\\", "\\\\") for path in paths]
         return self._match_values(paths)
 
 

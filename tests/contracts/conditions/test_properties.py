@@ -30,6 +30,12 @@ def test_path_validation(model: ModelNode, faker: Faker):
     ).run(model)
 
 
+def test_path_condition_escapes_backslashes_in_paths():
+    paths = ["path\\to\\folder1", "path\\to\\file1"]
+    expected = [path.replace("\\", "\\\\") for path in paths]
+    assert PathCondition.escape_backslashes_in_windows_paths(paths) == expected
+
+
 def test_path_condition_unifies_chunked_path_values():
     # no remapping for these values
     assert PathCondition.unify_chunked_path_values("path") == ("path",)

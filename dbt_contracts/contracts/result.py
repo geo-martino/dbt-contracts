@@ -7,13 +7,13 @@ from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
-from pydantic import BaseModel
 
+from dbt_contracts._core import BaseModelConfig
 from dbt_contracts.properties import PropertiesIO
 from dbt_contracts.types import ItemT, ParentT
 
 
-class Result[I: ItemT, P: ParentT](BaseModel, metaclass=ABCMeta):
+class Result[I: ItemT, P: ParentT](BaseModelConfig, metaclass=ABCMeta):
     """Store information of the result from a contract execution."""
     name: str
     path: Path | None

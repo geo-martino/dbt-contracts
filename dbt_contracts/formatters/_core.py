@@ -2,8 +2,7 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Callable, Collection, Iterable
 from typing import Any
 
-from pydantic import BaseModel
-
+from dbt_contracts._core import BaseModelConfig
 from dbt_contracts.contracts.result import Result
 
 type KeysT[T] = str | Callable[[T], Any]
@@ -34,7 +33,7 @@ def get_values_from_object[T](obj: T, keys: Collection[KeysT[T]]) -> Iterable[An
     return (get_value_from_object(obj, key) for key in keys)
 
 
-class ResultsFormatter[T: Result](BaseModel, metaclass=ABCMeta):
+class ResultsFormatter[T: Result](BaseModelConfig, metaclass=ABCMeta):
     """
     Base class for implementations which format a set of :py:class:`.Result` objects to a string for displaying results.
     Usually used to format results for logging purposes.
