@@ -6,7 +6,7 @@ from typing import Annotated
 from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ParsedResource, ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
-from pydantic import BeforeValidator, Field, field_validator
+from pydantic import BeforeValidator, Field, field_validator, ConfigDict
 
 from dbt_contracts.contracts.conditions._core import ContractCondition
 from dbt_contracts.contracts.matchers import PatternMatcher
@@ -42,6 +42,13 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
         - ["path", "to", "another", "folder2"]
         - ["path", "to", "another", "folder3"]
     """
+    model_config = ConfigDict(validate_assignment=True)
+
+    @field_validator("include", "exclude", mode="after", check_fields=True)
+    @classmethod
+    def _escape_backslashes_in_windows_paths(cls, values: Sequence[str]) -> Sequence[str]:
+        return [path.replace("\\", "\\\\") for path in values]
+
     # noinspection PyNestedDecorators
     @field_validator("include", "exclude", mode="before")
     @classmethod
@@ -71,6 +78,7 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
         if isinstance(item, ParsedResource) and item.patch_path:
             paths.append(item.patch_path.split("://")[1])
 
+        paths = [path.replace("\\", "\\\\") for path in paths]
         return self._match_values(paths)
 
 
