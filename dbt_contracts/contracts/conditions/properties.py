@@ -6,7 +6,7 @@ from typing import Annotated
 from dbt.artifacts.resources import BaseResource
 from dbt.artifacts.resources.v1.components import ParsedResource, ColumnInfo
 from dbt.artifacts.resources.v1.macro import MacroArgument
-from pydantic import BeforeValidator, Field, field_validator, ConfigDict
+from pydantic import BeforeValidator, Field, field_validator
 
 from dbt_contracts.contracts.conditions._core import ContractCondition
 from dbt_contracts.contracts.matchers import PatternMatcher
