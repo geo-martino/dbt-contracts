@@ -5,8 +5,9 @@ from collections.abc import Sequence, Callable, Iterable, Collection
 from typing import Self, Any, Annotated, Literal
 
 from colorama import Fore
-from pydantic import BaseModel, Field, model_validator, BeforeValidator
+from pydantic import Field, model_validator, BeforeValidator
 
+from dbt_contracts._core import BaseModelConfig
 from dbt_contracts.contracts.result import Result
 from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.formatters import ResultsFormatter
@@ -22,7 +23,7 @@ def _align_and_pad_print_length(value: str, alignment: Literal["<", "^", ">"], w
     return f"{value:{alignment}{width}}"
 
 
-class TableCellBuilder[T: Result](BaseModel):
+class TableCellBuilder[T: Result](BaseModelConfig):
     key: str | Callable[[T], str] = Field(
         description="The key to use to get the value from the :py:class:`.Result` "
                     "or a callable object which returns a formatted string for the value",
@@ -151,7 +152,7 @@ class TableCellBuilder[T: Result](BaseModel):
         return value
 
 
-class TableRowBuilder[T: Result](BaseModel):
+class TableRowBuilder[T: Result](BaseModelConfig):
     cells: Sequence[TableCellBuilder[T]] | Sequence[Sequence[TableCellBuilder[T] | None]] = Field(
         description="The cell builders to use to build the row.",
     )

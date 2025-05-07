@@ -2,12 +2,13 @@ import re
 from collections.abc import Sequence, Collection
 from typing import Annotated, Self
 
-from pydantic import BaseModel, Field, BeforeValidator, model_validator
+from pydantic import Field, BeforeValidator, model_validator
 
+from dbt_contracts._core import BaseModelConfig
 from dbt_contracts.contracts.utils import to_tuple
 
 
-class RangeMatcher(BaseModel):
+class RangeMatcher(BaseModelConfig):
     min_count: int = Field(
         description="The minimum count allowed.",
         ge=1,
@@ -39,7 +40,7 @@ class RangeMatcher(BaseModel):
         return f"Too {quantifier} {kind} found: {count}. Expected: {expected}."
 
 
-class StringMatcher(BaseModel):
+class StringMatcher(BaseModelConfig):
     ignore_whitespace: bool = Field(
         description="Ignore any whitespaces when comparing data type keys.",
         default=False,
@@ -78,7 +79,7 @@ class StringMatcher(BaseModel):
         return match
 
 
-class PatternMatcher(BaseModel):
+class PatternMatcher(BaseModelConfig):
     include: Annotated[Sequence[str], BeforeValidator(to_tuple)] = Field(
         description="Patterns to match against for values to include",
         default=tuple(),

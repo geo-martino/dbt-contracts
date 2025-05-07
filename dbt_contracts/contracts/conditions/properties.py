@@ -42,12 +42,16 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
         - ["path", "to", "another", "folder2"]
         - ["path", "to", "another", "folder3"]
     """
-    model_config = ConfigDict(validate_assignment=True)
-
+    # noinspection PyNestedDecorators
     @field_validator("include", "exclude", mode="after", check_fields=True)
     @classmethod
-    def _escape_backslashes_in_windows_paths(cls, values: Sequence[str]) -> Sequence[str]:
-        return [path.replace("\\", "\\\\") for path in values]
+    def escape_backslashes_in_windows_paths[T: Sequence[str]](cls, values: T) -> T:
+        """
+        Replace all single backslashes with double backslashes in Windows paths.
+
+        This is needed to ensure regex patterns are correctly interpreted and avoid any 'bad escape' errors.
+        """
+        return values.__class__(path.replace("\\", "\\\\") for path in values)
 
     # noinspection PyNestedDecorators
     @field_validator("include", "exclude", mode="before")

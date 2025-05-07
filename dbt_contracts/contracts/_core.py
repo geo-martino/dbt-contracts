@@ -6,14 +6,14 @@ from typing import ClassVar
 
 from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
-from pydantic import BaseModel
 
+from dbt_contracts._core import BaseModelConfig
 from dbt_contracts.contracts.result import Result, RESULT_PROCESSOR_MAP
 from dbt_contracts.properties import PropertiesIO
 from dbt_contracts.types import ItemT, ParentT
 
 
-class ContractPart(BaseModel, metaclass=ABCMeta):
+class ContractPart(BaseModelConfig, metaclass=ABCMeta):
     """
     A part of a contract.
 
