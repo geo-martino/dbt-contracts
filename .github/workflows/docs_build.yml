@@ -49,7 +49,7 @@ jobs:
           uv run make linkcheck
 
       - name: 📦 Upload build artifacts
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: ./docs/_build/html
 
