@@ -36,11 +36,11 @@ dev = [
     "ipywidgets",
 ]
 test = [
-    "pytest>=8.3,<9.0",
-    "pytest-asyncio>=0.25,<1.0",
+    "pytest>=8.3,<10.0",
+    "pytest-asyncio>=0.25,<2.0",
     "pytest-xdist>=3.6,<4.0",
     # "pytest-mock~=3.14",
-    "Faker>=37.0,<38.0",
+    "Faker>=37.0,<39.0",
 ]
 docs = [
     "sphinx>=8.2.3,<9.0",
