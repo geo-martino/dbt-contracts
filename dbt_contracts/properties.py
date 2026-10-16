@@ -5,7 +5,7 @@ from typing import Any, Collection
 import yaml
 
 from dbt_contracts._compat import BaseResource, ParsedResource
-from dbt_contracts.contracts.utils import get_absolute_project_path
+from dbt_contracts._core import get_absolute_project_path
 from dbt_contracts.types import PropertiesT
 
 

@@ -41,11 +41,22 @@ Added
 
 Changed
 -------
+* CLI args are now parsed with ``pydantic-settings``, a new dependency, in place of ``argparse`` parsers.
+  The CLI is also stricter:
+
+  * unknown args now fail with an error. Previously they were ignored, and the value of a mistyped option
+    e.g. ``--contracts models`` was silently used to filter files.
+  * options now need a value. Previously e.g. a bare ``--profile`` was allowed, which set it to ``None``.
+  * ``null`` may be given to unset an option e.g. ``--target null``.
+* ``dbt-validate`` now exits with code 1 when contracts fail without also printing a traceback.
 * :py:class:`.PathCondition` now matches paths using forward slashes as separators on every OS.
   Path patterns should use forward slashes e.g. ``models/staging``, or be given as a list of path parts.
 
 Fixed
 -----
+* ``dbt_contracts.properties`` failed with a circular import when imported before ``dbt_contracts.contracts``.
+* Running the CLI module directly e.g. ``python -m dbt_contracts.cli --operation validate``
+  no longer takes the operation as a file to filter on.
 * ``has_expected_name`` now accepts the documented ``null`` data type key for patterns which apply to
   all data types without their own patterns. Configs using it previously failed validation.
 * :py:class:`.PathCondition` patterns with regex escapes e.g. ``.*\.sql$`` never matched on any OS,

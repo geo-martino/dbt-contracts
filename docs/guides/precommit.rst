@@ -79,3 +79,14 @@ file like the example below.
          name: Generate properties for all contracts
          stages: [manual]
          additional_dependencies: [dbt-postgres]
+
+.. note::
+
+   pre-commit passes the changed files to a hook after the ``args`` you give it.
+   As ``--terms`` takes many values, end the hook's ``args`` with ``--`` when using it
+   so the files are not taken as terms e.g.
+
+   .. code-block:: yaml
+
+      - id: dbt-validate
+        args: [--terms, has_description, --]
