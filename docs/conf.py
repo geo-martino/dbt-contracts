@@ -52,16 +52,19 @@ templates_path = ["_templates"]
 exclude_patterns = ["_build",]
 
 
-def skip_parametrised_generics(app, what: str, name: str, obj, skip: bool, options) -> bool | None:
+def skip_pydantic_internals(app, what: str, name: str, obj, skip: bool, options) -> bool | None:
     """
-    Skip the parametrised generic models e.g. ``Result[ModelNode, NoneType]`` which pydantic registers
-    on their module, as autodoc otherwise documents them as duplicates of their generic class.
+    Skip pydantic internals which autodoc would otherwise document:
+
+    * the parametrised generic models e.g. ``Result[ModelNode, NoneType]`` which pydantic registers
+      on their module, and would be documented as duplicates of their generic class.
+    * ``model_config``, which only carries pydantic's own markdown docstring.
     """
-    return True if "[" in name else None
+    return True if "[" in name or name == "model_config" else None
 
 
 def setup(app) -> None:
-    app.connect("autodoc-skip-member", skip_parametrised_generics)
+    app.connect("autodoc-skip-member", skip_pydantic_internals)
 
 
 # -- Linkcheck configuration -------------------------------------------------

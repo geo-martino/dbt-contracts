@@ -90,7 +90,7 @@ class HasExpectedName[T: NodeT](ColumnContractTerm[T], StringMatcher):
             "A map of data types to regex patterns for which to "
             "validate names of columns which have the matching data type."
             "To define a generic contract which can apply to all unmatched data types, "
-            "specify the data type key as `null`."
+            "specify the data type key as ``null``."
         ),
         default_factory=dict,
         examples=[{"BOOLEAN": ["(is|has|do)_.*"], "TIMESTAMP": [".*_at"], None: ["name_.*"]}]

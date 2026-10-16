@@ -96,7 +96,7 @@ class ChildPropertiesGenerator[I: ItemT, P: PropertiesT, G: PropertyGenerator](
 
         :param item: The item to modify properties for.
         :param context: The contract context to use.
-        :param parent: The parent item that the given child `item` belongs to if available.
+        :param parent: The parent item that the given child ``item`` belongs to if available.
         :return: Whether the properties of the item were modified.
         """
         raise NotImplementedError

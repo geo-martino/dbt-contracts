@@ -10,7 +10,7 @@ type KeysT[T] = str | Callable[[T], Any]
 
 def get_value_from_object[T](obj: T, key: KeysT[T]) -> Any:
     """
-    Get a values from the given `obj` for the given `key`.
+    Get a values from the given ``obj`` for the given ``key``.
 
     :param obj: The object to get a value from.
     :param key: The key from which to get the value.
@@ -22,7 +22,7 @@ def get_value_from_object[T](obj: T, key: KeysT[T]) -> Any:
 
 def get_values_from_object[T](obj: T, keys: Collection[KeysT[T]]) -> Iterable[Any]:
     """
-    Get many values from the given `obj` for the given `key`.
+    Get many values from the given ``obj`` for the given ``key``.
 
     :param obj: The object to get values from.
     :param keys: The keys from which to get the values.

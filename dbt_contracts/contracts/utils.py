@@ -49,7 +49,7 @@ def merge_maps[T: MutableMapping](source: T, new: Mapping, extend: bool = True, 
 
 def get_matching_catalog_table(item: NodeT, catalog: CatalogArtifact) -> CatalogTable | None:
     """
-    Check whether the given `item` exists in the database.
+    Check whether the given ``item`` exists in the database.
 
     :param item: The resource to match.
     :param catalog: The catalog of tables.
@@ -62,7 +62,7 @@ def get_matching_catalog_table(item: NodeT, catalog: CatalogArtifact) -> Catalog
 
 def get_absolute_project_path(path: str | Path) -> Path | None:
     """
-    Get the absolute path of the given relative `path` in the project directory.
+    Get the absolute path of the given relative ``path`` in the project directory.
     Only returns the path if it exists.
 
     :param path: The relative path.

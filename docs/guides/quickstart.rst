@@ -4,17 +4,17 @@
 Quick Start
 ===========
 
-1. Create a contracts file. By default, the package will look for a file named `contracts.yml`
+1. Create a contracts file. By default, the package will look for a file named ``contracts.yml``
    in the root of the repository. An example is provided below.
    For a full reference of the available configuration for this file,
    please refer to the contracts reference in the sidebar.
 
-2. If configured, run `dbt-generate` to generate properties files from database objects.
+2. If configured, run ``dbt-generate`` to generate properties files from database objects.
    It can be useful to run this before validations if your validations require properties
    set which can be generated from database objects.
    See :ref:`commands` for more info on this operation.
 
-3. If configured, run `dbt-validate` to validate your contracts against the terms set in the configuration file.
+3. If configured, run ``dbt-validate`` to validate your contracts against the terms set in the configuration file.
    See :ref:`commands` for more info on this operation.
 
 4. Once you are satisfied with your configuration and the validations are passing,

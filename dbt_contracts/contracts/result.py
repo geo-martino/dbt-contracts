@@ -46,7 +46,7 @@ class Result[I: ItemT, P: ParentT](BaseModelConfig, metaclass=ABCMeta):
         Create a new :py:class:`Result` from a given resource.
 
         :param item: The resource to log a result for.
-        :param parent: The parent item that the given child `item` belongs to if available.
+        :param parent: The parent item that the given child ``item`` belongs to if available.
         :param properties: The properties IO handler to use when loading properties files.
         :return: The :py:class:`Result` instance.
         """
@@ -115,7 +115,7 @@ class Result[I: ItemT, P: ParentT](BaseModelConfig, metaclass=ABCMeta):
 
     def _as_github_annotation(self) -> Mapping[str, str | int | list[str] | dict[str, str]]:
         """
-        See annotations spec in the `output` param 'Update a check run':
+        See annotations spec in the ``output`` param 'Update a check run':
         https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run
         """
         return {

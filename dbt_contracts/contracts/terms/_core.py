@@ -57,7 +57,7 @@ class ChildContractTerm[I: ChildT, P: ParentT](ContractTerm[I], metaclass=ABCMet
 
         :param item: The item to check.
         :param context: The contract context to use.
-        :param parent: The parent item that the given child `item` belongs to if available.
+        :param parent: The parent item that the given child ``item`` belongs to if available.
         :return: Boolean for if the item passes the term.
         """
         raise NotImplementedError

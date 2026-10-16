@@ -193,7 +193,7 @@ class HasValidUpstreamDependencies[T: CompiledNode](NodeContractTerm[T], metacla
 class HasValidRefDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
     """
     Check whether {kind} have an appropriate number of upstream dependencies
-    i.e. the number of `ref` macros present in the query.
+    i.e. the number of ``ref`` macros present in the query.
     """
     @validate_context
     def run(self, item: T, context: ContractContext) -> bool:
@@ -208,7 +208,7 @@ class HasValidRefDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
 class HasValidSourceDependencies[T: CompiledNode](HasValidUpstreamDependencies[T]):
     """
     Check whether {kind} have an appropriate number of upstream dependencies for sources
-    i.e. the number of `source` macros present in the query.
+    i.e. the number of ``source`` macros present in the query.
     """
     @validate_context
     def run(self, item: T, context: ContractContext) -> bool:
