@@ -57,7 +57,7 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
             context: ContractContext
     ):
         key = item.resource_type.pluralize()
-        sources = sample([source for source in sources if source.name != item.name], k=5)
+        sources = sample([source for source in sources if source.source_name != item.source_name], k=5)
         properties = {key: [sources[key][0] for sources in map(generator._generate_properties, sources)]}
         assert not any(source["name"] == item.source_name for source in properties[key])
 
@@ -77,7 +77,7 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
             context: ContractContext
     ):
         key = item.resource_type.pluralize()
-        sources = sample([source for source in sources if source.name != item.name], k=5)
+        sources = sample([source for source in sources if source.source_name != item.source_name], k=5)
         properties = {key: [sources[key][0] for sources in map(generator._generate_properties, sources)]}
         properties[key].append(generator._generate_properties(item)[key][0])
         assert sum(source["name"] == item.source_name for source in properties[key]) == 1
@@ -102,7 +102,7 @@ class TestSourcePropertiesGenerator(NodePropertiesGeneratorTester[SourceDefiniti
             context: ContractContext
     ):
         key = item.resource_type.pluralize()
-        sources = sample([source for source in sources if source.name != item.name], k=5)
+        sources = sample([source for source in sources if source.source_name != item.source_name], k=5)
         source = generator._generate_properties(item)[key][0]
         properties = {key: [sources[key][0] for sources in map(generator._generate_properties, sources)] + [source]}
         assert sum(source["name"] == item.source_name for source in properties[key]) == 1
