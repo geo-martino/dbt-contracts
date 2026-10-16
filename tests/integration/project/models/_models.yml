@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: customers
+    description: All customers.
+    meta:
+      owner: data-team
+    columns:
+      - name: id
+        description: The customer identifier.
+        tests:
+          - unique
+          - not_null
+      - name: name
+
+  - name: orders
+    meta:
+      owner: data-team
+    columns:
+      - name: id
+        description: The customer identifier.
+      - name: amount
+        description: The payment amount in dollars.

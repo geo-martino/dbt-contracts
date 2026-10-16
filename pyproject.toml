@@ -41,6 +41,7 @@ test = [
     "pytest-xdist>=3.6,<4.0",
     # "pytest-mock~=3.14",
     "Faker>=37.0,<38.0",
+    "dbt-postgres",  # any adapter works for the integration tests as dbt parse never connects
 ]
 docs = [
     "sphinx>=8.2.3,<9.0",
@@ -92,6 +93,7 @@ addopts = "-color=yes"
 markers = [
     "slow: marks test as slow (deselect with '-m \"not slow\"')",
     "manual: marks tests to be run only when manually directed to by the developer",
+    "integration: marks tests which parse a real dbt project and need a dbt adapter installed",
 ]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
