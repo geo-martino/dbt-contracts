@@ -156,11 +156,12 @@ class TestContractsRunner:
         with mock.patch("dbt_contracts.runner.get_absolute_project_path", new=_get_absolute_path):
             runner.paths = paths
 
-        assert runner.paths.include == tuple(map(str, paths[:3]))
+        # paths are normalised to forward slashes on any OS
+        assert runner.paths.include == tuple(Path(path).as_posix() for path in paths[:3])
 
         with mock.patch("dbt_contracts.runner.get_absolute_project_path", new=_get_absolute_path):
             runner.paths = paths[0]
-        assert runner.paths.include == tuple(map(str, paths[:1]))
+        assert runner.paths.include == tuple(Path(path).as_posix() for path in paths[:1])
 
         runner.paths = []
         assert runner.paths is None

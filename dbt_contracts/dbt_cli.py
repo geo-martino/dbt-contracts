@@ -9,14 +9,12 @@ from logging import Logger
 from pathlib import Path
 from typing import Any
 
-from dbt.artifacts.schemas.catalog.v1.catalog import CatalogArtifact
 from dbt.cli.main import dbtRunner, dbtRunnerResult
 from dbt.config import RuntimeConfig
-from dbt.constants import MANIFEST_FILE_NAME
 from dbt.contracts.graph.manifest import Manifest
 from dbt.flags import set_from_args
-from dbt.task.docs.generate import CATALOG_FILENAME
-from dbt_common.context import set_invocation_context
+
+from dbt_contracts._compat import CatalogArtifact, MANIFEST_FILE_NAME, CATALOG_FILENAME, set_invocation_context
 
 DEFAULT_GLOBAL_ARGS = (
     "--no-use-colors",
@@ -90,11 +88,11 @@ def load_artifact(filename: str, config: RuntimeConfig | Namespace) -> Mapping[s
 
 def get_result(*args, runner: dbtRunner = None) -> dbtRunnerResult:
     """
-    Get the result of a dbt invocation with the given `args` and `kwargs` against a given `runner`.
+    Get the result of a dbt invocation with the given ``args`` and ``kwargs`` against a given ``runner``.
 
     :param runner: The :py:class:`dbtRunner` to invoke commands against.
         If None, creates a new runner for this invocation.
-    :param args: Args to pass to the `runner`.
+    :param args: Args to pass to the ``runner``.
     :return: The result from the invocation.
     """
     if runner is None:
@@ -109,12 +107,12 @@ def get_result(*args, runner: dbtRunner = None) -> dbtRunnerResult:
 
 def clean_paths(*args, runner: dbtRunner = None, config: RuntimeConfig | Namespace = None) -> None:
     """
-    Clean the configured paths i.e. run the `dbt clean` command.
+    Clean the configured paths i.e. run the ``dbt clean`` command.
 
     :param runner: The :py:class:`dbtRunner` to invoke commands against.
         If None, creates a new runner for this invocation.
     :param config: The runtime config to use.
-    :param args: Args to pass to the `runner`.
+    :param args: Args to pass to the ``runner``.
     """
     args = add_default_args(*args, config=config)
     return get_result("clean", "--no-clean-project-files-only", *args, runner=runner).result
@@ -122,12 +120,12 @@ def clean_paths(*args, runner: dbtRunner = None, config: RuntimeConfig | Namespa
 
 def install_dependencies(*args, runner: dbtRunner = None, config: RuntimeConfig | Namespace = None) -> None:
     """
-    Install additional dbt dependencies i.e. run the `dbt deps` command.
+    Install additional dbt dependencies i.e. run the ``dbt deps`` command.
 
     :param runner: The :py:class:`dbtRunner` to invoke commands against.
         If None, creates a new runner for this invocation.
     :param config: The runtime config to use.
-    :param args: Args to pass to the `runner`.
+    :param args: Args to pass to the ``runner``.
     """
     args = add_default_args(*args, config=config)
     return get_result("deps", *args, runner=runner).result
@@ -141,12 +139,12 @@ def get_manifest(
         logger: Logger = None,
 ) -> Manifest:
     """
-    Generate and return the dbt manifest for a project i.e. run the `dbt parse` command.
+    Generate and return the dbt manifest for a project i.e. run the ``dbt parse`` command.
 
     :param runner: The :py:class:`dbtRunner` to invoke commands against.
         If None, creates a new runner for this invocation.
     :param config: The runtime config to use.
-    :param args: Args to pass to the `runner`.
+    :param args: Args to pass to the ``runner``.
     :param refresh: Ignore any stored artifacts and generate a new manifest.
     :param logger: The logger to use for logging.
     :return: The manifest.
@@ -171,12 +169,12 @@ def get_catalog(
         logger: Logger = None,
 ) -> CatalogArtifact:
     """
-    Generate and return the dbt catalog for a project i.e. run the `dbt docs generate` command.
+    Generate and return the dbt catalog for a project i.e. run the ``dbt docs generate`` command.
 
     :param runner: The :py:class:`dbtRunner` to invoke commands against.
         If None, creates a new runner for this invocation.
     :param config: The runtime config to use.
-    :param args: Args to pass to the `runner`.
+    :param args: Args to pass to the ``runner``.
     :param refresh: Ignore any stored artifacts and generate a new manifest.
     :param logger: The logger to use for logging.
     :return: The catalog.

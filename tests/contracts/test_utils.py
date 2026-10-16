@@ -5,11 +5,10 @@ from random import choice
 from unittest import mock
 
 import pytest
-from dbt.artifacts.resources import BaseResource
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.nodes import CompiledNode, ModelNode
 from dbt.flags import GLOBAL_FLAGS
 
+from dbt_contracts._compat import BaseResource, CatalogArtifact
 from dbt_contracts.contracts.utils import get_matching_catalog_table, get_absolute_project_path, merge_maps
 
 
@@ -76,14 +75,15 @@ def relative_path(model: ModelNode, tmp_path: Path) -> Path:
     return Path(path)
 
 
-def test_get_absolute_path_in_project_dir(relative_path: Path, tmp_path: Path):
-    GLOBAL_FLAGS.PROJECT_DIR = tmp_path
+def test_get_absolute_path_in_project_dir(relative_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(GLOBAL_FLAGS, "PROJECT_DIR", tmp_path, raising=False)
     expected = tmp_path.joinpath(relative_path)
     assert get_absolute_project_path(relative_path) == expected
 
 
-# TODO: flakey test - fix me
-def test_get_absolute_path_in_cwd(relative_path: Path, tmp_path: Path):
+def test_get_absolute_path_in_cwd(relative_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    # a project dir set by another test would otherwise take precedence over the cwd
+    monkeypatch.setattr(GLOBAL_FLAGS, "PROJECT_DIR", None, raising=False)
     expected = tmp_path.joinpath(relative_path)
     # noinspection SpellCheckingInspection
     with mock.patch.object(os, "getcwd", return_value=str(tmp_path)):

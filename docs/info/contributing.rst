@@ -6,7 +6,8 @@ To contribute to dbt-contracts, follow these steps:
 
 Setup your development environment
 ==================================
-1. Ensure you have Python3.11 or greater installed on your system.
+1. Ensure you have Python 3.12 or greater and `uv <https://docs.astral.sh/uv/getting-started/installation/>`_
+   installed on your system.
 2. Go to the `GitHub repository <https://github.com/geo-martino/dbt-contracts>`_ and fork the project by clicking
    **Fork** in the top left:
 
@@ -17,22 +18,43 @@ Setup your development environment
 
    .. image:: images/contributing/clone.png
 
-4. In a terminal, navigate to the directory of the cloned project and create a virtual environment for dbt-contracts:
+4. In a terminal, navigate to the directory of the cloned project and install the package
+   along with all of its development dependencies into a virtual environment:
 
    .. code-block:: bash
 
-      python -m venv .venv
+      make install
 
-5. Install the dependencies with ``pip`` for the changes you wish to make as follows:
-
-   .. code-block:: bash
-
-      pip install -e '.[test]'  # installs just the core package + the required dependencies for testing
-      pip install -e '.[dev]'  # installs the `test` dependencies + dependencies for linting and other development uses
-      pip install -e '.[docs]'  # installs just the core package + the required dependencies for building documentation
-
-6. Optionally, to ensure inheritance diagrams in the documentation render correctly, install graphviz.
+5. Optionally, to ensure inheritance diagrams in the documentation render correctly, install graphviz.
    See `here <https://graphviz.org/download/>`_ for platform-specific info on how to install graphviz.
+
+Development commands
+====================
+The ``Makefile`` (or ``make.bat`` on Windows) provides the following commands for validating your changes.
+Each runs through ``uv``, so there is no need to activate the virtual environment first.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 80
+
+   * - Command
+     - Description
+   * - ``make install``
+     - Install the package with all dependency groups.
+   * - ``make test``
+     - Run the tests.
+   * - ``make lint``
+     - Check the code with ruff.
+   * - ``make lint-fix``
+     - Check the code with ruff and automatically fix what it can.
+   * - ``make docs``
+     - Build the HTML documentation to ``docs/_build/html``, failing on any warnings.
+   * - ``make check``
+     - Run ``lint``, ``test`` and ``docs`` i.e. everything CI validates. Run this before opening a pull request.
+   * - ``make rebuild-html``
+     - Clean and rebuild the HTML documentation from scratch, then check all of its links.
+
+Run ``make help`` to list these commands along with the other Sphinx documentation targets.
 
 Making changes and testing
 ==========================
@@ -41,28 +63,36 @@ Create a new branch in your local git project and commit changes to this branch 
 All tests are located within ``./tests``.
 If you make any changes to the functionality of the package, you **must** either modify or add new tests
 for these changes.
-To run tests, you must have installed either the ``test`` or ``dev`` optional dependencies and run ``pytest`` i.e.:
+To run all tests, or just the tests in a given file:
 
 .. code-block:: bash
 
-   pytest
+   make test
    # OR
-   pytest path/to/test/file.py
+   uv run pytest path/to/test/file.py
 
 As part of code validation, your code will be required to pass certain linting checks.
-This project uses flake8 to help give an indication as to the quality of your code.
+This project uses ruff to help give an indication as to the quality of your code.
 For the current checks that your code will be expected to pass,
-please check the ``.flake8`` config file in the root of the project.
+please check the ``[tool.ruff]`` config in the ``pyproject.toml`` file in the root of the project.
 
-To run these checks locally, simply run the following command in a terminal:
+To run these checks locally, and optionally fix what can be fixed automatically, run:
 
 .. code-block:: bash
 
-   flake8
+   make lint
+   # OR
+   make lint-fix
+
+If you change the documentation or any docstrings, check the documentation still builds without warnings:
+
+.. code-block:: bash
+
+   make docs
 
 Submitting your changes for review
 ==================================
-1. Ensure all tests pass locally first.
+1. Ensure everything CI validates passes locally first by running ``make check``.
 2. Add any changes you made to the :ref:`release-history`.
 3. Go to your forked repository and open a pull request for your branch.
 

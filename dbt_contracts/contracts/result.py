@@ -3,11 +3,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Self, ClassVar
 
-from dbt.artifacts.resources import BaseResource
-from dbt.artifacts.resources.v1.components import ColumnInfo
-from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 
+from dbt_contracts._compat import BaseResource, ColumnInfo, MacroArgument
 from dbt_contracts._core import BaseModelConfig
 from dbt_contracts.properties import PropertiesIO
 from dbt_contracts.types import ItemT, ParentT
@@ -48,7 +46,7 @@ class Result[I: ItemT, P: ParentT](BaseModelConfig, metaclass=ABCMeta):
         Create a new :py:class:`Result` from a given resource.
 
         :param item: The resource to log a result for.
-        :param parent: The parent item that the given child `item` belongs to if available.
+        :param parent: The parent item that the given child ``item`` belongs to if available.
         :param properties: The properties IO handler to use when loading properties files.
         :return: The :py:class:`Result` instance.
         """
@@ -117,7 +115,7 @@ class Result[I: ItemT, P: ParentT](BaseModelConfig, metaclass=ABCMeta):
 
     def _as_github_annotation(self) -> Mapping[str, str | int | list[str] | dict[str, str]]:
         """
-        See annotations spec in the `output` param 'Update a check run':
+        See annotations spec in the ``output`` param 'Update a check run':
         https://docs.github.com/en/rest/checks/runs?apiVersion=2022-11-28#update-a-check-run
         """
         return {

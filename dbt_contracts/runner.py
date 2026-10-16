@@ -9,12 +9,11 @@ from typing import Self, Any
 
 import yaml
 from colorama import Fore
-from dbt.adapters.utils import classproperty
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.cli.main import dbtRunner
 from dbt.config import RuntimeConfig
 from dbt.contracts.graph.manifest import Manifest
 
+from dbt_contracts._compat import classproperty, CatalogArtifact
 from dbt_contracts import dbt_cli
 from dbt_contracts.contracts import Contract, CONTRACT_MAP, ParentContract, ContractContext
 from dbt_contracts.contracts.conditions.properties import PathCondition
@@ -137,7 +136,7 @@ class ContractsRunner:
 
             path = get_absolute_project_path(path)
             if path.is_relative_to(project_root):
-                paths.append(str(path.relative_to(project_root)))
+                paths.append(path.relative_to(project_root).as_posix())
 
         self._paths = PathCondition(include=paths) if paths else None
 
@@ -174,7 +173,7 @@ class ContractsRunner:
     @classmethod
     def from_file(cls, path: str | Path, config: RuntimeConfig):
         """
-        Set up a new runner from the config in a file at the given `path`.
+        Set up a new runner from the config in a file at the given ``path``.
 
         :param path: The path to the config file. Must be a path to a valid file.
         :param config: The dbt runtime config.
@@ -196,7 +195,7 @@ class ContractsRunner:
     @classmethod
     def from_yaml(cls, path: str | Path, config: RuntimeConfig) -> Self:
         """
-        Set up a new runner from the config in a yaml file at the given `path`.
+        Set up a new runner from the config in a yaml file at the given ``path``.
 
         :param path: The path to the yaml file.
             May either be a path to a yaml file or a path to the directory where the file is located.
@@ -211,7 +210,7 @@ class ContractsRunner:
     @classmethod
     def from_json(cls, path: str | Path, config: RuntimeConfig) -> Self:
         """
-        Set up a new runner from the config in a json file at the given `path`.
+        Set up a new runner from the config in a json file at the given ``path``.
 
         :param path: The path to the json file.
             May either be a path to a json file or a path to the directory where the file is located.
@@ -226,7 +225,7 @@ class ContractsRunner:
     @classmethod
     def from_dict(cls, mapping: Mapping[str, Any], config: RuntimeConfig) -> Self:
         """
-        Set up a new runner from the given `config`.
+        Set up a new runner from the given ``config``.
 
         :param mapping: The config to configure the runner with.
         :param config: The dbt runtime config.
@@ -405,7 +404,7 @@ class ContractsRunner:
     ################################################################################
     def write_results(self, results: Collection[Result], path: str | Path, output_type: str) -> Path | None:
         """
-        Write the given results to an output file with the given `output_type`.
+        Write the given results to an output file with the given ``output_type``.
 
         :param results: The results to write.
         :param path: The path to a directory or file to write to.

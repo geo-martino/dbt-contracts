@@ -6,12 +6,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal, Annotated, Any
 
-from dbt.artifacts.resources import BaseResource
-from dbt.artifacts.resources.v1.components import ParsedResource
 from dbt.flags import get_flags
-from dbt_common.dataclass_schema import dbtClassMixin
 from pydantic import Field, BeforeValidator
 
+from dbt_contracts._compat import BaseResource, ParsedResource, dbtClassMixin, get_project_name
 from dbt_contracts.contracts._core import ContractContext, ContractPart
 from dbt_contracts.contracts.utils import to_tuple
 from dbt_contracts.types import ItemT, PropertiesT
@@ -98,7 +96,7 @@ class ChildPropertiesGenerator[I: ItemT, P: PropertiesT, G: PropertyGenerator](
 
         :param item: The item to modify properties for.
         :param context: The contract context to use.
-        :param parent: The parent item that the given child `item` belongs to if available.
+        :param parent: The parent item that the given child ``item`` belongs to if available.
         :return: Whether the properties of the item were modified.
         """
         raise NotImplementedError
@@ -150,7 +148,7 @@ class ParentPropertiesGenerator[I: PropertiesT, G: PropertyGenerator](Properties
 
         path = self.generate_properties_path(item)
         if isinstance(item, ParsedResource):
-            item.patch_path = f"{context.manifest.metadata.project_name}://{path.relative_to(project_dir)}"
+            item.patch_path = f"{get_project_name(context.manifest)}://{path.relative_to(project_dir)}"
         elif isinstance(item, BaseResource):
             item.original_file_path = str(path.relative_to(project_dir))
 

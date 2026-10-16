@@ -4,10 +4,9 @@ from unittest import mock
 
 import pytest
 from _pytest.fixtures import FixtureRequest
-from dbt.artifacts.resources.v1.components import ColumnInfo
-from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import ModelNode, Macro, SourceDefinition
 
+from dbt_contracts._compat import ColumnInfo, MacroArgument
 from dbt_contracts.contracts.result import Result, ModelResult, SourceResult, ColumnResult, MacroResult, \
     MacroArgumentResult, RESULT_PROCESSOR_MAP
 from dbt_contracts.properties import PropertiesIO

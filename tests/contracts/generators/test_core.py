@@ -2,10 +2,9 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from unittest import mock
 
-from dbt.artifacts.resources import BaseResource
-from dbt.artifacts.resources.v1.components import ParsedResource
 from dbt.flags import GLOBAL_FLAGS
 
+from dbt_contracts._compat import BaseResource, ParsedResource, get_project_name
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.generators import PropertyGenerator, PropertiesGenerator, ParentPropertiesGenerator, \
     ChildPropertiesGenerator
@@ -76,7 +75,7 @@ class ParentPropertiesGeneratorTester[I: PropertiesT, G: PropertyGenerator](
 
             relative_path = properties_path.relative_to(tmp_path)
             if isinstance(item, ParsedResource):
-                assert item.patch_path == f"{context.manifest.metadata.project_name}://{relative_path}"
+                assert item.patch_path == f"{get_project_name(context.manifest)}://{relative_path}"
             elif isinstance(item, BaseResource):
                 assert item.original_file_path == str(relative_path)
 

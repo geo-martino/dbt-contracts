@@ -1,4 +1,4 @@
-from pathlib import Path
+from pathlib import PurePosixPath, PureWindowsPath
 from random import choice
 
 import pytest
@@ -30,10 +30,27 @@ def test_path_validation(model: ModelNode, faker: Faker):
     ).run(model)
 
 
-def test_path_condition_escapes_backslashes_in_paths():
-    paths = ["path\\to\\folder1", "path\\to\\file1"]
-    expected = [path.replace("\\", "\\\\") for path in paths]
-    assert PathCondition.escape_backslashes_in_windows_paths(paths) == expected
+def test_path_condition_matches_regex_patterns(model: ModelNode):
+    model.original_file_path = str(PurePosixPath("models", "staging", "stg_orders.sql"))
+    model.path = str(PurePosixPath("staging", "stg_orders.sql"))
+    model.patch_path = None
+
+    assert PathCondition(include=r".*\.sql$").run(model)
+    assert PathCondition(include=r"^\w+/staging").run(model)
+    assert not PathCondition(exclude=r".*\.sql$").run(model)
+
+
+def test_path_condition_matches_windows_paths(model: ModelNode):
+    staging = PureWindowsPath("models", "staging")
+    model.original_file_path = str(staging.joinpath("stg_orders.sql"))
+    model.path = str(PureWindowsPath("staging", "stg_orders.sql"))
+    model.patch_path = f"project://{staging.joinpath('_models.yml')}"
+
+    assert PathCondition(include=staging.as_posix()).run(model)
+    assert PathCondition(include=[staging.parts]).run(model)
+    assert PathCondition(include=staging.joinpath("_models.yml").as_posix()).run(model)
+    assert not PathCondition(exclude=staging.as_posix()).run(model)
+    assert not PathCondition(include=PurePosixPath("models", "marts").as_posix()).run(model)
 
 
 def test_path_condition_unifies_chunked_path_values():
@@ -42,11 +59,12 @@ def test_path_condition_unifies_chunked_path_values():
     assert PathCondition.unify_chunked_path_values(["path1", "path2"]) == ("path1", "path2")
     assert PathCondition.unify_chunked_path_values([["path1"], ["path2"]]) == ("path1", "path2")
 
+    # parts are always joined with forward slashes to match the normalised item paths on any OS
     paths = [["path", "to", "folder1"]]
-    assert PathCondition.unify_chunked_path_values(paths) == (str(Path(*paths[0])),)
+    assert PathCondition.unify_chunked_path_values(paths) == (PurePosixPath(*paths[0]).as_posix(),)
 
-    paths = [["path", "to", "folder1"], ["path", "to", "folder2"], "path/to/folder3"]
-    expected = tuple(str(Path(*parts)) if not isinstance(parts, str) else parts for parts in paths)
+    paths = [["path", "to", "folder1"], ["path", "to", "folder2"], PurePosixPath("path", "to", "folder3").as_posix()]
+    expected = tuple(PurePosixPath(*parts).as_posix() if not isinstance(parts, str) else parts for parts in paths)
     assert PathCondition.unify_chunked_path_values(paths) == expected
 
     condition = PathCondition(include=paths, exclude=paths)

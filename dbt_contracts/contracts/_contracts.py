@@ -9,13 +9,10 @@ from pathlib import Path
 from typing import Any, Self, Type
 
 from colorama import Fore
-from dbt.adapters.utils import classproperty
-from dbt.artifacts.resources.v1.components import ColumnInfo
-from dbt.artifacts.resources.v1.macro import MacroArgument
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 
+from dbt_contracts._compat import classproperty, ColumnInfo, MacroArgument, CatalogArtifact, get_project_name
 from dbt_contracts.contracts._core import ContractContext, ContractPart
 from dbt_contracts.contracts.conditions import ContractCondition, properties as c_properties, source as c_source
 from dbt_contracts.contracts.generators import PropertiesGenerator, \
@@ -271,9 +268,10 @@ class ParentContract[I: ItemT, P: ParentT, G: ParentPropertiesGenerator | None](
         message = f"Validating {len(tuple(self.filtered_items))} {key} against {len(run_terms)} terms"
         self.logger.info(f"{Fore.LIGHTMAGENTA_EX}{message}{Fore.RESET}")
 
+        # run every term before checking the results so all violations are logged
         return [
             item for item in self.filtered_items
-            if all(term.run(item, context=self.context) for term in run_terms)
+            if all([term.run(item, context=self.context) for term in run_terms])
         ]
 
     def generate(self) -> dict[Path, int]:
@@ -354,9 +352,10 @@ class ChildContract[I: ItemT, P: ParentT, G: ChildPropertiesGenerator | None](
         message = f"Validating {len(tuple(self.filtered_items))} {key} against {len(run_terms)} terms"
         self.logger.info(f"{Fore.LIGHTMAGENTA_EX}{message}{Fore.RESET}")
 
+        # run every term before checking the results so all violations are logged
         return [
             (item, parent) for item, parent in self.filtered_items
-            if all(term.run(item, parent=parent, context=self.context) for term in run_terms)
+            if all([term.run(item, parent=parent, context=self.context) for term in run_terms])
         ]
 
     def generate(self) -> dict[Path, int]:
@@ -431,9 +430,10 @@ class MacroArgumentContract(ChildContract[MacroArgument, Macro, None]):
 
     @property
     def items(self) -> Iterable[tuple[MacroArgument, Macro]]:
+        project_name = get_project_name(self.manifest)
         return (
             (arg, mac) for mac in self.parent.filtered_items
-            if mac.package_name == self.manifest.metadata.project_name
+            if mac.package_name == project_name
             for arg in mac.arguments
         )
 
@@ -475,9 +475,10 @@ class ModelContract(ParentContract[ColumnInfo, ModelNode, g_model.ModelPropertie
 
     @property
     def items(self) -> Iterable[ModelNode]:
+        project_name = get_project_name(self.manifest)
         return (
             node for node in self.manifest.nodes.values()
-            if isinstance(node, ModelNode) and node.package_name == self.manifest.metadata.project_name
+            if isinstance(node, ModelNode) and node.package_name == project_name
         )
 
 
@@ -514,9 +515,10 @@ class SourceContract(ParentContract[ColumnInfo, SourceDefinition, g_source.Sourc
 
     @property
     def items(self) -> Iterable[SourceDefinition]:
+        project_name = get_project_name(self.manifest)
         return (
             source for source in self.manifest.sources.values()
-            if source.package_name == self.manifest.metadata.project_name
+            if source.package_name == project_name
         )
 
 
@@ -536,9 +538,10 @@ class MacroContract(ParentContract[MacroArgument, Macro, None]):
 
     @property
     def items(self) -> Iterable[Macro]:
+        project_name = get_project_name(self.manifest)
         return (
             macro for macro in self.manifest.macros.values()
-            if macro.package_name == self.manifest.metadata.project_name
+            if macro.package_name == project_name
         )
 
 

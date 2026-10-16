@@ -36,7 +36,7 @@ jobs:
       - name: ⚙️ Setup - UV 🐍
         uses: astral-sh/setup-uv@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.python-version }}
 
       - name: ⚙️ Setup - Dependencies
         run: |
@@ -44,8 +44,7 @@ jobs:
 
       - name: 🏗️ Sphinx build
         run: |
-          uv run docs/contracts.py
-          uv run make html
+          make docs
           uv run make linkcheck
 
       - name: 📦 Upload build artifacts

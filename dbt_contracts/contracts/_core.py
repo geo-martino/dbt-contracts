@@ -4,9 +4,9 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from typing import ClassVar
 
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 
+from dbt_contracts._compat import CatalogArtifact
 from dbt_contracts._core import BaseModelConfig
 from dbt_contracts.contracts.result import Result, RESULT_PROCESSOR_MAP
 from dbt_contracts.properties import PropertiesIO

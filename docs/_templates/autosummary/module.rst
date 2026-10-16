@@ -1,6 +1,8 @@
 {%- set is_root = basename == project.lower() -%}
 {%- set module_footer = ["base", "exception"] -%}
-{%- set module_caps = [] -%}
+{#- words to fully capitalise or keep lowercase in titles; all other words are title cased -#}
+{%- set module_caps = ["cli"] -%}
+{%- set module_lower = ["dbt"] -%}
 
 {%- macro formatname(name) -%}
     {%- if name.endswith(".exception") -%}
@@ -9,17 +11,23 @@
         {%- set name = name.replace(project + ".", "").replace("_", " ").split(".") | last -%}
     {%- endif -%}
 
-    {%- if name | lower in module_caps -%}
-        {{- name | upper -}}
-    {%- else -%}
-        {{- name | title -}}
-    {%- endif -%}
+    {%- for word in name.split(" ") -%}
+        {%- if word | lower in module_caps -%}
+            {{- word | upper -}}
+        {%- elif word | lower in module_lower -%}
+            {{- word | lower -}}
+        {%- else -%}
+            {{- word | title -}}
+        {%- endif -%}
+        {%- if not loop.last %} {% endif -%}
+    {%- endfor -%}
 {%- endmacro -%}
 
 {{ formatname(fullname) | escape | underline}}
 
 {% if classes -%}
-.. inheritance-diagram:: {{ fullname }}
+{#- list classes explicitly so packages include the classes they re-export via __all__ -#}
+.. inheritance-diagram:: {% for item in classes %}{{ fullname }}.{{ item }} {% endfor %}
    :parts: 1
 {%- endif %}
 
@@ -67,13 +75,18 @@
    {%- endblock %}
 
 {%- block modules -%}
-{%- if modules %}
+{#- modules excludes submodules missing from a package's __all__, so filter all_modules for public ones -#}
+{%- set public_modules = [] -%}
+{%- for item in all_modules if not item.startswith("_") -%}
+{%- set _ = public_modules.append(item) -%}
+{%- endfor -%}
+{%- if public_modules %}
 .. rubric:: Modules
 
 .. autosummary::
    :toctree:
    :recursive:
-{% for item in modules %}
+{% for item in public_modules %}
    {{ item }}
 {% endfor %}
 {% endif %}

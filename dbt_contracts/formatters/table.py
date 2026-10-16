@@ -125,7 +125,7 @@ class TableCellBuilder[T: Result](BaseModelConfig):
 
     def build(self, result: T, min_width: int = None) -> str:
         """
-        Build a formatted cell for the given `result`.
+        Build a formatted cell for the given ``result``.
 
         :param result: The result to build the cell for.
         :param min_width: Ignore settings for min width and force the cell to be at least this given width instead.
@@ -225,7 +225,7 @@ class TableRowBuilder[T: Result](BaseModelConfig):
     @staticmethod
     def _remove_empty_lines[T: Iterable[str]](lines: Iterable[T]) -> list[T]:
         """
-        Remove empty lines from the given `values`.
+        Remove empty lines from the given ``values``.
 
         :param lines: The values to remove empty lines from.
         """
@@ -233,14 +233,14 @@ class TableRowBuilder[T: Result](BaseModelConfig):
 
     @staticmethod
     def get_widths_from_lines(lines: Iterable[Iterable[str]]) -> list[int]:
-        """Get the maximum width for each column from the given `lines`."""
+        """Get the maximum width for each column from the given ``lines``."""
         return [max(map(_get_print_length, column)) for column in zip(*lines, strict=True)]
 
     def extend_line_widths(
             self, rows: Iterable[Collection[Iterable[str]]], min_widths: Sequence[int | None]
     ) -> list[list[list[str]]]:
         """
-        Adjust the given `rows` to the given `min_widths` aligning according to the matching cell config.
+        Adjust the given ``rows`` to the given ``min_widths`` aligning according to the matching cell config.
         Each row must consist of a sequence of lines that match the dimensions of the configured cells of this builder.
 
         :param rows: The collection of rows to adjust.
@@ -278,7 +278,7 @@ class TableRowBuilder[T: Result](BaseModelConfig):
 
     def build_lines(self, result: T, min_widths: Sequence[int | None] = ()) -> list[list[str]]:
         """
-        Build a formatted row or set of rows for the given `result` and returns them as their individual lines.
+        Build a formatted row or set of rows for the given ``result`` and returns them as their individual lines.
 
         :param result: The result to build the row for.
         :param min_widths: When provided, ignore settings for min width for each cell and force the cells to be
@@ -309,7 +309,7 @@ class TableRowBuilder[T: Result](BaseModelConfig):
 
     def build(self, result: T, min_widths: Sequence[int] = ()) -> str:
         """
-        Build a formatted row or set of rows for the given `result`.
+        Build a formatted row or set of rows for the given ``result``.
 
         :param result: The result to build the row for.
         :param min_widths: When provided, ignore settings for min width for each cell and force the cells to be

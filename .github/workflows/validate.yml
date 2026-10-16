@@ -7,6 +7,7 @@ on:
       - pyproject.toml
       - dbt_contracts/**
       - tests/**
+      - .github/workflows/validate.yml
 
   workflow_dispatch:
 
@@ -30,33 +31,32 @@ jobs:
       - name: 🛒 Checkout
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup - Python 🐍
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.python-version }}
-
-      - name: 🔎 Run flake8
-        uses: py-actions/flake8@v2
+      - name: 🔎 Run ruff
+        uses: astral-sh/ruff-action@v3
 
   test:
     name: 🧪 Run tests
     runs-on: ${{ matrix.os }}
     needs: lint
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest ]
         name: [ 🐧 Linux ]
         python-version: [ 3.12, 3.13 ]
+        dbt-version: [ "1.5", "1.7", "1.8", "1.9", "1.10", "1.11", "1.12" ]
         include:
-          # TODO: disabled due to bug in uv action causing post-step to fail
-          # Issue tracker: https://github.com/astral-sh/setup-uv/issues/226
-#          - os: windows-latest
-#            name: 🪟 Windows
-#            python-version: 3.13
+          - os: windows-latest
+            name: 🪟 Windows
+            python-version: 3.13
+            dbt-version: "1.12"
           - os: macos-latest
             name: 🍎 Mac
             python-version: 3.13
+            dbt-version: "1.12"
     steps:
       - name: 🛒 Checkout
         uses: actions/checkout@v4
@@ -68,9 +68,17 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: 📥 Install dependencies with dbt-core ${{ matrix.dbt-version }}
+        # resolve fresh rather than downgrading the locked env, which leaves newer dbt packages behind
+        # setuptools provides the distutils module which dbt-core<1.6 needs on python>=3.12
+        run: |
+          uv venv
+          uv pip install -e . --group test "dbt-core~=${{ matrix.dbt-version }}.0" setuptools
+          uv run --no-sync python -c "import dbt.version; print('dbt-core', dbt.version.__version__)"
+
       - name: 🧪 Run tests
         run: |
-          uv run pytest -n auto -m "not manual" --junit-xml=test-results.xml
+          uv run --no-sync pytest -n auto -m "not manual" --junit-xml=test-results.xml
 
       - name: 📃 Publish test results report
         uses: pmeier/pytest-results-action@main
@@ -79,7 +87,7 @@ jobs:
           summary: true
           display-options: fEX
           fail-on-empty: true
-          title: Test results | ${{ matrix.name }} - 🐍 Python${{ matrix.python-version }}
+          title: Test results | ${{ matrix.name }} - 🐍 Python${{ matrix.python-version }} - dbt-core ${{ matrix.dbt-version }}
 
   build:
     name: 📦 Build package
@@ -98,11 +106,13 @@ jobs:
       - name: ⚙️ Setup - UV 🐍
         uses: astral-sh/setup-uv@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.python-version }}
 
       - name: 📄 Sanitise readme
+        # hide the edit from git so versioningit doesn't mark the release version as dirty
         run: |
           sed -i -r "s|\[\!(\w+)\]|**\\1:**|g" README.md
+          git update-index --assume-unchanged README.md
 
       - name: 🏗️ Build package
         run: |

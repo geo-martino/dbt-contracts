@@ -24,13 +24,13 @@ classifiers = [
     "Intended Audience :: Developers",
 ]
 dependencies = [
-    "dbt-core>=1.9,<2.0",
+    "dbt-core>=1.5,!=1.6.*,<2.0",
     "pydantic>=2.10,<3.0",
 ]
 
 [dependency-groups]
 dev = [
-    "flake8",
+    "ruff",
     "grip",
     "jupyterlab",
     "ipywidgets",
@@ -41,6 +41,7 @@ test = [
     "pytest-xdist>=3.6,<4.0",
     # "pytest-mock~=3.14",
     "Faker>=37.0,<38.0",
+    "dbt-postgres",  # any adapter works for the integration tests as dbt parse never connects
 ]
 docs = [
     "sphinx>=8.2.3,<9.0",
@@ -77,14 +78,20 @@ source = "versioningit"
 [tool.versioningit]
 default-version = "0.0.0"
 
-[tool.versioningit.format]
-# WORKAROUND: commits for actual production releases keep getting identified as dirty and/or with distance
-#  Delete this config when fixed. It should be the commented lines below each (i.e. the default formats)
-#distance = "{next_version}.dev{distance}+{vcs}{rev}"
-dirty = "{base_version}"
-#dirty = "{base_version}+d{build_date:%Y%m%d}"
-distance-dirty = "{base_version}"
-#distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
+[tool.ruff]
+line-length = 120
+extend-exclude = [".venv*", "jupyter", "notebooks", "test.py"]
+
+[tool.ruff.lint]
+# flake8's default rule families; ruff's own defaults are narrower
+select = ["E", "F", "W", "C90"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+"tests/**/test_*.py" = ["F811"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -92,6 +99,7 @@ addopts = "-color=yes"
 markers = [
     "slow: marks test as slow (deselect with '-m \"not slow\"')",
     "manual: marks tests to be run only when manually directed to by the developer",
+    "integration: marks tests which parse a real dbt project and need a dbt adapter installed",
 ]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"

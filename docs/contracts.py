@@ -323,6 +323,7 @@ class ReferencePageBuilder:
         key = contract.__config_key__
         title = self.make_title(key)
         self.add_lines(f".. _{key}:")
+        self.add_empty_lines()
         self.add_header(title)
 
         self.generate_example_ref_for_contract(contract)

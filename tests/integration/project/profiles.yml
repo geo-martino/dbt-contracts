@@ -1,0 +1,13 @@
+# dbt parse never connects to the database, so these credentials are placeholders
+integration:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      port: 5432
+      user: user
+      password: password
+      dbname: database
+      schema: public
+      threads: 1

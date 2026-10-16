@@ -4,12 +4,11 @@ from collections.abc import Iterable, Mapping, Collection, Sequence
 from copy import copy
 from typing import Any
 
-from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import TestNode
-from dbt_common.contracts.metadata import CatalogTable
 from pydantic import Field, field_validator
 
+from dbt_contracts._compat import ColumnInfo, CatalogTable
 from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.matchers import StringMatcher, RangeMatcher
 from dbt_contracts.contracts.terms._core import ChildContractTerm, validate_context
@@ -86,12 +85,12 @@ class HasExpectedName[T: NodeT](ColumnContractTerm[T], StringMatcher):
     Check whether columns have an expected name based on their data type.
     Matches the column names against a set of patterns mapped to specific data types.
     """
-    patterns: Mapping[str, Sequence[str, ...]] = Field(
+    patterns: Mapping[str | None, Sequence[str]] = Field(
         description=(
             "A map of data types to regex patterns for which to "
-            "validate names of columns which have the matching data type."
+            "validate names of columns which have the matching data type. "
             "To define a generic contract which can apply to all unmatched data types, "
-            "specify the data type key as `null`."
+            "specify the data type key as ``null``."
         ),
         default_factory=dict,
         examples=[{"BOOLEAN": ["(is|has|do)_.*"], "TIMESTAMP": [".*_at"], None: ["name_.*"]}]
@@ -100,7 +99,9 @@ class HasExpectedName[T: NodeT](ColumnContractTerm[T], StringMatcher):
     # noinspection PyNestedDecorators
     @field_validator("patterns", mode="before")
     @classmethod
-    def make_pattern_values_tuple(cls, patterns: Mapping[str, str | Sequence[str]]) -> dict[str, tuple[str]]:
+    def make_pattern_values_tuple(
+            cls, patterns: Mapping[str | None, str | Sequence[str]]
+    ) -> dict[str | None, tuple[str]]:
         """Convert all meta values to tuples"""
         patterns = dict(copy(patterns))
 
@@ -161,7 +162,7 @@ class HasDataType[T: NodeT](ColumnContractTerm[T]):
 
 
 class HasMatchingDescription[T: NodeT](ColumnContractTerm[T], StringMatcher):
-    """Check whether the descriptions configured in columns' properties matches the descriptions in the database."""
+    """Check whether the descriptions configured in columns' properties match the descriptions in the database."""
     needs_catalog = True
 
     @validate_context

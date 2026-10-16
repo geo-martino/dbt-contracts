@@ -1,0 +1,20 @@
+contracts:
+  models:
+    - validations:
+        - has_properties
+        - has_description
+        - has_required_meta_keys: owner
+        - has_no_final_semicolon
+        - has_no_hardcoded_refs
+        - has_valid_ref_dependencies
+        - has_valid_source_dependencies
+        - has_valid_macro_dependencies
+      columns:
+        - validations:
+            - has_description
+  sources:
+    - validations:
+        - has_description
+  macros:
+    - validations:
+        - has_properties

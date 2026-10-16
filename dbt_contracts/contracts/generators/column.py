@@ -3,10 +3,9 @@ from collections.abc import Sequence
 from random import choice, sample
 from typing import Literal, Annotated, get_args
 
-from dbt.artifacts.resources.v1.components import ColumnInfo
-from dbt_common.contracts.metadata import ColumnMetadata
 from pydantic import Field, BeforeValidator
 
+from dbt_contracts._compat import ColumnInfo, ColumnMetadata
 from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.generators._core import ChildPropertiesGenerator, CORE_FIELDS, PropertyGenerator
 from dbt_contracts.contracts.generators.properties import SetDescription

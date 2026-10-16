@@ -3,13 +3,11 @@ from random import choice
 from unittest import mock
 
 import pytest
-from dbt.artifacts.resources import BaseResource
-from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import TestNode, ModelNode, CompiledNode
-from dbt_common.contracts.metadata import CatalogTable
 from faker import Faker
 
+from dbt_contracts._compat import BaseResource, ColumnInfo, CatalogTable
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.terms.column import ColumnContractTerm, Exists, HasTests, HasExpectedName, HasDataType, \
     HasMatchingDescription, HasMatchingDataType, HasMatchingIndex
@@ -143,6 +141,25 @@ def test_has_expected_name(
     with mock.patch.object(ContractContext, "add_result") as mock_add_result:
         assert not HasExpectedName(patterns={"boolean": "is_.*"}).run(node_column, parent=node, context=context)
         mock_add_result.assert_called_once()
+
+
+def test_has_expected_name_with_default_patterns(node: CompiledNode, node_column: ColumnInfo, context: ContractContext):
+    # a null data type key in the config gives the patterns for all data types without their own patterns
+    term = HasExpectedName(patterns={"boolean": "is_.*", None: "name_.*"})
+
+    node_column.data_type = "int"
+    node_column.name = "name_value"
+    assert term.run(node_column, parent=node, context=context)
+
+    node_column.name = "value"
+    with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        assert not term.run(node_column, parent=node, context=context)
+        mock_add_result.assert_called_once()
+
+    # data types with their own patterns do not fall back to the default patterns
+    node_column.data_type = "boolean"
+    node_column.name = "is_value"
+    assert term.run(node_column, parent=node, context=context)
 
 
 def test_has_data_type(

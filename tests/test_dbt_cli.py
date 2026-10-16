@@ -4,12 +4,10 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.cli.main import dbtRunner, dbtRunnerResult
-from dbt.constants import MANIFEST_FILE_NAME
 from dbt.contracts.graph.manifest import Manifest
-from dbt.task.docs.generate import CATALOG_FILENAME
 
+from dbt_contracts._compat import CatalogArtifact, MANIFEST_FILE_NAME, CATALOG_FILENAME
 from dbt_contracts.dbt_cli import add_default_args, load_artifact, DEFAULT_GLOBAL_ARGS, get_result, clean_paths, \
     install_dependencies, get_manifest, get_catalog
 
@@ -96,7 +94,8 @@ def test_get_manifest_with_existing_artifact(config: Namespace, manifest: Manife
         mock.patch("dbt_contracts.dbt_cli.load_artifact", return_value=manifest) as mock_load_artifact,
         mock.patch("dbt_contracts.dbt_cli.get_result") as mock_get_result,
     ):
-        assert get_manifest(config=config).to_dict() == manifest
+        # compare against dbt's own round trip as serialisation differs across dbt versions
+        assert get_manifest(config=config).to_dict() == Manifest.from_dict(manifest).to_dict()
         mock_load_artifact.assert_called_once_with(MANIFEST_FILE_NAME, config=config)
         mock_get_result.assert_not_called()
 
@@ -127,7 +126,8 @@ def test_get_catalog_with_existing_artifact(config: Namespace, catalog: CatalogA
         mock.patch("dbt_contracts.dbt_cli.load_artifact", return_value=catalog) as mock_load_artifact,
         mock.patch("dbt_contracts.dbt_cli.get_result") as mock_get_result,
     ):
-        assert get_catalog(config=config).to_dict() == catalog
+        # compare against dbt's own round trip as serialisation differs across dbt versions
+        assert get_catalog(config=config).to_dict() == CatalogArtifact.from_dict(catalog).to_dict()
         mock_load_artifact.assert_called_once_with(CATALOG_FILENAME, config=config)
         mock_get_result.assert_not_called()
 

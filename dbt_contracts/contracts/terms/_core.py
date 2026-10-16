@@ -5,9 +5,9 @@ from abc import ABCMeta, abstractmethod
 from collections.abc import Callable
 from typing import ClassVar, Union
 
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.manifest import Manifest
 
+from dbt_contracts._compat import CatalogArtifact
 from dbt_contracts.contracts._core import ContractContext, ContractPart
 from dbt_contracts.types import ItemT, ChildT, ParentT
 
@@ -57,7 +57,7 @@ class ChildContractTerm[I: ChildT, P: ParentT](ContractTerm[I], metaclass=ABCMet
 
         :param item: The item to check.
         :param context: The contract context to use.
-        :param parent: The parent item that the given child `item` belongs to if available.
+        :param parent: The parent item that the given child ``item`` belongs to if available.
         :return: Boolean for if the item passes the term.
         """
         raise NotImplementedError

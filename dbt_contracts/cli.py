@@ -187,7 +187,7 @@ def _setup_runner(args: argparse.Namespace) -> ContractsRunner:
 
 
 def clean() -> None:
-    """Main entry point for executing `dbt clean`"""
+    """Main entry point for executing ``dbt clean``"""
     CORE_PARSER.prog = "dbt-clean"
     args, _ = CORE_PARSER.parse_known_args()
     config = get_config(args)
@@ -195,7 +195,7 @@ def clean() -> None:
 
 
 def deps() -> None:
-    """Main entry point for executing `dbt deps`"""
+    """Main entry point for executing ``dbt deps``"""
     CORE_PARSER.prog = "dbt-deps"
     args, _ = CORE_PARSER.parse_known_args()
     config = get_config(args)
@@ -203,7 +203,7 @@ def deps() -> None:
 
 
 def parse() -> None:
-    """Main entry point for executing `dbt parse`"""
+    """Main entry point for executing ``dbt parse``"""
     CORE_PARSER.prog = "dbt-parse"
     args, _ = CORE_PARSER.parse_known_args()
     config = get_config(args)
@@ -211,7 +211,7 @@ def parse() -> None:
 
 
 def docs() -> None:
-    """Main entry point for executing `dbt docs generate`"""
+    """Main entry point for executing ``dbt docs generate``"""
     CORE_PARSER.prog = "dbt-docs"
     args, _ = CORE_PARSER.parse_known_args()
     config = get_config(args)
@@ -219,7 +219,7 @@ def docs() -> None:
 
 
 def validate() -> None:
-    """Main entry point for the `validator` CLI command"""
+    """Main entry point for the ``validator`` CLI command"""
     _setup_logging()
 
     args, _ = VALIDATOR_PARSER.parse_known_args()
@@ -239,7 +239,7 @@ def validate() -> None:
 
 
 def generate() -> None:
-    """Main entry point for the `generate` CLI command"""
+    """Main entry point for the ``generate`` CLI command"""
     _setup_logging()
 
     args, _ = GENERATOR_PARSER.parse_known_args()
