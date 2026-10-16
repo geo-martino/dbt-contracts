@@ -46,6 +46,8 @@ Changed
 
 Fixed
 -----
+* ``has_expected_name`` now accepts the documented ``null`` data type key for patterns which apply to
+  all data types without their own patterns. Configs using it previously failed validation.
 * :py:class:`.PathCondition` patterns with regex escapes e.g. ``.*\.sql$`` never matched on any OS,
   and directory patterns never matched Windows paths, as backslashes were double escaped in both patterns and paths.
 * Validation now runs every term for each item. Previously, terms after the first failing term were skipped
@@ -56,6 +58,10 @@ Fixed
 Documentation
 -------------
 * Linting now uses ruff instead of flake8.
+* The pre-commit guide now refers to the ``.pre-commit-config.yaml`` file that users configure,
+  and the quick start describes where the contracts file is looked for and which formats are supported.
+* Base classes in the API reference and its inheritance diagrams now link to their generic classes
+  rather than showing pydantic's parametrised classes e.g. ``ContractTerm[TypeVar]``.
 * Added ``make`` commands for development e.g. ``make test``, ``make lint`` and ``make check``,
   and updated the contributing guide to use them with ``uv``.
 * Fixed docs build warnings and removed warning suppressions for Sphinx extensions which are not enabled.

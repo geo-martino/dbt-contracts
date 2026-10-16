@@ -5,7 +5,9 @@ Quick Start
 ===========
 
 1. Create a contracts file. By default, the package will look for a file named ``contracts.yml``
-   in the root of the repository. An example is provided below.
+   in the root of your dbt project i.e. the ``--project-dir``, which defaults to the current directory.
+   To use a different file, give its path with ``--config``. ``.yml``, ``.yaml`` and ``.json`` files are supported.
+   An example is provided below.
    For a full reference of the available configuration for this file,
    please refer to the contracts reference in the sidebar.
 
