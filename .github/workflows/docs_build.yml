@@ -44,8 +44,7 @@ jobs:
 
       - name: 🏗️ Sphinx build
         run: |
-          uv run docs/contracts.py
-          uv run make html O="-W --keep-going"
+          make docs
           uv run make linkcheck
 
       - name: 📦 Upload build artifacts
