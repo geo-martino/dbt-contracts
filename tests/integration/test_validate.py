@@ -1,5 +1,7 @@
 """End-to-end tests which parse a real dbt project with whichever dbt-core version is installed."""
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -54,3 +56,29 @@ def test_validate_from_parsed_and_stored_manifest(project_dir: Path):
 
     # the manifest written by dbt is now loaded from the target directory
     assert _validate(project_dir) == EXPECTED_RESULTS
+
+
+def _run_validate_command(project_dir: Path, *args: str) -> subprocess.CompletedProcess:
+    """Run the ``dbt-validate`` command as a user would, in a new process."""
+    command = "from dbt_contracts.cli import validate; validate()"
+    return subprocess.run(
+        [sys.executable, "-c", command, "--project-dir", str(project_dir), "--profiles-dir", str(project_dir), *args],
+        capture_output=True, text=True,
+    )
+
+
+@pytest.mark.integration
+def test_validate_command_fails_on_violations_without_traceback(project_dir: Path):
+    result = _run_validate_command(project_dir)
+    output = result.stdout + result.stderr
+
+    assert result.returncode == 1
+    assert "Traceback" not in output
+    assert output.strip().splitlines()[-1].endswith(f"Found {len(EXPECTED_RESULTS)} contract violations\x1b[39m")
+
+
+@pytest.mark.integration
+def test_validate_command_does_not_fail_with_no_fail(project_dir: Path):
+    result = _run_validate_command(project_dir, "--no-fail")
+    assert result.returncode == 0
+    assert "Traceback" not in result.stdout + result.stderr

@@ -276,7 +276,8 @@ def validate(args: ValidatorArgs | None = None) -> None:
         runner.write_results(results, path=args.output, output_type=args.format)
 
     if not args.no_fail and results:
-        raise Exception(f"Found {len(results)} contract violations.")
+        # the runner has already logged the violations found, so exit without a traceback
+        raise SystemExit(1)
 
 
 def generate(args: CoreArgs | None = None) -> None:

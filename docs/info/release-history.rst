@@ -48,6 +48,7 @@ Changed
     e.g. ``--contracts models`` was silently used to filter files.
   * options now need a value. Previously e.g. a bare ``--profile`` was allowed, which set it to ``None``.
   * ``null`` may be given to unset an option e.g. ``--target null``.
+* ``dbt-validate`` now exits with code 1 when contracts fail without also printing a traceback.
 * :py:class:`.PathCondition` now matches paths using forward slashes as separators on every OS.
   Path patterns should use forward slashes e.g. ``models/staging``, or be given as a list of path parts.
 
