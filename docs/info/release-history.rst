@@ -41,6 +41,8 @@ Added
 
 Changed
 -------
+* CLI args are now parsed with ``pydantic-settings``, a new dependency, in place of ``argparse`` parsers.
+  The CLI interface is unchanged.
 * :py:class:`.PathCondition` now matches paths using forward slashes as separators on every OS.
   Path patterns should use forward slashes e.g. ``models/staging``, or be given as a list of path parts.
 
