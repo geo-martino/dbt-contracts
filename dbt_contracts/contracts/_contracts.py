@@ -268,9 +268,10 @@ class ParentContract[I: ItemT, P: ParentT, G: ParentPropertiesGenerator | None](
         message = f"Validating {len(tuple(self.filtered_items))} {key} against {len(run_terms)} terms"
         self.logger.info(f"{Fore.LIGHTMAGENTA_EX}{message}{Fore.RESET}")
 
+        # run every term before checking the results so all violations are logged
         return [
             item for item in self.filtered_items
-            if all(term.run(item, context=self.context) for term in run_terms)
+            if all([term.run(item, context=self.context) for term in run_terms])
         ]
 
     def generate(self) -> dict[Path, int]:
@@ -351,9 +352,10 @@ class ChildContract[I: ItemT, P: ParentT, G: ChildPropertiesGenerator | None](
         message = f"Validating {len(tuple(self.filtered_items))} {key} against {len(run_terms)} terms"
         self.logger.info(f"{Fore.LIGHTMAGENTA_EX}{message}{Fore.RESET}")
 
+        # run every term before checking the results so all violations are logged
         return [
             (item, parent) for item, parent in self.filtered_items
-            if all(term.run(item, parent=parent, context=self.context) for term in run_terms)
+            if all([term.run(item, parent=parent, context=self.context) for term in run_terms])
         ]
 
     def generate(self) -> dict[Path, int]:

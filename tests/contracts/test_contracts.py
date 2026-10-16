@@ -101,6 +101,23 @@ class ContractTester[I: ItemT, G: PropertiesGenerator](metaclass=ABCMeta):
         assert sorted(result, key=self._items_sort_key) == sorted(filtered_items, key=self._items_sort_key)
 
     @staticmethod
+    def test_validate_runs_all_terms_when_terms_fail(contract: Contract[I, ContractTerm, G]):
+        contract.terms = [cls() for cls in contract.__supported_terms__[:2]]
+        assert len(contract.terms) == 2
+        mock_map = {term.name: mock.patch.object(term.__class__, "run", return_value=False) for term in contract.terms}
+
+        contract.conditions.clear()
+        items_count = len(list(contract.filtered_items))
+        assert items_count
+
+        with ExitStack() as stack:
+            mocks = [stack.enter_context(mock_term) for mock_term in mock_map.values()]
+
+            assert not contract.validate()
+            for mock_term in mocks:
+                assert mock_term.call_count == items_count
+
+    @staticmethod
     def test_validate_on_selected_terms(contract: Contract[I, ContractTerm, G]):
         name = choice(contract.terms).name
         mock_map = {term.name: mock.patch.object(term.__class__, "run") for term in contract.terms}
