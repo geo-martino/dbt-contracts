@@ -39,19 +39,8 @@ autodoc_default_options = {
     "show-inheritance": True,
     # "member-order": "bysource",
 }
-typehints_defaults = "braces"
-typehints_use_rtype = False
-
 templates_path = ["_templates"]
 exclude_patterns = ["_build",]
-
-suppress_warnings = [
-    "sphinx_autodoc_typehints.forward_reference",
-    # TODO: sphinx_autodoc_typehints.forward_reference not yet supported.
-    #  See https://github.com/tox-dev/sphinx-autodoc-typehints/pull/433/files
-    "sphinx.ext.inheritance_diagram",
-    # TODO: Suppress 'WARNING: No classes found for inheritance diagram'
-]
 
 
 # -- Options for HTML output -------------------------------------------------

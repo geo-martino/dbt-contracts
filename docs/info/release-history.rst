@@ -43,10 +43,13 @@ Fixed
 -----
 * Validation now runs every term for each item. Previously, terms after the first failing term were skipped
   so their violations were never reported.
+* Release builds no longer report a dirty version when the README is sanitised for PyPI,
+  so the default ``versioningit`` formats are restored.
 
 Documentation
 -------------
 * Linting now uses ruff instead of flake8.
+* Fixed docs build warnings and removed warning suppressions for Sphinx extensions which are not enabled.
 
 
 1.0.9
