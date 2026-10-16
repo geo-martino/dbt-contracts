@@ -5,7 +5,9 @@
 from datetime import datetime
 from pathlib import Path
 
-from dbt_contracts import MODULE_ROOT, PROGRAM_OWNER_NAME, PROGRAM_OWNER_USER, PROGRAM_NAME
+import sphinx
+
+from dbt_contracts import MODULE_ROOT, PROGRAM_OWNER_NAME, PROGRAM_OWNER_USER, PROGRAM_NAME, PROGRAM_URL
 
 
 # -- Project information -----------------------------------------------------
@@ -60,6 +62,13 @@ def skip_parametrised_generics(app, what: str, name: str, obj, skip: bool, optio
 
 def setup(app) -> None:
     app.connect("autodoc-skip-member", skip_parametrised_generics)
+
+
+# -- Linkcheck configuration -------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-the-linkcheck-builder
+
+# some sites e.g. graphviz.org reject Sphinx's default browser-like user agent
+user_agent = f"Sphinx/{sphinx.__version__} linkcheck (+{PROGRAM_URL})"
 
 
 # -- Options for HTML output -------------------------------------------------
