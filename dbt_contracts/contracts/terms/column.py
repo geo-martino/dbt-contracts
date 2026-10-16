@@ -85,10 +85,10 @@ class HasExpectedName[T: NodeT](ColumnContractTerm[T], StringMatcher):
     Check whether columns have an expected name based on their data type.
     Matches the column names against a set of patterns mapped to specific data types.
     """
-    patterns: Mapping[str, Sequence[str, ...]] = Field(
+    patterns: Mapping[str | None, Sequence[str]] = Field(
         description=(
             "A map of data types to regex patterns for which to "
-            "validate names of columns which have the matching data type."
+            "validate names of columns which have the matching data type. "
             "To define a generic contract which can apply to all unmatched data types, "
             "specify the data type key as ``null``."
         ),
@@ -99,7 +99,9 @@ class HasExpectedName[T: NodeT](ColumnContractTerm[T], StringMatcher):
     # noinspection PyNestedDecorators
     @field_validator("patterns", mode="before")
     @classmethod
-    def make_pattern_values_tuple(cls, patterns: Mapping[str, str | Sequence[str]]) -> dict[str, tuple[str]]:
+    def make_pattern_values_tuple(
+            cls, patterns: Mapping[str | None, str | Sequence[str]]
+    ) -> dict[str | None, tuple[str]]:
         """Convert all meta values to tuples"""
         patterns = dict(copy(patterns))
 
@@ -160,7 +162,7 @@ class HasDataType[T: NodeT](ColumnContractTerm[T]):
 
 
 class HasMatchingDescription[T: NodeT](ColumnContractTerm[T], StringMatcher):
-    """Check whether the descriptions configured in columns' properties matches the descriptions in the database."""
+    """Check whether the descriptions configured in columns' properties match the descriptions in the database."""
     needs_catalog = True
 
     @validate_context

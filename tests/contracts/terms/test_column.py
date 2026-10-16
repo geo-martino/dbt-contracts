@@ -143,6 +143,25 @@ def test_has_expected_name(
         mock_add_result.assert_called_once()
 
 
+def test_has_expected_name_with_default_patterns(node: CompiledNode, node_column: ColumnInfo, context: ContractContext):
+    # a null data type key in the config gives the patterns for all data types without their own patterns
+    term = HasExpectedName(patterns={"boolean": "is_.*", None: "name_.*"})
+
+    node_column.data_type = "int"
+    node_column.name = "name_value"
+    assert term.run(node_column, parent=node, context=context)
+
+    node_column.name = "value"
+    with mock.patch.object(ContractContext, "add_result") as mock_add_result:
+        assert not term.run(node_column, parent=node, context=context)
+        mock_add_result.assert_called_once()
+
+    # data types with their own patterns do not fall back to the default patterns
+    node_column.data_type = "boolean"
+    node_column.name = "is_value"
+    assert term.run(node_column, parent=node, context=context)
+
+
 def test_has_data_type(
         node: CompiledNode, node_column: ColumnInfo, catalog_table: CatalogTable, context: ContractContext
 ):
