@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from dbt import flags
 
-from dbt_contracts.cli import ValidatorArgs, _setup_runner
+from dbt_contracts.cli import ValidateCommand
 
 pytest.importorskip("dbt.adapters.postgres", reason="Requires the dbt-postgres adapter to parse the project")
 
@@ -40,8 +40,8 @@ def project_dir(tmp_path: Path) -> Path:
 
 
 def _validate(project_dir: Path) -> set[tuple[str, str, str | None]]:
-    args = ValidatorArgs.parse(args=["--project-dir", str(project_dir), "--profiles-dir", str(project_dir)])
-    runner = _setup_runner(args.to_namespace())
+    args = ValidateCommand.parse(args=["--project-dir", str(project_dir), "--profiles-dir", str(project_dir)])
+    runner = args._create_runner()
     return {(result.result_name, result.name, result.parent_name) for result in runner.validate()}
 
 

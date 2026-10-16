@@ -1,14 +1,17 @@
 """Tests for parsing the CLI args."""
 from argparse import Namespace
 from pathlib import Path
+from unittest import mock
 
 import pytest
 from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 
-from dbt_contracts.cli import CoreArgs, ValidatorArgs, GeneratorArgs, MainArgs, CONTRACT_KEYS, OUTPUT_FORMATS
+from dbt_contracts.cli import CoreArgs, CleanCommand, DepsCommand, ParseCommand, DocsCommand, ValidateCommand, \
+    GenerateCommand, MainCommand, CONTRACT_KEYS, OUTPUT_FORMATS
 
 DBT_ENV_VARS = ("DBT_PROFILES_DIR", "DBT_PROJECT_DIR", "DBT_PROFILE", "DBT_TARGET")
-ALL_ARGS = (CoreArgs, ValidatorArgs, GeneratorArgs, MainArgs)
+COMMANDS = (CleanCommand, DepsCommand, ParseCommand, DocsCommand, ValidateCommand, GenerateCommand, MainCommand)
+ALL_ARGS = (CoreArgs, *COMMANDS)
 
 
 @pytest.fixture(autouse=True)
@@ -46,7 +49,7 @@ def test_defaults(model: type[CoreArgs]):
 
 
 def test_validator_defaults():
-    args = _parse(ValidatorArgs)
+    args = _parse(ValidateCommand)
     assert args["output"] is None
     assert args["format"] is None
     assert args["no_fail"] is False
@@ -77,27 +80,27 @@ def test_core_args(model: type[CoreArgs]):
 
 
 def test_validator_args():
-    args = _parse(ValidatorArgs, "--output", "results", "--format", "json", "--no-fail", "--terms", "a", "b")
+    args = _parse(ValidateCommand, "--output", "results", "--format", "json", "--no-fail", "--terms", "a", "b")
     assert args == args | {"output": Path("results"), "format": "json", "no_fail": True, "terms": ["a", "b"]}
 
 
 @pytest.mark.parametrize("flag", ["--terms", "--term", "--validations", "--validation"])
 def test_terms_aliases(flag: str):
-    assert _parse(ValidatorArgs, flag, "a", "b")["terms"] == ["a", "b"]
+    assert _parse(ValidateCommand, flag, "a", "b")["terms"] == ["a", "b"]
 
 
 def test_terms_without_values_applies_all_terms():
     # an empty list of terms applies all configured terms, the same as not passing the option
-    assert _parse(ValidatorArgs, "--terms")["terms"] == []
+    assert _parse(ValidateCommand, "--terms")["terms"] == []
 
 
 def test_terms_and_files():
     # files given after the terms must be separated from them with '--'
-    args = _parse(ValidatorArgs, "--terms", "a", "b", "--", "file.sql")
+    args = _parse(ValidateCommand, "--terms", "a", "b", "--", "file.sql")
     assert args["terms"] == ["a", "b"]
     assert args["files"] == ["file.sql"]
 
-    args = _parse(ValidatorArgs, "file.sql", "--terms", "a", "b")
+    args = _parse(ValidateCommand, "file.sql", "--terms", "a", "b")
     assert args["terms"] == ["a", "b"]
     assert args["files"] == ["file.sql"]
 
@@ -128,7 +131,7 @@ def test_ignores_env_vars_for_other_args(monkeypatch: pytest.MonkeyPatch):
     for name, value in env.items():
         monkeypatch.setenv(name, value)
 
-    args = _parse(ValidatorArgs)
+    args = _parse(ValidateCommand)
     assert args == args | {
         "config": None, "format": None, "files": [], "terms": None, "threads": None,
         "no_fail": False, "clean": False, "profile": None,
@@ -150,15 +153,15 @@ def test_null_value_is_none(monkeypatch: pytest.MonkeyPatch):
 ])
 def test_list_values_are_kept_as_given(values: list[str]):
     # e.g. file paths passed by pre-commit must not be split on commas or decoded as JSON
-    args = _parse(ValidatorArgs, *values, "--terms", *values)
+    args = _parse(ValidateCommand, *values, "--terms", *values)
     assert args["files"] == values
     assert args["terms"] == values
 
 
 def test_main_args():
-    assert _parse(MainArgs)["operation"] == "validate"
+    assert _parse(MainCommand)["operation"] == "validate"
 
-    args = _parse(MainArgs, "--operation", "generate", "--format", "json", "file.sql")
+    args = _parse(MainCommand, "--operation", "generate", "--format", "json", "file.sql")
     assert args == args | {"operation": "generate", "format": "json", "files": ["file.sql"]}
 
 
@@ -168,8 +171,8 @@ def test_main_args():
     (CoreArgs, ["--profile"], "argument --profile: expected one argument"),
     (CoreArgs, ["--contracts", "models"], "unrecognized arguments: --contracts"),
     (CoreArgs, ["--format", "json"], "unrecognized arguments: --format"),
-    (ValidatorArgs, ["--format", "xml"], "argument --format: invalid choice: 'xml'"),
-    (MainArgs, ["--operation", "bad"], "argument --operation: invalid choice: 'bad'"),
+    (ValidateCommand, ["--format", "xml"], "argument --format: invalid choice: 'xml'"),
+    (MainCommand, ["--operation", "bad"], "argument --operation: invalid choice: 'bad'"),
 ])
 def test_invalid_args_exit_with_usage(
         model: type[CoreArgs], args: list[str], message: str, capsys: pytest.CaptureFixture
@@ -195,15 +198,57 @@ def test_help(model: type[CoreArgs], capsys: pytest.CaptureFixture):
 
 def test_validator_help(capsys: pytest.CaptureFixture):
     with pytest.raises(SystemExit):
-        _parse(ValidatorArgs, "--help")
+        _parse(ValidateCommand, "--help")
 
     help_text = " ".join(capsys.readouterr().out.split())
     assert "[--format {" + ",".join(OUTPUT_FORMATS) + "}]" in help_text
     assert "[--terms [TERMS ...]]" in help_text
 
 
+@pytest.mark.parametrize("command", COMMANDS)
+def test_parse_does_not_run_command(command: type[CoreArgs]):
+    with mock.patch.object(command, "cli_cmd") as mock_cli_cmd:
+        command.parse(args=[])
+        mock_cli_cmd.assert_not_called()
+
+
+@pytest.mark.parametrize("command", COMMANDS)
+def test_run_parses_and_runs_command(command: type[CoreArgs]):
+    with mock.patch.object(command, "cli_cmd", autospec=True) as mock_cli_cmd:
+        result = command.run(args=["--target", "dev"])
+
+    mock_cli_cmd.assert_called_once_with(result)
+    assert result.target == "dev"
+
+
+@pytest.mark.parametrize("command,prog", [
+    (CleanCommand, "dbt-clean"), (DepsCommand, "dbt-deps"), (ParseCommand, "dbt-parse"), (DocsCommand, "dbt-docs"),
+    (ValidateCommand, "dbt-validate"), (GenerateCommand, "dbt-generate"), (MainCommand, "dbt-contracts"),
+])
+def test_help_shows_command_name(command: type[CoreArgs], prog: str, capsys: pytest.CaptureFixture):
+    with pytest.raises(SystemExit):
+        command.parse(args=["--help"])
+    assert capsys.readouterr().out.startswith(f"usage: {prog} [-h]")
+
+
+@pytest.mark.parametrize("operation,command", [("validate", ValidateCommand), ("generate", GenerateCommand)])
+def test_main_command_runs_operation(operation: str, command: type[CoreArgs]):
+    main = MainCommand.parse(args=["--operation", operation, "--target", "dev", "--no-fail", "file.sql"])
+
+    with mock.patch.object(command, "cli_cmd", autospec=True) as mock_cli_cmd:
+        main.cli_cmd()
+
+    mock_cli_cmd.assert_called_once()
+    ran: CoreArgs = mock_cli_cmd.call_args.args[0]
+    assert type(ran) is command
+    assert ran.target == "dev"
+    assert ran.files == ["file.sql"]
+    if command is ValidateCommand:
+        assert ran.no_fail is True
+
+
 def test_to_namespace():
-    args = ValidatorArgs.parse(args=["--target", "dev", "file.sql"])
+    args = ValidateCommand.parse(args=["--target", "dev", "file.sql"])
     namespace = args.to_namespace()
 
     assert isinstance(namespace, Namespace)

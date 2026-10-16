@@ -4,7 +4,7 @@ import os
 from argparse import ArgumentParser, Namespace, Action
 from pathlib import Path
 from types import UnionType
-from typing import Any, Literal, Self, Union, get_args, get_origin
+from typing import Any, ClassVar, Literal, Self, Union, get_args, get_origin
 
 from dbt.cli.resolvers import default_profiles_dir, default_project_dir
 from pydantic import Field
@@ -24,12 +24,14 @@ OUTPUT_FORMATS = tuple(ContractsRunner.output_writers_map.keys())
 
 
 class CoreArgs(BaseSettings):
-    """The CLI args common to all commands."""
+    """The CLI args common to all commands. Commands subclass this, running in their ``cli_cmd`` method."""
     model_config = SettingsConfigDict(
         cli_kebab_case=True,
         cli_implicit_flags="toggle",
         cli_shortcuts={"target": "t"},
     )
+    #: The name of the command, shown in the help text
+    prog: ClassVar[str] = PROGRAM_NAME
 
     ################################################################################
     ## DBT args
@@ -141,28 +143,107 @@ class CoreArgs(BaseSettings):
         return parsed
 
     @classmethod
-    def parse(cls, prog: str = PROGRAM_NAME, args: list[str] | None = None) -> Self:
-        """
-        Parse the CLI args.
+    def _cli_settings_source(cls, prog: str | None = None) -> CliSettingsSource:
+        # a plain parser keeps argparse's default help formatting, without the class docstring as a description
+        return CliSettingsSource(
+            cls,
+            root_parser=ArgumentParser(prog=prog or cls.prog),
+            parse_args_method=cls._parse_args,
+            add_argument_method=cls._add_argument,
+        )
 
-        :param prog: The name of the program to show in the help text.
+    @classmethod
+    def parse(cls, args: list[str] | None = None, prog: str | None = None) -> Self:
+        """
+        Parse the CLI args without running the command.
+
         :param args: The args to parse. Parses the args given to the current process when None.
+        :param prog: The name of the program to show in the help text. Defaults to the command's name.
         :return: The parsed args.
         """
-        # a plain parser keeps argparse's default help formatting, without the class docstring as a description
-        parser = ArgumentParser(prog=prog)
-        source = CliSettingsSource(
-            cls, root_parser=parser, parse_args_method=cls._parse_args, add_argument_method=cls._add_argument
-        )
-        return CliApp.run(cls, cli_args=args, cli_settings_source=source)
+        source = cls._cli_settings_source(prog)
+        return cls(_cli_settings_source=source(args=True if args is None else args))
+
+    @classmethod
+    def run(cls, args: list[str] | None = None, prog: str | None = None) -> Self:
+        """
+        Parse the CLI args and run the command.
+
+        :param args: The args to parse. Parses the args given to the current process when None.
+        :param prog: The name of the program to show in the help text. Defaults to the command's name.
+        :return: The parsed args.
+        """
+        return CliApp.run(cls, cli_args=args, cli_settings_source=cls._cli_settings_source(prog))
 
     def to_namespace(self) -> Namespace:
         """Convert these args to the namespace that dbt expects."""
         return Namespace(**self.model_dump())
 
+    def _create_runner(self) -> ContractsRunner:
+        """Create a contracts runner for the dbt project, running ``dbt clean`` and ``dbt deps`` first if set."""
+        args = self.to_namespace()
+        args.profiles_dir = str(self.profiles_dir.resolve())
+        args.project_dir = str(self.project_dir.resolve())
+        args.config = Path(self.config or args.project_dir).resolve()
 
-class ValidatorArgs(CoreArgs):
-    """The CLI args for the ``dbt-validate`` command."""
+        config = get_config(args)
+        if self.clean:
+            clean_paths(config=config)
+        if self.deps:
+            install_dependencies(config=config)
+
+        runner = ContractsRunner.from_config(config)
+        if self.files:
+            runner.paths = config.args.files
+
+        return runner
+
+
+################################################################################
+## dbt commands
+################################################################################
+class CleanCommand(CoreArgs):
+    """Run ``dbt clean``."""
+    prog: ClassVar[str] = "dbt-clean"
+
+    def cli_cmd(self) -> None:
+        """Run ``dbt clean``."""
+        clean_paths(config=get_config(self.to_namespace()))
+
+
+class DepsCommand(CoreArgs):
+    """Run ``dbt deps``."""
+    prog: ClassVar[str] = "dbt-deps"
+
+    def cli_cmd(self) -> None:
+        """Run ``dbt deps``."""
+        install_dependencies(config=get_config(self.to_namespace()))
+
+
+class ParseCommand(CoreArgs):
+    """Run ``dbt parse`` to generate the manifest."""
+    prog: ClassVar[str] = "dbt-parse"
+
+    def cli_cmd(self) -> None:
+        """Run ``dbt parse``."""
+        get_manifest(config=get_config(self.to_namespace()))
+
+
+class DocsCommand(CoreArgs):
+    """Run ``dbt docs generate`` to generate the catalog."""
+    prog: ClassVar[str] = "dbt-docs"
+
+    def cli_cmd(self) -> None:
+        """Run ``dbt docs generate``."""
+        get_catalog(config=get_config(self.to_namespace()))
+
+
+################################################################################
+## Contracts commands
+################################################################################
+class ValidateCommand(CoreArgs):
+    """Validate the configured contracts."""
+    prog: ClassVar[str] = "dbt-validate"
     model_config = SettingsConfigDict(
         cli_shortcuts={"target": "t", "terms": ["term", "validations", "validation"]},
     )
@@ -187,116 +268,82 @@ class ValidatorArgs(CoreArgs):
         default=None,
     )
 
+    def cli_cmd(self) -> None:
+        """Validate the configured contracts, exiting with code 1 when any fail unless ``no_fail`` is set."""
+        _setup_logging()
+        runner = self._create_runner()
 
-class GeneratorArgs(CoreArgs):
-    """The CLI args for the ``dbt-generate`` command."""
+        results = runner.validate(contract_key=self.contract, terms=self.terms)
+        if self.format:
+            output = self.output or Path(runner.config.project_root, runner.config.target_path)
+            runner.write_results(results, path=output.resolve(), output_type=self.format)
+
+        if not self.no_fail and results:
+            # the runner has already logged the violations found, so exit without a traceback
+            raise SystemExit(1)
 
 
-class MainArgs(ValidatorArgs):
-    """The CLI args when running this module directly."""
+class GenerateCommand(CoreArgs):
+    """Generate properties files for the configured contracts."""
+    prog: ClassVar[str] = "dbt-generate"
+
+    def cli_cmd(self) -> None:
+        """Generate properties files for the configured contracts."""
+        _setup_logging()
+        self._create_runner().generate(contract_key=self.contract)
+
+
+class MainCommand(ValidateCommand):
+    """Run one of the contracts commands when running this module directly."""
+    prog: ClassVar[str] = PROGRAM_NAME
+
     operation: Literal["validate", "generate"] = Field(
         description="Run this operation.",
         default="validate",
     )
+
+    def cli_cmd(self) -> None:
+        """Run the given operation with the other args given."""
+        command = GenerateCommand if self.operation == "generate" else ValidateCommand
+        command(**self.model_dump(include=set(command.model_fields))).cli_cmd()
 
 
 def _setup_logging() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s", handlers=[logging.StreamHandler()], force=True)
 
 
-def _setup_runner(args: Namespace) -> ContractsRunner:
-    args.profiles_dir = str(Path(args.profiles_dir).resolve())
-    args.project_dir = str(Path(args.project_dir).resolve())
-
-    config = get_config(args)
-
-    if args.clean:
-        clean_paths(config=config)
-    if args.deps:
-        install_dependencies(config=config)
-
-    if args.config is None and args.project_dir:
-        args.config = Path(args.project_dir)
-
-    args.config = Path(args.config).resolve()
-
-    runner = ContractsRunner.from_config(config)
-    if args.files:
-        runner.paths = config.args.files
-
-    return runner
-
-
+################################################################################
+## Entry points
+################################################################################
 def clean() -> None:
     """Main entry point for executing ``dbt clean``"""
-    args = CoreArgs.parse(prog="dbt-clean").to_namespace()
-    config = get_config(args)
-    clean_paths(config=config)
+    CleanCommand.run()
 
 
 def deps() -> None:
     """Main entry point for executing ``dbt deps``"""
-    args = CoreArgs.parse(prog="dbt-deps").to_namespace()
-    config = get_config(args)
-    install_dependencies(config=config)
+    DepsCommand.run()
 
 
 def parse() -> None:
     """Main entry point for executing ``dbt parse``"""
-    args = CoreArgs.parse(prog="dbt-parse").to_namespace()
-    config = get_config(args)
-    get_manifest(config=config)
+    ParseCommand.run()
 
 
 def docs() -> None:
     """Main entry point for executing ``dbt docs generate``"""
-    args = CoreArgs.parse(prog="dbt-docs").to_namespace()
-    config = get_config(args)
-    get_catalog(config=config)
+    DocsCommand.run()
 
 
-def validate(args: ValidatorArgs | None = None) -> None:
-    """
-    Main entry point for the ``validator`` CLI command
-
-    :param args: The parsed CLI args. Parses the args given to the current process when None.
-    """
-    _setup_logging()
-
-    args = (args or ValidatorArgs.parse(prog="dbt-validate")).to_namespace()
-    runner = _setup_runner(args)
-
-    if args.output is None:
-        args.output = Path(runner.config.project_root, runner.config.target_path)
-    args.output = Path(args.output).resolve()
-
-    results = runner.validate(contract_key=args.contract, terms=args.terms)
-
-    if args.format:
-        runner.write_results(results, path=args.output, output_type=args.format)
-
-    if not args.no_fail and results:
-        # the runner has already logged the violations found, so exit without a traceback
-        raise SystemExit(1)
+def validate() -> None:
+    """Main entry point for the ``validator`` CLI command"""
+    ValidateCommand.run()
 
 
-def generate(args: CoreArgs | None = None) -> None:
-    """
-    Main entry point for the ``generate`` CLI command
-
-    :param args: The parsed CLI args. Parses the args given to the current process when None.
-    """
-    _setup_logging()
-
-    args = (args or GeneratorArgs.parse(prog="dbt-generate")).to_namespace()
-    runner = _setup_runner(args)
-
-    runner.generate(contract_key=args.contract)
+def generate() -> None:
+    """Main entry point for the ``generate`` CLI command"""
+    GenerateCommand.run()
 
 
 if __name__ == "__main__":
-    main_args = MainArgs.parse()
-    if main_args.operation == "generate":
-        generate(main_args)
-    else:
-        validate(main_args)
+    MainCommand.run()
