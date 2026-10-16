@@ -162,19 +162,19 @@ class TestSetColumns:
         assert not generator._order_columns(node, columns=columns)
         assert list(node.columns) == original_order
 
-    # TODO: flakey test - fix me
     def test_order_columns(self, generator: SetNodeColumns, node: CompiledNode, faker: Faker):
         node.columns |= {name: ColumnInfo(name=name) for name in faker.words()}
         original_order = list(node.columns)
-        columns = {
-            col.name: ColumnMetadata(name=col.name, index=faker.random_int(max=len(node.columns)), type="int")
-            for col in sample(list(node.columns.values()), k=3)
-        }
 
-        assert list(columns) != original_order
+        # index the sampled columns in reverse of their current order so the order must always change
+        sampled = sorted(
+            sample(list(node.columns.values()), k=3), key=lambda col: original_order.index(col.name), reverse=True
+        )
+        columns = {col.name: ColumnMetadata(name=col.name, index=idx, type="int") for idx, col in enumerate(sampled)}
+        expected_order = list(columns) + [name for name in original_order if name not in columns]
 
         assert generator._order_columns(node, columns=columns)
-        assert list(node.columns) != original_order
+        assert list(node.columns) == expected_order
 
 
 class NodePropertiesGeneratorTester[I: NodeT](
@@ -190,7 +190,6 @@ class NodePropertiesGeneratorTester[I: NodeT](
         table = generator._generate_column_properties(column)
         assert all(val for val in table.values())
 
-    # TODO: flakey test - fix me
     @staticmethod
     def test_merge_columns_merges_and_sorts(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
         table = {"columns": list(map(generator._generate_column_properties, item.columns.values()))}
@@ -199,7 +198,9 @@ class NodePropertiesGeneratorTester[I: NodeT](
             column["description"] = faker.sentence()
             column["new_property"] = faker.random_int()
 
-        while table["columns"] == list(modified_columns.values()):
+        # shuffle until out of order so the merge must sort the columns back
+        expected_names = [column.name for column in item.columns.values()]
+        while [column["name"] for column in table["columns"]] == expected_names:
             shuffle(table["columns"])
 
         expected_columns = list(map(generator._generate_column_properties, item.columns.values()))
@@ -210,7 +211,6 @@ class NodePropertiesGeneratorTester[I: NodeT](
 
         generator._merge_columns(item, table)
         assert table["columns"] == expected_columns
-        assert table["columns"] != list(modified_columns.values())  # sorted back to expected order after shuffle
 
     @staticmethod
     def test_merge_columns_drops(generator: NodePropertiesGenerator[I], item: I, faker: Faker):
