@@ -1,7 +1,6 @@
 from abc import ABCMeta, abstractmethod
 
-from dbt_common.dataclass_schema import dbtClassMixin
-
+from dbt_contracts._compat import dbtClassMixin
 from dbt_contracts.contracts.generators.properties import SetDescription
 from dbt_contracts.types import DescriptionT
 

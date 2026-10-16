@@ -45,8 +45,9 @@ class SourcePropertiesGenerator(NodePropertiesGenerator):
         source = {
             "name": item.source_name,
             "description": item.source_description,
-            "database": item.unrendered_database or item.database,
-            "schema": item.unrendered_schema or item.schema,
+            # unrendered_* attributes were added in dbt 1.9
+            "database": getattr(item, "unrendered_database", None) or item.database,
+            "schema": getattr(item, "unrendered_schema", None) or item.schema,
         }
         return {key: val for key, val in source.items() if val}
 

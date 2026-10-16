@@ -1,8 +1,8 @@
 from abc import ABCMeta
 
-from dbt_common.dataclass_schema import dbtClassMixin
 from pydantic import Field
 
+from dbt_contracts._compat import dbtClassMixin
 from dbt_contracts.contracts.generators._core import PropertyGenerator
 from dbt_contracts.types import DescriptionT
 

@@ -3,11 +3,10 @@ from collections.abc import Collection, Mapping, MutableMapping
 from pathlib import Path
 from typing import Any
 
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.nodes import SourceDefinition
 from dbt.flags import get_flags
-from dbt_common.contracts.metadata import CatalogTable
 
+from dbt_contracts._compat import CatalogArtifact, CatalogTable
 from dbt_contracts.types import NodeT
 
 

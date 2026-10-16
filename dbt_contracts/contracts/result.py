@@ -3,11 +3,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Self, ClassVar
 
-from dbt.artifacts.resources import BaseResource
-from dbt.artifacts.resources.v1.components import ColumnInfo
-from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro
 
+from dbt_contracts._compat import BaseResource, ColumnInfo, MacroArgument
 from dbt_contracts._core import BaseModelConfig
 from dbt_contracts.properties import PropertiesIO
 from dbt_contracts.types import ItemT, ParentT

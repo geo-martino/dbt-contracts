@@ -3,13 +3,11 @@ from random import choice
 from unittest import mock
 
 import pytest
-from dbt.artifacts.resources import BaseResource
-from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import TestNode, ModelNode, CompiledNode
-from dbt_common.contracts.metadata import CatalogTable
 from faker import Faker
 
+from dbt_contracts._compat import BaseResource, ColumnInfo, CatalogTable
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.terms.column import ColumnContractTerm, Exists, HasTests, HasExpectedName, HasDataType, \
     HasMatchingDescription, HasMatchingDataType, HasMatchingIndex

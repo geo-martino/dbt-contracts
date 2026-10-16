@@ -9,12 +9,11 @@ from typing import Self, Any
 
 import yaml
 from colorama import Fore
-from dbt.adapters.utils import classproperty
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.cli.main import dbtRunner
 from dbt.config import RuntimeConfig
 from dbt.contracts.graph.manifest import Manifest
 
+from dbt_contracts._compat import classproperty, CatalogArtifact
 from dbt_contracts import dbt_cli
 from dbt_contracts.contracts import Contract, CONTRACT_MAP, ParentContract, ContractContext
 from dbt_contracts.contracts.conditions.properties import PathCondition

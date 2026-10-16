@@ -4,12 +4,11 @@ from collections.abc import Iterable, Mapping, Collection, Sequence
 from copy import copy
 from typing import Any
 
-from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import TestNode
-from dbt_common.contracts.metadata import CatalogTable
 from pydantic import Field, field_validator
 
+from dbt_contracts._compat import ColumnInfo, CatalogTable
 from dbt_contracts.contracts._core import ContractContext
 from dbt_contracts.contracts.matchers import StringMatcher, RangeMatcher
 from dbt_contracts.contracts.terms._core import ChildContractTerm, validate_context

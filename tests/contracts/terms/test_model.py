@@ -1,10 +1,10 @@
 from unittest import mock
 
 from dbt.contracts.graph.nodes import ModelNode
-from dbt_common.contracts.constraints import ModelLevelConstraint, ConstraintType
 
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.terms.model import HasConstraints
+from tests._compat import ModelLevelConstraint, ConstraintType
 
 
 def test_has_constraints(model: ModelNode, context: ContractContext):

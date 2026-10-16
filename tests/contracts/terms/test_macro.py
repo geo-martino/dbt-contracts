@@ -1,8 +1,8 @@
 from unittest import mock
 
-from dbt.artifacts.resources.v1.macro import MacroArgument
 from dbt.contracts.graph.nodes import Macro
 
+from dbt_contracts._compat import MacroArgument
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.terms.macro import HasType
 

@@ -4,12 +4,11 @@ from unittest import mock
 
 import pytest
 from _pytest.fixtures import FixtureRequest
-from dbt.artifacts.resources import BaseResource
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import TestNode, CompiledNode
-from dbt_common.contracts.metadata import CatalogTable
 from faker import Faker
 
+from dbt_contracts._compat import BaseResource, CatalogTable
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.terms.node import Exists, HasTests, HasAllColumns, HasExpectedColumns, \
     HasMatchingDescription, HasContract, HasValidUpstreamDependencies, HasValidRefDependencies, \

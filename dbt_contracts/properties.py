@@ -3,9 +3,8 @@ from pathlib import Path
 from typing import Any, Collection
 
 import yaml
-from dbt.artifacts.resources import BaseResource
-from dbt.artifacts.resources.v1.components import ParsedResource
 
+from dbt_contracts._compat import BaseResource, ParsedResource
 from dbt_contracts.contracts.utils import get_absolute_project_path
 from dbt_contracts.types import PropertiesT
 

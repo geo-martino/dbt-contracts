@@ -5,11 +5,10 @@ from random import choice
 from unittest import mock
 
 import pytest
-from dbt.artifacts.resources import BaseResource
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.nodes import CompiledNode, ModelNode
 from dbt.flags import GLOBAL_FLAGS
 
+from dbt_contracts._compat import BaseResource, CatalogArtifact
 from dbt_contracts.contracts.utils import get_matching_catalog_table, get_absolute_project_path, merge_maps
 
 

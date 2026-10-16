@@ -24,7 +24,7 @@ classifiers = [
     "Intended Audience :: Developers",
 ]
 dependencies = [
-    "dbt-core>=1.9,<2.0",
+    "dbt-core>=1.5,!=1.6.*,<2.0",
     "pydantic>=2.10,<3.0",
 ]
 

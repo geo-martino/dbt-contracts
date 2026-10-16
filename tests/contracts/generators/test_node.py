@@ -4,11 +4,10 @@ from random import choice, sample, shuffle
 from unittest import mock
 
 import pytest
-from dbt.artifacts.resources.v1.components import ColumnInfo
 from dbt.contracts.graph.nodes import CompiledNode
-from dbt_common.contracts.metadata import CatalogTable, ColumnMetadata
 from faker import Faker
 
+from dbt_contracts._compat import ColumnInfo, CatalogTable, ColumnMetadata
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.generators.column import ColumnPropertiesGenerator
 from dbt_contracts.contracts.generators.node import NodePropertyGenerator, SetNodeDescription, SetNodeColumns, \

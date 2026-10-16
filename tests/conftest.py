@@ -1,20 +1,19 @@
 from copy import deepcopy
+from hashlib import md5
 from pathlib import Path
 from random import choice, sample
 
 import pytest
 from _pytest.fixtures import FixtureRequest
-from dbt.artifacts.resources import FileHash, BaseResource
-from dbt.artifacts.resources.types import NodeType
-from dbt.artifacts.resources.v1.components import ColumnInfo, ParsedResource
-from dbt.artifacts.resources.v1.macro import MacroArgument
-from dbt.artifacts.schemas.catalog import CatalogArtifact, CatalogMetadata
 from dbt.contracts.graph.manifest import Manifest
 from dbt.contracts.graph.nodes import ModelNode, SourceDefinition, Macro, TestNode, GenericTestNode, CompiledNode
-from dbt_common.contracts.metadata import CatalogTable, TableMetadata, ColumnMetadata
 from faker import Faker
 
+from dbt_contracts._compat import (
+    BaseResource, ColumnInfo, ParsedResource, MacroArgument, CatalogArtifact, CatalogTable, ColumnMetadata
+)
 from dbt_contracts.contracts import ContractContext
+from tests._compat import FileHash, NodeType, CatalogMetadata, TableMetadata, TestMetadata
 
 
 @pytest.fixture(scope="session")
@@ -49,7 +48,10 @@ def manifest(
     manifest.nodes |= {test.unique_id: test for test in tests}
     manifest.sources |= {source.unique_id: source for source in sources}
     manifest.macros |= {macro.unique_id: macro for macro in macros}
-    manifest.metadata.project_name = project_name
+    if hasattr(manifest.metadata, "project_name"):
+        manifest.metadata.project_name = project_name
+    else:  # dbt<1.7 only stores an md5 hash of the project name as the project_id
+        manifest.metadata.project_id = md5(project_name.encode()).hexdigest()
     return manifest
 
 
@@ -212,6 +214,7 @@ def tests(models: list[ModelNode], sources: list[SourceDefinition], project_name
             unique_id=".".join(("test", *Path(path).with_suffix("").parts)),
             resource_type=NodeType.Test,
             attached_node=item.unique_id,
+            test_metadata=TestMetadata(name=faker.word()),  # required for dbt<1.8
             alias=faker.word(),
             fqn=faker.words(3),
             checksum=FileHash(name=faker.word(), checksum="".join(faker.random_letters())),

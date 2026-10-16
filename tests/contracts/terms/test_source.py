@@ -2,12 +2,11 @@ from random import sample
 from unittest import mock
 
 import pytest
-from dbt.artifacts.resources.types import TimePeriod
-from dbt.artifacts.resources.v1.components import FreshnessThreshold, Time
 from dbt.contracts.graph.nodes import SourceDefinition
 
 from dbt_contracts.contracts import ContractContext
 from dbt_contracts.contracts.terms.source import HasLoader, HasFreshness, HasDownstreamDependencies
+from tests._compat import TimePeriod, FreshnessThreshold, Time
 
 
 def test_has_loader(source: SourceDefinition, context: ContractContext):
