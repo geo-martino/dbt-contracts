@@ -109,8 +109,10 @@ jobs:
           python-version: ${{ env.python-version }}
 
       - name: 📄 Sanitise readme
+        # hide the edit from git so versioningit doesn't mark the release version as dirty
         run: |
           sed -i -r "s|\[\!(\w+)\]|**\\1:**|g" README.md
+          git update-index --assume-unchanged README.md
 
       - name: 🏗️ Build package
         run: |
