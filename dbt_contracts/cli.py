@@ -66,14 +66,14 @@ threads = CORE_PARSER.add_argument(
 ################################################################################
 CORE_PARSER.add_argument(
     "--clean",
-    help="When this option is passed, run ``dbt clean`` before operations. "
+    help="When this option is passed, run `dbt clean` before operations. "
          "If not passed, will attempt to load artifacts from the target folder before operations.",
     action='store_true'
 )
 
 CORE_PARSER.add_argument(
     "--deps",
-    help="When this option is passed, run ``dbt deps`` before operations.",
+    help="When this option is passed, run `dbt deps` before operations.",
     action='store_true'
 )
 
