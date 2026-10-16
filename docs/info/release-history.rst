@@ -32,6 +32,23 @@ The format is based on `Keep a Changelog <https://keepachangelog.com/en>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_
 
 
+1.1.0
+=====
+
+Added
+-----
+* Support for ``dbt-core`` 1.5 and 1.7 or later. ``dbt-core`` 1.6 is not supported as it requires ``pydantic`` v1.
+
+Fixed
+-----
+* Validation now runs every term for each item. Previously, terms after the first failing term were skipped
+  so their violations were never reported.
+
+Documentation
+-------------
+* Linting now uses ruff instead of flake8.
+
+
 1.0.9
 =====
 
