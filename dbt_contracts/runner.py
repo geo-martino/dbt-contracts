@@ -136,7 +136,7 @@ class ContractsRunner:
 
             path = get_absolute_project_path(path)
             if path.is_relative_to(project_root):
-                paths.append(str(path.relative_to(project_root)))
+                paths.append(path.relative_to(project_root).as_posix())
 
         self._paths = PathCondition(include=paths) if paths else None
 

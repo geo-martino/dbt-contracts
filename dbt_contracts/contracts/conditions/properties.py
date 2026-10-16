@@ -1,6 +1,6 @@
 from collections.abc import Sequence, Collection, Mapping
 from copy import copy
-from pathlib import Path
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Annotated
 
 from pydantic import BeforeValidator, Field, field_validator
@@ -22,12 +22,13 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
     """
     Filter {kind} based on their paths.
     Paths must match patterns which are relative to the root directory of the dbt project.
+    Paths are always matched with forward slashes as separators on every OS,
+    so patterns should use forward slashes e.g. ``models/staging``.
 
     __EXAMPLE__
 
     You may define the paths as a list of lists where each part is a subdirectory within the path.
-    These parts will then be unified by joining them with the os-specific path separator.
-    This allows for you define os-independent configuration as needed.
+    These parts will then be unified by joining them with forward slashes.
 
     .. code-block:: yaml
 
@@ -41,23 +42,12 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
         - ["path", "to", "another", "folder3"]
     """
     # noinspection PyNestedDecorators
-    @field_validator("include", "exclude", mode="after", check_fields=True)
-    @classmethod
-    def escape_backslashes_in_windows_paths[T: Sequence[str]](cls, values: T) -> T:
-        """
-        Replace all single backslashes with double backslashes in Windows paths.
-
-        This is needed to ensure regex patterns are correctly interpreted and avoid any 'bad escape' errors.
-        """
-        return values.__class__(path.replace("\\", "\\\\") for path in values)
-
-    # noinspection PyNestedDecorators
     @field_validator("include", "exclude", mode="before")
     @classmethod
     def unify_chunked_path_values(cls, values: str | Sequence[str] | Sequence[Sequence[str]]) -> tuple[str, ...]:
         """
         Unify all path values into a tuple of strings.
-        Also merges path parts into a single path with the os-specific separator.
+        Also merges path parts into a single path separated by forward slashes.
         """
         if isinstance(values, str):
             return (values,)
@@ -71,7 +61,7 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
                 continue
             if not isinstance(value, Sequence):
                 raise Exception(f"Unrecognised path types given: {values}")
-            paths.append(str(Path(*value)))
+            paths.append(PurePosixPath(*value).as_posix())
 
         return tuple(paths)
 
@@ -80,7 +70,8 @@ class PathCondition(ContractCondition[BaseResource], PatternMatcher):
         if isinstance(item, ParsedResource) and item.patch_path:
             paths.append(item.patch_path.split("://")[1])
 
-        paths = [path.replace("\\", "\\\\") for path in paths]
+        # PureWindowsPath treats both separators as such on any OS, normalising Windows paths to forward slashes
+        paths = [PureWindowsPath(path).as_posix() if path else path for path in paths]
         return self._match_values(paths)
 
 

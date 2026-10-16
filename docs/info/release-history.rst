@@ -39,8 +39,15 @@ Added
 -----
 * Support for ``dbt-core`` 1.5 and 1.7 or later. ``dbt-core`` 1.6 is not supported as it requires ``pydantic`` v1.
 
+Changed
+-------
+* :py:class:`.PathCondition` now matches paths using forward slashes as separators on every OS.
+  Path patterns should use forward slashes e.g. ``models/staging``, or be given as a list of path parts.
+
 Fixed
 -----
+* :py:class:`.PathCondition` patterns with regex escapes e.g. ``.*\.sql$`` never matched on any OS,
+  and directory patterns never matched Windows paths, as backslashes were double escaped in both patterns and paths.
 * Validation now runs every term for each item. Previously, terms after the first failing term were skipped
   so their violations were never reported.
 * Release builds no longer report a dirty version when the README is sanitised for PyPI,
