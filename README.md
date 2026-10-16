@@ -262,6 +262,15 @@ repos:
        additional_dependencies: [dbt-postgres]
 ```
 
+> [!NOTE]
+> pre-commit passes the changed files to a hook after the `args` you give it.
+> As `--terms` takes many values, end the hook's `args` with `--` when using it
+> so the files are not taken as terms e.g.
+> ```yaml
+> - id: dbt-validate
+>   args: [--terms, has_description, --]
+> ```
+
 ## Contracts Reference
 
 Below you will find a list of all available contracts grouped by the dbt object it operates on.
