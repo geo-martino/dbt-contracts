@@ -23,6 +23,8 @@ author = PROGRAM_OWNER_NAME
 # noinspection SpellCheckingInspection
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.inheritance_diagram",
     "sphinx_rtd_theme",
     "sphinx_design",
     "sphinx_new_tab_link",
@@ -31,7 +33,6 @@ extensions = [
 autodoc_member_order = "bysource"
 # noinspection SpellCheckingInspection
 autodoc_default_options = {
-    "autosummary": True,
     "members": True,
     "undoc-members": False,
     "inherited-members": False,
@@ -39,8 +40,26 @@ autodoc_default_options = {
     "show-inheritance": True,
     # "member-order": "bysource",
 }
+autosummary_generate = True
+# document the classes each package re-exports from its private modules via __all__
+autosummary_ignore_module_all = False
+# the templates strip the package name from page titles
+autosummary_context = {"project": MODULE_ROOT}
+
 templates_path = ["_templates"]
 exclude_patterns = ["_build",]
+
+
+def skip_parametrised_generics(app, what: str, name: str, obj, skip: bool, options) -> bool | None:
+    """
+    Skip the parametrised generic models e.g. ``Result[ModelNode, NoneType]`` which pydantic registers
+    on their module, as autodoc otherwise documents them as duplicates of their generic class.
+    """
+    return True if "[" in name else None
+
+
+def setup(app) -> None:
+    app.connect("autodoc-skip-member", skip_parametrised_generics)
 
 
 # -- Options for HTML output -------------------------------------------------

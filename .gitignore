@@ -83,6 +83,7 @@ instance/
 # Sphinx documentation
 docs/_build/
 docs/reference/contracts/
+docs/reference/api/
 
 # PyBuilder
 .pybuilder/

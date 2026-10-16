@@ -8,7 +8,6 @@ SPHINXOPTS    ?= -D release=${VERSION}
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = docs
 BUILDDIR      = docs/_build
-PROJECTNAME   = dbt_contracts
 LINKCHECKDIR  = docs/_linkcheck
 
 # Put it first so that "make" without argument is like "make help".
@@ -20,9 +19,7 @@ linkcheck: Makefile
 
 rebuild-html: Makefile
 	@$(SPHINXBUILD) -M clean "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
-	@rm -f "$(SOURCEDIR)"/reference/"$(PROJECTNAME)"*.rst
-	@sphinx-apidoc -o "$(SOURCEDIR)"/reference ./"$(PROJECTNAME)" -d 4 --force \
-	  --module-first --separate --no-toc -t "$(SOURCEDIR)"/_templates
+	@rm -rf "$(SOURCEDIR)"/reference/api
 	@$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 	@$(SPHINXBUILD) -b linkcheck "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 

@@ -45,6 +45,13 @@ What's in this documentation
 
 .. toctree::
    :maxdepth: 1
+   :caption: 🧩 API Reference
+
+   reference/api
+
+
+.. toctree::
+   :maxdepth: 1
    :caption: 🛠️ Project Info
 
    info/release-history

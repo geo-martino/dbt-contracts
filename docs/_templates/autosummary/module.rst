@@ -19,7 +19,8 @@
 {{ formatname(fullname) | escape | underline}}
 
 {% if classes -%}
-.. inheritance-diagram:: {{ fullname }}
+{#- list classes explicitly so packages include the classes they re-export via __all__ -#}
+.. inheritance-diagram:: {% for item in classes %}{{ fullname }}.{{ item }} {% endfor %}
    :parts: 1
 {%- endif %}
 
@@ -67,13 +68,18 @@
    {%- endblock %}
 
 {%- block modules -%}
-{%- if modules %}
+{#- modules excludes submodules missing from a package's __all__, so filter all_modules for public ones -#}
+{%- set public_modules = [] -%}
+{%- for item in all_modules if not item.startswith("_") -%}
+{%- set _ = public_modules.append(item) -%}
+{%- endfor -%}
+{%- if public_modules %}
 .. rubric:: Modules
 
 .. autosummary::
    :toctree:
    :recursive:
-{% for item in modules %}
+{% for item in public_modules %}
    {{ item }}
 {% endfor %}
 {% endif %}

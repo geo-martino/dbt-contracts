@@ -9,7 +9,6 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=docs
 set BUILDDIR=docs/_build
-set PROJECTNAME=dbt_contracts
 
 %SPHINXBUILD% >NUL 2>NUL
 if errorlevel 9009 (
@@ -36,8 +35,7 @@ goto end
 
 :rebuild-html
 %SPHINXBUILD% -M clean %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
-rm %SOURCEDIR%/reference/%PROJECTNAME%*.rst
-sphinx-apidoc -o %SOURCEDIR%/reference ./%PROJECTNAME% -d 4 --force --module-first --separate --no-toc -t %SOURCEDIR%/_templates
+if exist %SOURCEDIR%\reference\api rmdir /s /q %SOURCEDIR%\reference\api
 %SPHINXBUILD% -M html %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
 %SPHINXBUILD% -b linkcheck %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
 goto end
