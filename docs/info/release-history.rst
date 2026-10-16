@@ -53,6 +53,7 @@ Changed
 
 Fixed
 -----
+* ``dbt_contracts.properties`` failed with a circular import when imported before ``dbt_contracts.contracts``.
 * Running the CLI module directly e.g. ``python -m dbt_contracts.cli --operation validate``
   no longer takes the operation as a file to filter on.
 * ``has_expected_name`` now accepts the documented ``null`` data type key for patterns which apply to
