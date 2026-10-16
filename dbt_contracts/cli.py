@@ -21,12 +21,6 @@ CONTRACT_KEYS = tuple(
     for key in keys
 )
 OUTPUT_FORMATS = tuple(ContractsRunner.output_writers_map.keys())
-# the CLI value which parses to None. command line args can't contain a NUL character,
-# so this never matches a value a user passes e.g. '--profile null' still gives the string 'null'
-CLI_NONE = "\0"
-# the value argparse gives options passed without a value, replaced with CLI_NONE after parsing.
-# not a string, so argparse doesn't check it against an option's choices or type
-_NO_VALUE = object()
 
 
 class CoreArgs(BaseSettings):
@@ -34,23 +28,21 @@ class CoreArgs(BaseSettings):
     model_config = SettingsConfigDict(
         cli_kebab_case=True,
         cli_implicit_flags="toggle",
-        cli_ignore_unknown_args=True,
-        cli_parse_none_str=CLI_NONE,
         cli_shortcuts={"target": "t"},
     )
 
     ################################################################################
     ## DBT args
     ################################################################################
-    profiles_dir: str | Path | None = Field(
+    profiles_dir: Path = Field(
         description="Which directory to look in for the profiles.yml file. "
                     "If not set, dbt will look in the current working directory first, then HOME/.dbt/",
-        default_factory=lambda: os.getenv("DBT_PROFILES_DIR", default_profiles_dir()),
+        default_factory=lambda: Path(os.getenv("DBT_PROFILES_DIR", default_profiles_dir())),
     )
-    project_dir: str | Path | None = Field(
+    project_dir: Path = Field(
         description="Which directory to look in for the dbt_project.yml file. "
                     "Default is the current working directory and its parents.",
-        default_factory=lambda: os.getenv("DBT_PROJECT_DIR", default_project_dir()),
+        default_factory=lambda: Path(os.getenv("DBT_PROJECT_DIR", default_project_dir())),
     )
     profile: str | None = Field(
         description="Which existing profile to load. Overrides setting in dbt_project.yml.",
@@ -113,20 +105,11 @@ class CoreArgs(BaseSettings):
     @classmethod
     def _add_argument(cls, parser: ArgumentParser, *args: str, **kwargs: Any) -> Action:
         """
-        Add an argument to the CLI parser, configuring it to match how this CLI has always parsed its args:
+        Add an argument to the CLI parser:
 
-        * options which take a single value may be given without one to set them to None
-        * options which take many values need at least one value
-        * argparse validates choices and ints so invalid values give its usual errors
+        * argparse validates choices and ints so invalid values give its usual usage errors
         * help text shows argparse's metavars and the field descriptions only
         """
-        is_option = bool(args) and args[0].startswith("-")
-        if is_option and kwargs.get("action") is None and kwargs.get("nargs") is None:
-            kwargs["nargs"] = "?"
-            kwargs["const"] = _NO_VALUE
-        elif is_option and kwargs.get("nargs") == "*":
-            kwargs["nargs"] = "+"
-
         if (field := cls.model_fields.get(kwargs.get("dest") or args[0])) is None:
             return parser.add_argument(*args, **kwargs)
 
@@ -147,16 +130,13 @@ class CoreArgs(BaseSettings):
     @staticmethod
     def _parse_args(parser: ArgumentParser, args: list[str] | None = None) -> Namespace:
         """
-        Parse the args, ignoring unknown args and setting options passed without a value to None.
-
-        Values of args which take many values are passed on as a JSON array so each is kept exactly as given,
+        Parse the args, passing on the values of args which take many values as a JSON array.
+        This keeps each value exactly as given e.g. file paths from pre-commit,
         rather than pydantic-settings splitting values on commas or decoding them as JSON.
         """
-        parsed, _ = parser.parse_known_args(args)
+        parsed = parser.parse_args(args)
         for key, value in vars(parsed).items():
-            if value is _NO_VALUE:
-                setattr(parsed, key, CLI_NONE)
-            elif isinstance(value, list):
+            if isinstance(value, list):
                 setattr(parsed, key, json.dumps(value))
         return parsed
 
@@ -212,9 +192,9 @@ class GeneratorArgs(CoreArgs):
     """The CLI args for the ``dbt-generate`` command."""
 
 
-class MainArgs(CoreArgs):
+class MainArgs(ValidatorArgs):
     """The CLI args when running this module directly."""
-    operation: Literal["validate", "generate"] | None = Field(
+    operation: Literal["validate", "generate"] = Field(
         description="Run this operation.",
         default="validate",
     )
@@ -275,11 +255,15 @@ def docs() -> None:
     get_catalog(config=config)
 
 
-def validate() -> None:
-    """Main entry point for the ``validator`` CLI command"""
+def validate(args: ValidatorArgs | None = None) -> None:
+    """
+    Main entry point for the ``validator`` CLI command
+
+    :param args: The parsed CLI args. Parses the args given to the current process when None.
+    """
     _setup_logging()
 
-    args = ValidatorArgs.parse(prog="dbt-validate").to_namespace()
+    args = (args or ValidatorArgs.parse(prog="dbt-validate")).to_namespace()
     runner = _setup_runner(args)
 
     if args.output is None:
@@ -295,24 +279,23 @@ def validate() -> None:
         raise Exception(f"Found {len(results)} contract violations.")
 
 
-def generate() -> None:
-    """Main entry point for the ``generate`` CLI command"""
+def generate(args: CoreArgs | None = None) -> None:
+    """
+    Main entry point for the ``generate`` CLI command
+
+    :param args: The parsed CLI args. Parses the args given to the current process when None.
+    """
     _setup_logging()
 
-    args = GeneratorArgs.parse(prog="dbt-generate").to_namespace()
+    args = (args or GeneratorArgs.parse(prog="dbt-generate")).to_namespace()
     runner = _setup_runner(args)
 
     runner.generate(contract_key=args.contract)
 
 
 if __name__ == "__main__":
-    core_args = MainArgs.parse()
-
-    if core_args.operation == "validate":
-        validate()
-        exit(0)
-    elif core_args.operation == "generate":
-        generate()
-        exit(0)
-
-    raise RuntimeError(f"Unrecognised operation: {core_args.operation!r}")
+    main_args = MainArgs.parse()
+    if main_args.operation == "generate":
+        generate(main_args)
+    else:
+        validate(main_args)
