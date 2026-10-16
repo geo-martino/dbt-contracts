@@ -30,7 +30,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "flake8",
+    "ruff",
     "grip",
     "jupyterlab",
     "ipywidgets",
@@ -86,6 +86,21 @@ dirty = "{base_version}"
 #dirty = "{base_version}+d{build_date:%Y%m%d}"
 distance-dirty = "{base_version}"
 #distance-dirty = "{next_version}.dev{distance}+{vcs}{rev}.d{build_date:%Y%m%d}"
+
+[tool.ruff]
+line-length = 120
+extend-exclude = [".venv*", "jupyter", "notebooks", "test.py"]
+
+[tool.ruff.lint]
+# flake8's default rule families; ruff's own defaults are narrower
+select = ["E", "F", "W", "C90"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401"]
+"tests/**/test_*.py" = ["F811"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

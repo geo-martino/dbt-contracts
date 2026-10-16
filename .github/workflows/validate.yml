@@ -30,13 +30,8 @@ jobs:
       - name: 🛒 Checkout
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup - Python 🐍
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.python-version }}
-
-      - name: 🔎 Run flake8
-        uses: py-actions/flake8@v2
+      - name: 🔎 Run ruff
+        uses: astral-sh/ruff-action@v3
 
   test:
     name: 🧪 Run tests

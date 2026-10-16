@@ -50,15 +50,15 @@ To run tests, you must have installed either the ``test`` or ``dev`` optional de
    pytest path/to/test/file.py
 
 As part of code validation, your code will be required to pass certain linting checks.
-This project uses flake8 to help give an indication as to the quality of your code.
+This project uses ruff to help give an indication as to the quality of your code.
 For the current checks that your code will be expected to pass,
-please check the ``.flake8`` config file in the root of the project.
+please check the ``[tool.ruff]`` config in the ``pyproject.toml`` file in the root of the project.
 
 To run these checks locally, simply run the following command in a terminal:
 
 .. code-block:: bash
 
-   flake8
+   ruff check
 
 Submitting your changes for review
 ==================================
